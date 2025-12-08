@@ -4,12 +4,15 @@ Memory extraction from conversations.
 Provides extractors for user and assistant messages with structured prompts.
 """
 
-from casual_memory.extractors.base import MemoryExtractor
-from casual_memory.extractors.user_extractor import UserMemoryExtractor
-from casual_memory.extractors.assistant_extractor import AssistantMemoryExtractor
+from casual_memory.extractors.base import MemoryExtracter
+from casual_memory.extractors.user_extractor import UserMemoryExtracter
+from casual_memory.extractors.assistant_extractor import AssistantMemoryExtracter
+from casual_memory.extractors.llm_extractor import LLMMemoryExtracter
+
 
 __all__ = [
-    "MemoryExtractor",
-    "UserMemoryExtractor",
-    "AssistantMemoryExtractor",
+    "MemoryExtracter",
+    "LLMMemoryExtracter",
+    "UserMemoryExtracter",
+    "AssistantMemoryExtracter",
 ]
