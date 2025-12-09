@@ -48,8 +48,18 @@ redis = [
 dates = [
     "dateparser>=1.1.0",
 ]
+embeddings-openai = [
+    "openai>=1.0.0",
+]
+embeddings-transformers = [
+    "sentence-transformers>=2.0.0",
+    "torch>=2.0.0",
+]
+embeddings-all = [
+    "casual-memory[embeddings-openai,embeddings-transformers]",
+]
 all = [
-    "casual-memory[transformers,qdrant,sqlalchemy,postgres,redis,dates]",
+    "casual-memory[transformers,qdrant,sqlalchemy,postgres,redis,dates,embeddings-all]",
 ]
 dev = [
     "pytest>=7.0.0",
