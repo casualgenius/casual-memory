@@ -18,6 +18,7 @@ from casual_memory.models import (
     ConflictResolution,
     ShortTermMemory,
 )
+from casual_memory.extractors import LLMMemoryExtracter
 
 __all__ = [
     "__version__",
@@ -27,4 +28,5 @@ __all__ = [
     "MemoryConflict",
     "ConflictResolution",
     "ShortTermMemory",
+    "LLMMemoryExtracter"
 ]
