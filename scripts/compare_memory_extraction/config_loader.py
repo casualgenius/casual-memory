@@ -249,13 +249,14 @@ To fix this:
     @classmethod
     def load_system_prompt(cls, path: Optional[str | Path] = None) -> str:
         """
-        Load system prompt template from file and fill in date placeholders.
+        Load system prompt template from file.
 
         Args:
             path: Path to prompt file. If None, uses default location.
 
         Returns:
-            Formatted system prompt string with date placeholders filled
+            Raw system prompt template string with {today_natural} and {isonow} placeholders
+            (placeholders will be filled by LLMMemoryExtracter)
 
         Raises:
             FileNotFoundError: If prompt file doesn't exist
@@ -279,9 +280,5 @@ The prompt should include placeholders {{today_natural}} and {{isonow}} for date
         with open(config_path, encoding="utf-8") as f:
             template = f.read()
 
-        # Fill in placeholders
-        now = datetime.now()
-        today_natural = now.strftime("%A, %B %d, %Y")
-        isonow = now.isoformat()
-
-        return template.format(today_natural=today_natural, isonow=isonow)
+        # Return raw template - LLMMemoryExtracter will fill in the placeholders
+        return template
