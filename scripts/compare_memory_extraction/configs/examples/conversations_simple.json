@@ -1,0 +1,61 @@
+{
+  "conversations": [
+    {
+      "id": "location_only",
+      "description": "Simple location fact",
+      "enabled": true,
+      "messages": [
+        {
+          "role": "user",
+          "content": "I live in London."
+        },
+        {
+          "role": "assistant",
+          "content": "Got it, I'll remember you live in London."
+        }
+      ],
+      "expected_memories": 1,
+      "tags": ["fact", "location"]
+    },
+    {
+      "id": "name_only",
+      "description": "Simple name fact",
+      "enabled": true,
+      "messages": [
+        {
+          "role": "user",
+          "content": "My name is Alex."
+        },
+        {
+          "role": "assistant",
+          "content": "Nice to meet you, Alex!"
+        }
+      ],
+      "expected_memories": 1,
+      "tags": ["fact", "name"]
+    },
+    {
+      "id": "preference",
+      "description": "Simple preference",
+      "enabled": true,
+      "messages": [
+        {
+          "role": "user",
+          "content": "I love hiking."
+        },
+        {
+          "role": "assistant",
+          "content": "That's great! Hiking is wonderful."
+        }
+      ],
+      "expected_memories": 1,
+      "tags": ["preference", "hobby"]
+    }
+  ],
+  "metadata": {
+    "version": "1.0",
+    "description": "Minimal conversation set for quick validation",
+    "total_conversations": 3,
+    "note": "Use this for rapid testing during prompt development or model comparison."
+  }
+}

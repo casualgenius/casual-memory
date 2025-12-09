@@ -1,0 +1,67 @@
+{
+  "models": [
+    {
+      "name": "qwen/qwen3-next-80b-a3b-instruct-2509",
+      "provider": "openai",
+      "base_url": "https://openrouter.ai/api/v1",
+      "api_key_env": "OPENAI_API_KEY",
+      "enabled": true,
+      "description": "Qwen3 Next 80B via OpenRouter"
+    },
+    {
+      "name": "qwen2.5:7b-instruct",
+      "provider": "ollama",
+      "base_url_env": "OLLAMA_ENDPOINT",
+      "enabled": true,
+      "description": "Qwen 2.5 7B via Ollama"
+    },
+    {
+      "name": "gpt-4o-mini",
+      "provider": "openai",
+      "api_key_env": "OPENAI_API_KEY",
+      "enabled": false,
+      "description": "OpenAI GPT-4o Mini (disabled by default)"
+    },
+    {
+      "name": "qwen/qwen-2.5-72b-instruct:free",
+      "provider": "openai",
+      "base_url": "https://openrouter.ai/api/v1",
+      "api_key_env": "OPENAI_API_KEY",
+      "enabled": false,
+      "description": "Qwen 2.5 72B via OpenRouter (free tier, disabled by default)"
+    },
+    {
+      "name": "qwen/qwen3-235b-a22b-2507",
+      "provider": "openai",
+      "base_url": "https://openrouter.ai/api/v1",
+      "api_key_env": "OPENAI_API_KEY",
+      "enabled": false,
+      "description": "Qwen3 235B via OpenRouter (disabled by default)"
+    },
+    {
+      "name": "meta-llama/llama-3.3-70b-instruct",
+      "provider": "openai",
+      "base_url": "https://openrouter.ai/api/v1",
+      "api_key_env": "OPENAI_API_KEY",
+      "enabled": false,
+      "description": "Llama 3.3 70B via OpenRouter (disabled by default)"
+    },
+    {
+      "name": "gemma2:9b",
+      "provider": "ollama",
+      "enabled": false,
+      "description": "Gemma 2 9B via Ollama (disabled by default)"
+    },
+    {
+      "name": "hermes3:latest",
+      "provider": "ollama",
+      "enabled": false,
+      "description": "Hermes 3 via Ollama (disabled by default)"
+    }
+  ],
+  "metadata": {
+    "version": "1.0",
+    "description": "Model configurations for memory extraction comparison",
+    "note": "Enable/disable models by changing the 'enabled' field. API keys are read from environment variables for security."
+  }
+}

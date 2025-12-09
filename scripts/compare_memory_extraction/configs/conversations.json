@@ -1,0 +1,239 @@
+{
+  "conversations": [
+    {
+      "id": "location_preference",
+      "description": "User shares location and weather preference",
+      "enabled": true,
+      "messages": [
+        {
+          "role": "user",
+          "content": "I live in London and I prefer to get weather updates in Celsius."
+        },
+        {
+          "role": "assistant",
+          "content": "Okay, I'll remember that you live in London and prefer Celsius for weather forecasts."
+        }
+      ],
+      "expected_memories": 2,
+      "tags": ["location", "preference", "weather"]
+    },
+    {
+      "id": "name_exchange",
+      "description": "Multi-turn name exchange",
+      "enabled": true,
+      "messages": [
+        {
+          "role": "user",
+          "content": "What's my name?"
+        },
+        {
+          "role": "assistant",
+          "content": "You haven't told me your name yet."
+        },
+        {
+          "role": "user",
+          "content": "Oh, right. My name is Alex."
+        },
+        {
+          "role": "assistant",
+          "content": "Got it. I'll remember that your name is Alex."
+        }
+      ],
+      "expected_memories": 1,
+      "tags": ["fact", "name"]
+    },
+    {
+      "id": "reminder_milk",
+      "description": "Reminder to buy milk",
+      "enabled": true,
+      "messages": [
+        {
+          "role": "user",
+          "content": "Can you remind me to buy milk tomorrow morning?"
+        },
+        {
+          "role": "assistant",
+          "content": "Sure, I'll remind you to buy milk tomorrow morning."
+        }
+      ],
+      "expected_memories": 1,
+      "tags": ["goal", "reminder"]
+    },
+    {
+      "id": "doctor_appointment",
+      "description": "Doctor's appointment in 2 days",
+      "enabled": true,
+      "messages": [
+        {
+          "role": "user",
+          "content": "I have a doctor's appointment in 2 days"
+        },
+        {
+          "role": "assistant",
+          "content": "Oh, I hope everything is ok."
+        }
+      ],
+      "expected_memories": 1,
+      "tags": ["event", "appointment", "health"]
+    },
+    {
+      "id": "learning_guitar",
+      "description": "Learning to play guitar",
+      "enabled": true,
+      "messages": [
+        {
+          "role": "user",
+          "content": "I'm trying to learn how to play the guitar."
+        },
+        {
+          "role": "assistant",
+          "content": "That's great! It's a wonderful instrument. I'll make a note that you're learning to play the guitar."
+        }
+      ],
+      "expected_memories": 1,
+      "tags": ["goal", "hobby", "music"]
+    },
+    {
+      "id": "paris_trip",
+      "description": "Trip to Paris with sentiment",
+      "enabled": true,
+      "messages": [
+        {
+          "role": "user",
+          "content": "I went to Paris last summer and absolutely loved it."
+        },
+        {
+          "role": "assistant",
+          "content": "That sounds wonderful! I'll remember that you visited Paris."
+        }
+      ],
+      "expected_memories": 2,
+      "tags": ["event", "preference", "travel"]
+    },
+    {
+      "id": "multiple_appointments",
+      "description": "Multiple appointments with specific times",
+      "enabled": true,
+      "messages": [
+        {
+          "role": "user",
+          "content": "I have a dentist appointment tomorrow at 2pm and a team meeting on Friday at 10am."
+        },
+        {
+          "role": "assistant",
+          "content": "Got it, I've noted both appointments."
+        }
+      ],
+      "expected_memories": 2,
+      "tags": ["event", "appointment"]
+    },
+    {
+      "id": "japan_goal",
+      "description": "Goal to visit Japan",
+      "enabled": true,
+      "messages": [
+        {
+          "role": "user",
+          "content": "I want to visit Japan someday."
+        },
+        {
+          "role": "assistant",
+          "content": "That would be amazing! I'll remember that goal."
+        }
+      ],
+      "expected_memories": 1,
+      "tags": ["goal", "travel"]
+    },
+    {
+      "id": "job_location",
+      "description": "Job title, employer, and location (compound fact)",
+      "enabled": true,
+      "messages": [
+        {
+          "role": "user",
+          "content": "I work as a software engineer at Google in London."
+        },
+        {
+          "role": "assistant",
+          "content": "That's great! I'll make a note of that."
+        }
+      ],
+      "expected_memories": 3,
+      "tags": ["fact", "job", "location"]
+    },
+    {
+      "id": "allergies",
+      "description": "Multiple allergies (atomic fact splitting test)",
+      "enabled": true,
+      "messages": [
+        {
+          "role": "user",
+          "content": "I'm allergic to peanuts and shellfish."
+        },
+        {
+          "role": "assistant",
+          "content": "Important to know, I'll remember that."
+        }
+      ],
+      "expected_memories": 2,
+      "tags": ["fact", "allergy", "health"]
+    },
+    {
+      "id": "hiking_crowds",
+      "description": "Multiple preferences (positive and negative)",
+      "enabled": true,
+      "messages": [
+        {
+          "role": "user",
+          "content": "I really enjoy hiking on weekends, but I can't stand crowded places."
+        },
+        {
+          "role": "assistant",
+          "content": "Got it, I'll keep that in mind."
+        }
+      ],
+      "expected_memories": 2,
+      "tags": ["preference", "hobby"]
+    },
+    {
+      "id": "birthday",
+      "description": "Birthday information",
+      "enabled": true,
+      "messages": [
+        {
+          "role": "user",
+          "content": "My birthday is next Tuesday."
+        },
+        {
+          "role": "assistant",
+          "content": "I'll make a note of that!"
+        }
+      ],
+      "expected_memories": 1,
+      "tags": ["fact", "birthday"]
+    },
+    {
+      "id": "quit_smoking",
+      "description": "State change (used to smoke, now quit)",
+      "enabled": true,
+      "messages": [
+        {
+          "role": "user",
+          "content": "I used to smoke but I quit 5 years ago."
+        },
+        {
+          "role": "assistant",
+          "content": "Good for you! That's an important change."
+        }
+      ],
+      "expected_memories": 2,
+      "tags": ["fact", "event", "health"]
+    }
+  ],
+  "metadata": {
+    "version": "1.0",
+    "description": "Test conversations for memory extraction comparison",
+    "total_conversations": 13,
+    "note": "Enable/disable conversations by changing the 'enabled' field. expected_memories helps validate extraction accuracy."
+  }
+}
