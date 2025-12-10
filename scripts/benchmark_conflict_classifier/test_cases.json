@@ -1,0 +1,196 @@
+{
+  "test_cases": [
+    {
+      "name": "location_contradiction",
+      "memory_a": "I live in Paris",
+      "memory_b": "I live in London",
+      "expected_conflict": true,
+      "category": "location",
+      "description": "Direct location contradiction - same topic, incompatible values"
+    },
+    {
+      "name": "job_contradiction",
+      "memory_a": "I work as a teacher",
+      "memory_b": "I work as a doctor",
+      "expected_conflict": true,
+      "category": "job",
+      "description": "Direct job contradiction - mutually exclusive roles"
+    },
+    {
+      "name": "preference_contradiction",
+      "memory_a": "I like coffee",
+      "memory_b": "I hate coffee",
+      "expected_conflict": true,
+      "category": "preference",
+      "description": "Preference contradiction - opposite sentiments"
+    },
+    {
+      "name": "negation_contradiction",
+      "memory_a": "I am vegetarian",
+      "memory_b": "I am not vegetarian",
+      "expected_conflict": true,
+      "category": "preference",
+      "description": "Direct negation of a statement"
+    },
+    {
+      "name": "diet_contradiction",
+      "memory_a": "I am vegetarian",
+      "memory_b": "I eat meat daily",
+      "expected_conflict": true,
+      "category": "preference",
+      "description": "Logically incompatible lifestyle choices"
+    },
+    {
+      "name": "exact_duplicate",
+      "memory_a": "I live in Paris",
+      "memory_b": "I live in Paris",
+      "expected_conflict": false,
+      "category": "duplicate",
+      "description": "Exact duplicate - not a contradiction"
+    },
+    {
+      "name": "paraphrase",
+      "memory_a": "I work as a software engineer",
+      "memory_b": "I'm employed as a software developer",
+      "expected_conflict": false,
+      "category": "paraphrase",
+      "description": "Synonyms/paraphrase - not a contradiction"
+    },
+    {
+      "name": "job_refinement",
+      "memory_a": "I work as an engineer",
+      "memory_b": "I work as a senior software engineer at Google",
+      "expected_conflict": false,
+      "category": "refinement",
+      "description": "Refinement with added detail - not a contradiction"
+    },
+    {
+      "name": "location_refinement",
+      "memory_a": "I live in France",
+      "memory_b": "I live in Paris, France",
+      "expected_conflict": false,
+      "category": "refinement",
+      "description": "Location refinement with added specificity - not a contradiction"
+    },
+    {
+      "name": "temporal_past_to_present",
+      "memory_a": "I lived in Paris",
+      "memory_b": "I now live in London",
+      "expected_conflict": false,
+      "category": "temporal",
+      "description": "Temporal progression - both can be true at different times"
+    },
+    {
+      "name": "temporal_state_change",
+      "memory_a": "I used to smoke",
+      "memory_b": "I quit smoking 5 years ago",
+      "expected_conflict": false,
+      "category": "temporal",
+      "description": "Temporal state change - both statements consistent"
+    },
+    {
+      "name": "distinct_location_job",
+      "memory_a": "I live in Paris",
+      "memory_b": "I work in London",
+      "expected_conflict": false,
+      "category": "distinct",
+      "description": "Different topics - not contradictory"
+    },
+    {
+      "name": "distinct_preferences",
+      "memory_a": "I like pizza",
+      "memory_b": "I enjoy playing tennis",
+      "expected_conflict": false,
+      "category": "distinct",
+      "description": "Unrelated preferences - not contradictory"
+    },
+    {
+      "name": "compatible_pets",
+      "memory_a": "I have a dog",
+      "memory_b": "I have a cat",
+      "expected_conflict": false,
+      "category": "compatible",
+      "description": "Compatible facts - can have both pets"
+    },
+    {
+      "name": "intensity_variation",
+      "memory_a": "I like chocolate",
+      "memory_b": "I love chocolate",
+      "expected_conflict": false,
+      "category": "intensity",
+      "description": "Intensity difference - not contradictory"
+    },
+    {
+      "name": "related_jobs_not_contradiction",
+      "memory_a": "I work as a frontend developer",
+      "memory_b": "I work as a backend developer",
+      "expected_conflict": true,
+      "category": "job",
+      "description": "Different job roles - likely contradictory unless person has two jobs"
+    },
+    {
+      "name": "compatible_hobbies",
+      "memory_a": "I enjoy running",
+      "memory_b": "I enjoy swimming",
+      "expected_conflict": false,
+      "category": "compatible",
+      "description": "Multiple hobbies are compatible"
+    },
+    {
+      "name": "language_skill_levels",
+      "memory_a": "I speak French fluently",
+      "memory_b": "I'm learning French",
+      "expected_conflict": true,
+      "category": "skill",
+      "description": "Contradictory skill levels - can't be both fluent and learning"
+    },
+    {
+      "name": "marital_status_contradiction",
+      "memory_a": "I am single",
+      "memory_b": "I am married",
+      "expected_conflict": true,
+      "category": "status",
+      "description": "Mutually exclusive relationship status"
+    },
+    {
+      "name": "age_contradiction",
+      "memory_a": "I am 25 years old",
+      "memory_b": "I am 30 years old",
+      "expected_conflict": true,
+      "category": "fact",
+      "description": "Contradictory factual information"
+    },
+    {
+      "name": "unrelated_facts",
+      "memory_a": "I live in Paris",
+      "memory_b": "The sky is blue",
+      "expected_conflict": false,
+      "category": "unrelated",
+      "description": "Completely unrelated statements"
+    },
+    {
+      "name": "education_refinement",
+      "memory_a": "I studied computer science",
+      "memory_b": "I have a PhD in computer science from MIT",
+      "expected_conflict": false,
+      "category": "refinement",
+      "description": "Educational background refinement"
+    },
+    {
+      "name": "allergy_multiple",
+      "memory_a": "I am allergic to peanuts",
+      "memory_b": "I am allergic to shellfish",
+      "expected_conflict": false,
+      "category": "compatible",
+      "description": "Multiple allergies are compatible"
+    },
+    {
+      "name": "allergy_contradiction",
+      "memory_a": "I am allergic to peanuts",
+      "memory_b": "I am not allergic to peanuts",
+      "expected_conflict": true,
+      "category": "fact",
+      "description": "Direct contradiction of medical fact"
+    }
+  ]
+}

@@ -1,0 +1,148 @@
+{
+  "test_cases": [
+    {
+      "name": "exact_duplicate",
+      "existing_memory": "I live in Paris",
+      "new_memory": "I live in Paris",
+      "expected_outcome": "same",
+      "category": "duplicate",
+      "description": "Exact same text - should classify as same"
+    },
+    {
+      "name": "paraphrase_location",
+      "existing_memory": "I live in Paris",
+      "new_memory": "I reside in Paris",
+      "expected_outcome": "same",
+      "category": "paraphrase",
+      "description": "Paraphrase with synonym - should classify as same"
+    },
+    {
+      "name": "paraphrase_job",
+      "existing_memory": "I work as a software engineer",
+      "new_memory": "I'm employed as a software developer",
+      "expected_outcome": "same",
+      "category": "paraphrase",
+      "description": "Job title paraphrase - should classify as same"
+    },
+    {
+      "name": "paraphrase_preference",
+      "existing_memory": "I like coffee",
+      "new_memory": "I enjoy coffee",
+      "expected_outcome": "same",
+      "category": "paraphrase",
+      "description": "Preference paraphrase - should classify as same"
+    },
+    {
+      "name": "refinement_job_detail",
+      "existing_memory": "I work as an engineer",
+      "new_memory": "I work as a senior software engineer at Google",
+      "expected_outcome": "same",
+      "category": "refinement",
+      "description": "More specific version of existing fact - should classify as same"
+    },
+    {
+      "name": "refinement_location_detail",
+      "existing_memory": "I live in France",
+      "new_memory": "I live in Paris, France",
+      "expected_outcome": "same",
+      "category": "refinement",
+      "description": "Adding location detail - should classify as same"
+    },
+    {
+      "name": "distinct_location_job",
+      "existing_memory": "I live in Paris",
+      "new_memory": "I work in London",
+      "expected_outcome": "neutral",
+      "category": "distinct",
+      "description": "Different facts about different topics - should classify as neutral"
+    },
+    {
+      "name": "distinct_multiple_preferences",
+      "existing_memory": "I like pizza",
+      "new_memory": "I enjoy playing tennis",
+      "expected_outcome": "neutral",
+      "category": "distinct",
+      "description": "Completely different preferences - should classify as neutral"
+    },
+    {
+      "name": "distinct_same_topic",
+      "existing_memory": "I have a dog",
+      "new_memory": "I have a cat",
+      "expected_outcome": "neutral",
+      "category": "distinct",
+      "description": "Related topic but distinct facts - should classify as neutral"
+    },
+    {
+      "name": "contradiction_location",
+      "existing_memory": "I live in Paris",
+      "new_memory": "I live in London",
+      "expected_outcome": "pass",
+      "category": "contradiction",
+      "description": "Direct contradiction - should pass to next classifier"
+    },
+    {
+      "name": "contradiction_job",
+      "existing_memory": "I work as a teacher",
+      "new_memory": "I work as a doctor",
+      "expected_outcome": "pass",
+      "category": "contradiction",
+      "description": "Job contradiction - should pass to next classifier"
+    },
+    {
+      "name": "contradiction_preference",
+      "existing_memory": "I like coffee",
+      "new_memory": "I hate coffee",
+      "expected_outcome": "pass",
+      "category": "contradiction",
+      "description": "Preference contradiction - should pass to next classifier"
+    },
+    {
+      "name": "similar_but_distinct_jobs",
+      "existing_memory": "I work as a frontend developer",
+      "new_memory": "I work as a backend developer",
+      "expected_outcome": "pass",
+      "category": "edge_case",
+      "description": "Similar jobs but different - uncertain, may pass"
+    },
+    {
+      "name": "temporal_refinement",
+      "existing_memory": "I lived in Paris",
+      "new_memory": "I currently live in Paris",
+      "expected_outcome": "same",
+      "category": "refinement",
+      "description": "Adding temporal context to same fact - should classify as same"
+    },
+    {
+      "name": "intensity_difference",
+      "existing_memory": "I like chocolate",
+      "new_memory": "I love chocolate",
+      "expected_outcome": "same",
+      "category": "paraphrase",
+      "description": "Different intensity but same sentiment - should classify as same"
+    },
+    {
+      "name": "negation_contradiction",
+      "existing_memory": "I am vegetarian",
+      "new_memory": "I am not vegetarian",
+      "expected_outcome": "pass",
+      "category": "contradiction",
+      "description": "Direct negation - should pass to next classifier"
+    },
+    {
+      "name": "unrelated_facts",
+      "existing_memory": "I live in Paris",
+      "new_memory": "The sky is blue",
+      "expected_outcome": "neutral",
+      "category": "distinct",
+      "description": "Completely unrelated facts - should classify as neutral"
+    },
+    {
+      "name": "partial_overlap",
+      "existing_memory": "I like Italian food",
+      "new_memory": "I like pizza",
+      "expected_outcome": "neutral",
+      "category": "edge_case",
+      "description": "Pizza is Italian food but these are distinct level facts - likely neutral"
+    }
+  ]
+}

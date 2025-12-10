@@ -6,29 +6,13 @@ with graceful degradation to heuristic-based detection.
 """
 
 import logging
+from typing import Optional
 
 from casual_memory.models import MemoryFact
+from casual_memory.intelligence.prompts import CONFLICT_DETECTION_PROMPT
 from casual_llm import LLMProvider, UserMessage
 
 logger = logging.getLogger(__name__)
-
-
-# Conflict detection prompt (based on our research with 96.2% accuracy)
-CONFLICT_DETECTION_PROMPT = """Do these two statements contradict each other?
-
-Statement A: "{statement_a}"
-Statement B: "{statement_b}"
-
-Consider:
-- Direct contradictions: "I live in X" vs "I live in Y" → YES
-- Refinements: "I work as engineer" vs "I work as software engineer at Google" → NO
-- Temporal changes: "I used to X" vs "I quit X 5 years ago" → NO (both true at different times)
-- Synonyms: "software developer" vs "software engineer" → NO
-- Unrelated facts: Different topics entirely → NO
-
-Respond with ONLY one word: YES or NO
-
-Answer:"""
 
 
 class LLMConflictVerifier:
@@ -39,7 +23,13 @@ class LLMConflictVerifier:
     with graceful degradation to heuristic-based detection.
     """
 
-    def __init__(self, llm_provider: LLMProvider, model_name: str, enable_fallback: bool = True):
+    def __init__(
+        self,
+        llm_provider: LLMProvider,
+        model_name: str,
+        enable_fallback: bool = True,
+        system_prompt: Optional[str] = None
+    ):
         """
         Initialize the LLM conflict verifier.
 
@@ -47,10 +37,13 @@ class LLMConflictVerifier:
             llm_provider: LLM provider instance (OpenAI, Ollama, etc.)
             model_name: Name of the model (for logging)
             enable_fallback: Enable heuristic fallback when LLM fails
+            system_prompt: Optional custom prompt template (default: uses CONFLICT_DETECTION_PROMPT)
+                          Must include {statement_a} and {statement_b} placeholders
         """
         self.llm_provider = llm_provider
         self.model_name = model_name
         self.enable_fallback = enable_fallback
+        self.system_prompt = system_prompt or CONFLICT_DETECTION_PROMPT
         self.llm_call_count = 0
         self.llm_success_count = 0
         self.llm_failure_count = 0
@@ -58,7 +51,8 @@ class LLMConflictVerifier:
 
         logger.info(
             f"LLMConflictVerifier initialized: model={model_name}, "
-            f"enable_fallback={enable_fallback}"
+            f"enable_fallback={enable_fallback}, "
+            f"custom_prompt={system_prompt is not None}"
         )
 
     async def _call_llm(self, prompt: str):
@@ -105,7 +99,7 @@ class LLMConflictVerifier:
             - is_conflicting: True if memories conflict
             - detection_method: "llm" or "heuristic_fallback"
         """
-        prompt = CONFLICT_DETECTION_PROMPT.format(
+        prompt = self.system_prompt.format(
             statement_a=memory_a.text, statement_b=memory_b.text
         )
 
