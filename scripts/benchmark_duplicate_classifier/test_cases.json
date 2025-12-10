@@ -1,0 +1,199 @@
+{
+  "test_cases": [
+    {
+      "name": "exact_duplicate",
+      "memory_a": "I live in New York",
+      "memory_b": "I live in New York",
+      "expected_same": true,
+      "category": "duplicate",
+      "description": "Exact identical statements"
+    },
+    {
+      "name": "paraphrase_job",
+      "memory_a": "I'm a software developer",
+      "memory_b": "I work as a programmer",
+      "expected_same": true,
+      "category": "paraphrase",
+      "description": "Paraphrase with synonyms (developer vs programmer)"
+    },
+    {
+      "name": "paraphrase_preference",
+      "memory_a": "I enjoy hiking",
+      "memory_b": "I like going on hikes",
+      "expected_same": true,
+      "category": "paraphrase",
+      "description": "Paraphrase of preference"
+    },
+    {
+      "name": "intensity_variation",
+      "memory_a": "I like chocolate",
+      "memory_b": "I love chocolate",
+      "expected_same": true,
+      "category": "intensity",
+      "description": "Same preference, different intensity"
+    },
+    {
+      "name": "location_refinement",
+      "memory_a": "I live in Tokyo",
+      "memory_b": "I live in Shibuya, Tokyo",
+      "expected_same": true,
+      "acceptable_either_way": true,
+      "category": "refinement",
+      "description": "Location with added detail (neighborhood) - both memories can coexist"
+    },
+    {
+      "name": "job_refinement",
+      "memory_a": "I'm a developer",
+      "memory_b": "I'm a senior backend developer at Microsoft",
+      "expected_same": true,
+      "category": "refinement",
+      "description": "Job with added seniority, specialization, and company"
+    },
+    {
+      "name": "education_refinement",
+      "memory_a": "I studied engineering",
+      "memory_b": "I have a degree in mechanical engineering from Stanford",
+      "expected_same": true,
+      "acceptable_either_way": true,
+      "category": "refinement",
+      "description": "Education with added specificity - complementary information"
+    },
+    {
+      "name": "relationship_clarification",
+      "memory_a": "My partner is Sam",
+      "memory_b": "My partner's name is Sam",
+      "expected_same": true,
+      "category": "clarification",
+      "description": "Relationship fact with clarification"
+    },
+    {
+      "name": "skill_refinement",
+      "memory_a": "I speak Spanish",
+      "memory_b": "I'm fluent in Spanish",
+      "expected_same": true,
+      "category": "refinement",
+      "description": "Skill with proficiency level added"
+    },
+    {
+      "name": "distinct_location_vs_work",
+      "memory_a": "I live in Seattle",
+      "memory_b": "I work in Seattle",
+      "expected_same": false,
+      "category": "distinct_attribute",
+      "description": "Different attributes about same location (residence vs employment)"
+    },
+    {
+      "name": "distinct_preferences",
+      "memory_a": "I like reading",
+      "memory_b": "I like swimming",
+      "expected_same": false,
+      "category": "distinct_preference",
+      "description": "Two different preferences"
+    },
+    {
+      "name": "distinct_skills",
+      "memory_a": "I know Java",
+      "memory_b": "I know Ruby",
+      "expected_same": false,
+      "category": "distinct_skill",
+      "description": "Two different programming skills"
+    },
+    {
+      "name": "distinct_personal_info",
+      "memory_a": "My name is Sarah",
+      "memory_b": "My birthday is June 15",
+      "expected_same": false,
+      "category": "distinct_info",
+      "description": "Different types of personal information"
+    },
+    {
+      "name": "location_contradiction",
+      "memory_a": "I live in Berlin",
+      "memory_b": "I live in Tokyo",
+      "expected_same": false,
+      "category": "contradiction",
+      "description": "Contradictory locations (should be DISTINCT, not SAME)"
+    },
+    {
+      "name": "temporal_change",
+      "memory_a": "I worked at Google",
+      "memory_b": "I now work at Amazon",
+      "expected_same": false,
+      "category": "temporal",
+      "description": "Temporal progression - both are distinct facts"
+    },
+    {
+      "name": "unrelated_facts",
+      "memory_a": "I like coffee",
+      "memory_b": "The weather is nice today",
+      "expected_same": false,
+      "category": "unrelated",
+      "description": "Completely unrelated statements"
+    },
+    {
+      "name": "pet_type",
+      "memory_a": "I have a dog",
+      "memory_b": "I have a cat",
+      "expected_same": false,
+      "category": "distinct_fact",
+      "description": "Different pets (compatible but distinct)"
+    },
+    {
+      "name": "hobby_specificity",
+      "memory_a": "I play music",
+      "memory_b": "I play guitar",
+      "expected_same": false,
+      "category": "distinct_fact",
+      "description": "General hobby vs specific instrument - complementary facts"
+    },
+    {
+      "name": "food_allergy_refinement",
+      "memory_a": "I'm allergic to nuts",
+      "memory_b": "I have a severe peanut allergy",
+      "expected_same": true,
+      "category": "refinement",
+      "description": "Allergy with added severity and specificity"
+    },
+    {
+      "name": "age_vs_birthyear",
+      "memory_a": "I am 30 years old",
+      "memory_b": "I was born in 1994",
+      "expected_same": true,
+      "acceptable_either_way": true,
+      "category": "paraphrase",
+      "description": "Same information expressed differently - both representations are useful"
+    },
+    {
+      "name": "multiple_languages",
+      "memory_a": "I speak English",
+      "memory_b": "I speak French",
+      "expected_same": false,
+      "category": "distinct_skill",
+      "description": "Two different language skills"
+    },
+    {
+      "name": "degree_level",
+      "memory_a": "I have a bachelor's in CS",
+      "memory_b": "I have a master's in CS",
+      "expected_same": false,
+      "category": "distinct_level",
+      "description": "Different degree levels in same field"
+    },
+    {
+      "name": "company_refinement",
+      "memory_a": "I work at Apple",
+      "memory_b": "I work at Apple in Cupertino",
+      "expected_same": true,
+      "category": "refinement",
+      "description": "Company with location added"
+    },
+    {
+      "name": "family_member_name",
+      "memory_a": "I have a sister",
+      "memory_b": "My sister's name is Emma",
+      "expected_same": false,
+      "category": "distinct_fact",
+      "description": "Family structure vs identity - complementary facts"
+    }
+  ]
+}

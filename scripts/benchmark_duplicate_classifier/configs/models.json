@@ -1,0 +1,51 @@
+{
+  "models": [
+    {
+      "name": "qwen2.5:7b-instruct",
+      "provider": "ollama",
+      "base_url": "https://kovacs.jinkies.net:11434",
+      "enabled": true,
+      "description": "Qwen 2.5 7B via Ollama - Local model"
+    },
+    {
+      "name": "llama3.2:3b",
+      "provider": "ollama",
+      "base_url": "https://kovacs.jinkies.net:11434",
+      "enabled": true,
+      "description": "Llama 3.2 3b via Ollama - Local model"
+    },
+    {
+      "name": "gemma2:9b",
+      "provider": "ollama",
+      "base_url": "https://kovacs.jinkies.net:11434",
+      "enabled": true,
+      "description": "Gemma 2 9b via Ollama - Local model"
+    },
+    {
+      "name": "phi3",
+      "provider": "ollama",
+      "base_url": "https://kovacs.jinkies.net:11434",
+      "enabled": true,
+      "description": "Gemma 2 9b via Ollama - Local model"
+    },
+    {
+      "name": "gpt-oss:20b",
+      "provider": "ollama",
+      "base_url": "https://kovacs.jinkies.net:11434",
+      "enabled": true,
+      "description": "GPT 20B via Ollama - Local model"
+    },
+    {
+      "name": "qwen3:1.7b",
+      "provider": "ollama",
+      "base_url": "https://kovacs.jinkies.net:11434",
+      "enabled": true,
+      "description": "Qwen 3 1.7b via Ollama - Local model"
+    }
+  ],
+  "metadata": {
+    "version": "1.0",
+    "description": "Default model configurations for conflict classifier benchmark",
+    "note": "Set OPENAI_API_KEY and optionally OLLAMA_ENDPOINT environment variables"
+  }
+}

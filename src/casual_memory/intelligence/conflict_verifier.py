@@ -9,11 +9,14 @@ import logging
 from typing import Optional
 
 from casual_memory.models import MemoryFact
-from casual_memory.intelligence.prompts import CONFLICT_DETECTION_PROMPT
-from casual_llm import LLMProvider, UserMessage
+from casual_memory.intelligence.prompts import CONFLICT_DETECTION_SYSTEM_PROMPT
+from casual_llm import LLMProvider, UserMessage, SystemMessage
 
 logger = logging.getLogger(__name__)
 
+prompt = """Statement A: "{statement_a}"
+Statement B: "{statement_b}"
+"""
 
 class LLMConflictVerifier:
     """
@@ -43,7 +46,7 @@ class LLMConflictVerifier:
         self.llm_provider = llm_provider
         self.model_name = model_name
         self.enable_fallback = enable_fallback
-        self.system_prompt = system_prompt or CONFLICT_DETECTION_PROMPT
+        self.system_prompt = system_prompt or CONFLICT_DETECTION_SYSTEM_PROMPT
         self.llm_call_count = 0
         self.llm_success_count = 0
         self.llm_failure_count = 0
@@ -70,7 +73,7 @@ class LLMConflictVerifier:
         """
         self.llm_call_count += 1
         try:
-            messages = [UserMessage(content=prompt)]
+            messages = [SystemMessage(content=self.system_prompt), UserMessage(content=prompt)]
             response = await self.llm_provider.chat(
                 messages,
                 response_format="text",
@@ -99,13 +102,13 @@ class LLMConflictVerifier:
             - is_conflicting: True if memories conflict
             - detection_method: "llm" or "heuristic_fallback"
         """
-        prompt = self.system_prompt.format(
+        user_prompt = prompt.format(
             statement_a=memory_a.text, statement_b=memory_b.text
         )
 
         try:
             # Try LLM-based detection
-            llm_response = await self._call_llm(prompt)
+            llm_response = await self._call_llm(user_prompt)
             response_upper = llm_response.content.upper()
             is_conflicting = "YES" in response_upper
 

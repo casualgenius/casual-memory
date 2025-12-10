@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Conflict Classifier Benchmarking Tool
+Duplicate Classifier Benchmarking Tool
 
-Tests the LLM Conflict Classifier with various models to evaluate prompt effectiveness
-and classifier performance on different conflict scenarios.
+Tests the LLM Duplicate Classifier with various models to evaluate prompt effectiveness
+and classifier performance on duplicate/refinement detection scenarios.
 
 Usage:
     # Use defaults (requires OPENAI_API_KEY or ANTHROPIC_API_KEY)
@@ -39,10 +39,8 @@ load_dotenv()
 # Add src to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../src/')))
 
-from casual_memory.intelligence.conflict_verifier import LLMConflictVerifier
-from casual_memory.intelligence.prompts import (
-    CONFLICT_DETECTION_SYSTEM_PROMPT_DETAILED
-)
+from casual_memory.intelligence.duplicate_detector import LLMDuplicateDetector
+from casual_memory.intelligence.prompts import DUPLICATE_DETECTION_PROMPT
 from casual_memory.models import MemoryFact
 from casual_llm import create_provider, ModelConfig, Provider
 
@@ -54,7 +52,7 @@ except ImportError:
     HAS_CONFIG_LOADER = False
 
 # Configure logging
-logger = logging.getLogger("conflict-benchmark")
+logger = logging.getLogger("duplicate-benchmark")
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -63,13 +61,14 @@ logging.basicConfig(
 
 @dataclass
 class TestCase:
-    """A single test case for conflict classifier."""
+    """A single test case for duplicate classifier."""
     name: str
     memory_a: str
     memory_b: str
-    expected_conflict: bool
+    expected_same: bool
     category: str
     description: str = ""
+    acceptable_either_way: bool = False  # If true, both SAME and DISTINCT are valid
 
 
 @dataclass
@@ -78,10 +77,9 @@ class BenchmarkResult:
     test_name: str
     memory_a: str
     memory_b: str
-    expected_conflict: bool
-    actual_conflict: bool
+    expected_same: bool
+    actual_same: bool
     passed: bool
-    detection_method: str
     duration_ms: float
     category: str
     description: str
@@ -111,9 +109,10 @@ def load_test_cases(config_path: Optional[str] = None) -> List[TestCase]:
             name=tc["name"],
             memory_a=tc["memory_a"],
             memory_b=tc["memory_b"],
-            expected_conflict=tc["expected_conflict"],
+            expected_same=tc["expected_same"],
             category=tc["category"],
-            description=tc.get("description", "")
+            description=tc.get("description", ""),
+            acceptable_either_way=tc.get("acceptable_either_way", False)
         )
         for tc in data["test_cases"]
     ]
@@ -135,7 +134,7 @@ async def run_benchmark(
     custom_prompt: Optional[str] = None
 ) -> List[BenchmarkResult]:
     """
-    Run conflict classifier benchmark on all test cases.
+    Run duplicate classifier benchmark on all test cases.
 
     Args:
         test_cases: List of test cases to run
@@ -150,11 +149,10 @@ async def run_benchmark(
     # Create LLM provider
     provider = create_provider(model_config)
 
-    # Initialize conflict verifier
-    verifier = LLMConflictVerifier(
+    # Initialize duplicate detector
+    detector = LLMDuplicateDetector(
         llm_provider=provider,
         model_name=model_config.name,
-        enable_fallback=False,  # Disable fallback for pure LLM testing
         system_prompt=custom_prompt
     )
 
@@ -183,25 +181,28 @@ async def run_benchmark(
         llm_response = ""
 
         try:
-            is_conflict, detection_method = await verifier.verify_conflict(
+            is_same = await detector.is_duplicate_or_refinement(
                 memory_a=memory_a,
                 memory_b=memory_b,
-                similarity_score=0.95  # High similarity to avoid fallback triggers
+                similarity_score=0.85  # Mid-range similarity to avoid heuristic fallback
             )
 
             duration_ms = (time.time() - start_time) * 1000
 
             # Check if result matches expectation
-            passed = (is_conflict == test_case.expected_conflict)
+            # If acceptable_either_way is true, both SAME and DISTINCT are valid
+            if test_case.acceptable_either_way:
+                passed = True  # Always pass when both outcomes are acceptable
+            else:
+                passed = (is_same == test_case.expected_same)
 
             results.append(BenchmarkResult(
                 test_name=test_case.name,
                 memory_a=test_case.memory_a,
                 memory_b=test_case.memory_b,
-                expected_conflict=test_case.expected_conflict,
-                actual_conflict=is_conflict,
+                expected_same=test_case.expected_same,
+                actual_same=is_same,
                 passed=passed,
-                detection_method=detection_method,
                 duration_ms=duration_ms,
                 category=test_case.category,
                 description=test_case.description,
@@ -209,9 +210,10 @@ async def run_benchmark(
             ))
 
             status = "✓ PASS" if passed else "✗ FAIL"
+            note = " (either outcome acceptable)" if test_case.acceptable_either_way else ""
             logger.info(
-                f"  {status} - Expected: {test_case.expected_conflict}, "
-                f"Actual: {is_conflict}, Method: {detection_method}"
+                f"  {status} - Expected: {test_case.expected_same}, "
+                f"Actual: {is_same}{note}"
             )
 
         except Exception as e:
@@ -221,10 +223,9 @@ async def run_benchmark(
                 test_name=test_case.name,
                 memory_a=test_case.memory_a,
                 memory_b=test_case.memory_b,
-                expected_conflict=test_case.expected_conflict,
-                actual_conflict=False,
+                expected_same=test_case.expected_same,
+                actual_same=False,
                 passed=False,
-                detection_method="error",
                 duration_ms=0.0,
                 category=test_case.category,
                 description=f"Error: {str(e)}",
@@ -232,8 +233,8 @@ async def run_benchmark(
             ))
 
     # Get metrics
-    metrics = verifier.get_metrics()
-    logger.info(f"Conflict Verifier Metrics: {metrics}")
+    metrics = detector.get_metrics()
+    logger.info(f"Duplicate Detector Metrics: {metrics}")
 
     return results
 
@@ -255,7 +256,7 @@ def generate_report(
     """
     with open(output_path, 'w') as f:
         # Header
-        f.write("# Conflict Classifier Benchmark Results\n\n")
+        f.write("# Duplicate Classifier Benchmark Results\n\n")
         f.write(f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
 
         # Configuration
@@ -267,13 +268,13 @@ def generate_report(
 
         # Results table
         f.write("## Detailed Results\n\n")
-        f.write("| Test Case | Memory A | Memory B | Expected | Actual | Status | Method | Time (ms) |\n")
-        f.write("|-----------|----------|----------|----------|--------|--------|--------|----------|\n")
+        f.write("| Test Case | Memory A | Memory B | Expected | Actual | Status | Time (ms) |\n")
+        f.write("|-----------|----------|----------|----------|--------|--------|-------|\n")
 
         for result in results:
             status = "✓ PASS" if result.passed else "✗ FAIL"
-            expected_str = "CONFLICT" if result.expected_conflict else "NO"
-            actual_str = "CONFLICT" if result.actual_conflict else "NO"
+            expected_str = "SAME" if result.expected_same else "DISTINCT"
+            actual_str = "SAME" if result.actual_same else "DISTINCT"
 
             f.write(
                 f"| {result.test_name} | "
@@ -282,7 +283,6 @@ def generate_report(
                 f"{expected_str} | "
                 f"{actual_str} | "
                 f"{status} | "
-                f"{result.detection_method} | "
                 f"{result.duration_ms:.1f} |\n"
             )
 
@@ -326,26 +326,25 @@ def generate_report(
                     f.write(f"**Description:** {result.description}\n\n")
                     f.write(f"- **Memory A:** {result.memory_a}\n")
                     f.write(f"- **Memory B:** {result.memory_b}\n")
-                    f.write(f"- **Expected:** {'CONFLICT' if result.expected_conflict else 'NO CONFLICT'}\n")
-                    f.write(f"- **Actual:** {'CONFLICT' if result.actual_conflict else 'NO CONFLICT'}\n")
-                    f.write(f"- **Detection Method:** {result.detection_method}\n\n")
+                    f.write(f"- **Expected:** {'SAME' if result.expected_same else 'DISTINCT'}\n")
+                    f.write(f"- **Actual:** {'SAME' if result.actual_same else 'DISTINCT'}\n\n")
 
         # Analysis
         f.write("## Analysis\n\n")
 
-        false_positives = [r for r in results if not r.expected_conflict and r.actual_conflict]
-        false_negatives = [r for r in results if r.expected_conflict and not r.actual_conflict]
+        false_positives = [r for r in results if not r.expected_same and r.actual_same]
+        false_negatives = [r for r in results if r.expected_same and not r.actual_same]
 
         if false_positives:
             f.write(f"### False Positives ({len(false_positives)})\n\n")
-            f.write("Cases incorrectly classified as conflicts:\n\n")
+            f.write("Cases incorrectly classified as SAME (should be DISTINCT):\n\n")
             for r in false_positives:
                 f.write(f"- **{r.test_name}**: \"{r.memory_a}\" vs \"{r.memory_b}\"\n")
             f.write("\n")
 
         if false_negatives:
             f.write(f"### False Negatives ({len(false_negatives)})\n\n")
-            f.write("Conflicts that were missed:\n\n")
+            f.write("Cases incorrectly classified as DISTINCT (should be SAME):\n\n")
             for r in false_negatives:
                 f.write(f"- **{r.test_name}**: \"{r.memory_a}\" vs \"{r.memory_b}\"\n")
             f.write("\n")
@@ -354,12 +353,12 @@ def generate_report(
         f.write("## Recommendations\n\n")
 
         if false_positives:
-            f.write("- **High false positive rate:** Consider refining prompt to be more conservative\n")
-            f.write("  about marking refinements and temporal changes as conflicts\n")
+            f.write("- **High false positive rate:** Prompt may be too aggressive at merging.\n")
+            f.write("  Consider adding examples that distinguish between similar but distinct facts.\n")
 
         if false_negatives:
-            f.write("- **Missing contradictions:** Prompt may need to be more explicit about\n")
-            f.write("  detecting incompatible states and values\n")
+            f.write("- **Missing duplicates/refinements:** Prompt may need clearer examples\n")
+            f.write("  of what constitutes a refinement vs. a distinct fact.\n")
 
         if not (false_positives or false_negatives):
             f.write("- Current prompt is working well! ✓\n")
@@ -370,9 +369,9 @@ def generate_report(
 
 
 def main():
-    """Main entry point for the conflict classifier benchmark tool."""
+    """Main entry point for the duplicate classifier benchmark tool."""
     parser = argparse.ArgumentParser(
-        description="Benchmark Conflict Classifier with LLM models",
+        description="Benchmark Duplicate Classifier with LLM models",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -411,7 +410,7 @@ Examples:
         "--provider",
         type=str,
         default="openai",
-        choices=["openai", "anthropic", "ollama"],
+        choices=["openai", "ollama"],
         help="LLM provider (default: openai) - ignored if --models-config is provided"
     )
 
@@ -427,12 +426,6 @@ Examples:
         type=str,
         default=None,
         help="Path to custom prompt template file (default: uses built-in prompt)"
-    )
-
-    parser.add_argument(
-        "--use-detailed-prompt",
-        action="store_true",
-        help="Use the more detailed prompt variant"
     )
 
     parser.add_argument(
@@ -468,9 +461,6 @@ Examples:
         except Exception as e:
             logger.error(f"Failed to load custom prompt: {e}")
             return 1
-    elif args.use_detailed_prompt:
-        custom_prompt = CONFLICT_DETECTION_SYSTEM_PROMPT_DETAILED
-        logger.info("Using detailed prompt variant")
 
     # Determine if we're running in multi-model mode
     model_configs = []
@@ -497,7 +487,7 @@ Examples:
     # Run benchmark for each model
     all_results = []
     try:
-        logger.info("Starting conflict classifier benchmark...")
+        logger.info("Starting duplicate classifier benchmark...")
         for model_config in model_configs:
             logger.info(f"\n{'='*60}")
             logger.info(f"Testing model: {model_config.provider.value}/{model_config.name}")
@@ -525,7 +515,7 @@ Examples:
             model_safe_name = model_config.name.replace('/', '_').replace(':', '_')
             output_path = os.path.join(
                 args.output_dir,
-                f"conflict_benchmark_{model_safe_name}_{timestamp}.md"
+                f"duplicate_benchmark_{model_safe_name}_{timestamp}.md"
             )
 
             generate_report(
@@ -551,7 +541,7 @@ Examples:
         if len(all_results) > 1:
             comparison_path = os.path.join(
                 args.output_dir,
-                f"conflict_benchmark_comparison_{timestamp}.md"
+                f"duplicate_benchmark_comparison_{timestamp}.md"
             )
             generate_comparison_report(all_results, comparison_path, custom_prompt is not None)
             logger.info(f"\nComparison report: {comparison_path}")
@@ -570,7 +560,7 @@ def generate_comparison_report(
 ):
     """Generate a comparison report across multiple models."""
     with open(output_path, 'w') as f:
-        f.write("# Conflict Classifier Model Comparison\n\n")
+        f.write("# Duplicate Classifier Model Comparison\n\n")
         f.write(f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
         f.write(f"**Custom Prompt:** {'Yes' if custom_prompt_used else 'No (default)'}\n\n")
 
@@ -617,7 +607,7 @@ def generate_comparison_report(
                 for model_config, results in all_results:
                     result = results[test_idx]
                     status = "✓" if result.passed else "✗"
-                    actual = "CONF" if result.actual_conflict else "NO"
+                    actual = "SAME" if result.actual_same else "DIST"
                     f.write(f" {status} {actual} |")
                 f.write("\n")
 

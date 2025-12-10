@@ -6,37 +6,18 @@ or distinct facts that should both be stored.
 """
 
 import logging
+from typing import Optional
 
 from casual_memory.models import MemoryFact
-from casual_llm import LLMProvider, UserMessage
+from casual_memory.intelligence.prompts import DUPLICATE_DETECTION_SYSTEM_PROMPT
+from casual_llm import LLMProvider, UserMessage, SystemMessage
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
-
-# Duplicate/refinement detection prompt
-DUPLICATE_DETECTION_PROMPT = """Are these two statements describing the same fact (one being a refinement or duplicate of the other) or are they distinct pieces of information?
-
-Statement A: "{statement_a}"
+prompt = """Statement A: "{statement_a}"
 Statement B: "{statement_b}"
-
-Consider:
-
-SAME FACT (duplicate/refinement):
-- "I live in London" vs "I live in Central London" → SAME
-- "I work as engineer" vs "I work as software engineer" → SAME
-- "I like pizza" vs "I really enjoy pizza" → SAME
-- "My girlfriend is Bow" vs "My girlfriend's name is Bow" → SAME
-
-DISTINCT FACTS (different information):
-- "I live in Bangkok" vs "I work in Bangkok" → DISTINCT (residence vs employment)
-- "I like coffee" vs "I like tea" → DISTINCT (different preferences)
-- "My name is Alex" vs "My age is 30" → DISTINCT (different attributes)
-- "I know Python" vs "I know JavaScript" → DISTINCT (different skills)
-
-Respond with ONLY one word: SAME or DISTINCT
-
-Answer:"""
-
+"""
 
 class LLMDuplicateDetector:
     """
@@ -47,22 +28,33 @@ class LLMDuplicateDetector:
     - DISTINCT: separate facts (should store both)
     """
 
-    def __init__(self, llm_provider: LLMProvider, model_name: str):
+    def __init__(
+        self,
+        llm_provider: LLMProvider,
+        model_name: str,
+        system_prompt: Optional[str] = None
+    ):
         """
         Initialize the duplicate detector.
 
         Args:
             llm_provider: LLM provider instance
             model_name: Name of the model (for logging)
+            system_prompt: Optional custom prompt template (default: uses DUPLICATE_DETECTION_PROMPT)
+                          Must include {statement_a} and {statement_b} placeholders
         """
         self.llm_provider = llm_provider
         self.model_name = model_name
+        self.system_prompt = system_prompt or DUPLICATE_DETECTION_SYSTEM_PROMPT
         self.llm_call_count = 0
         self.llm_success_count = 0
         self.llm_failure_count = 0
         self.heuristic_fallback_count = 0
 
-        logger.info(f"LLMDuplicateDetector initialized: model={model_name}")
+        logger.info(
+            f"LLMDuplicateDetector initialized: model={model_name}, "
+            f"custom_prompt={system_prompt is not None}"
+        )
 
     async def _call_llm(self, prompt: str):
         """
@@ -79,7 +71,7 @@ class LLMDuplicateDetector:
         """
         self.llm_call_count += 1
         try:
-            messages = [UserMessage(content=prompt)]
+            messages = [SystemMessage(content=self.system_prompt), UserMessage(content=prompt)]
             response = await self.llm_provider.chat(
                 messages,
                 response_format="text",
@@ -107,12 +99,12 @@ class LLMDuplicateDetector:
             True if duplicates/refinements (should merge)
             False if distinct facts (should store separately)
         """
-        prompt = DUPLICATE_DETECTION_PROMPT.format(
+        user_prompt = prompt.format(
             statement_a=memory_a.text, statement_b=memory_b.text
         )
 
         try:
-            llm_response = await self._call_llm(prompt)
+            llm_response = await self._call_llm(user_prompt)
             response_upper = llm_response.content.upper()
             is_same = "SAME" in response_upper
 
@@ -120,7 +112,7 @@ class LLMDuplicateDetector:
                 f"Duplicate check: {'DUPLICATE' if is_same else 'DISTINCT'}\n"
                 f"  A: {memory_a.text}\n"
                 f"  B: {memory_b.text}\n"
-                f"  Response: {llm_response.content}"
+                f"  Response: {llm_response}"
             )
 
             return is_same

@@ -1,0 +1,30 @@
+{
+  "models": [
+    {
+      "name": "qwen2.5:7b-instruct",
+      "provider": "ollama",
+      "base_url_env": "OLLAMA_ENDPOINT",
+      "enabled": true,
+      "description": "Qwen 2.5 7B via Ollama"
+    },
+    {
+      "name": "gemma2:9b",
+      "provider": "ollama",
+      "base_url_env": "OLLAMA_ENDPOINT",
+      "enabled": false,
+      "description": "Gemma 2 9B via Ollama"
+    },
+    {
+      "name": "llama3.2",
+      "provider": "ollama",
+      "base_url_env": "OLLAMA_ENDPOINT",
+      "enabled": false,
+      "description": "Llama 3.2 via Ollama"
+    }
+  ],
+  "metadata": {
+    "version": "1.0",
+    "description": "Ollama-only model configurations for local testing",
+    "note": "Requires Ollama to be running. Set OLLAMA_ENDPOINT environment variable if not using default port."
+  }
+}

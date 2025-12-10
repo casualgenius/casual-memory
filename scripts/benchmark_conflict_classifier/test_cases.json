@@ -191,6 +191,166 @@
       "expected_conflict": true,
       "category": "fact",
       "description": "Direct contradiction of medical fact"
+    },
+    {
+      "name": "numeric_age_contradiction",
+      "memory_a": "I am 42 years old",
+      "memory_b": "I am 38 years old",
+      "expected_conflict": true,
+      "category": "fact",
+      "description": "Different numeric ages are contradictory"
+    },
+    {
+      "name": "ownership_contradiction",
+      "memory_a": "I own my house",
+      "memory_b": "I rent my house",
+      "expected_conflict": true,
+      "category": "fact",
+      "description": "Owning vs renting the same property contradicts"
+    },
+    {
+      "name": "family_size_contradiction",
+      "memory_a": "I have 3 children",
+      "memory_b": "I have 2 children",
+      "expected_conflict": true,
+      "category": "fact",
+      "description": "Different number of children contradicts"
+    },
+    {
+      "name": "boolean_state_contradiction",
+      "memory_a": "I have a driver's license",
+      "memory_b": "I don't have a driver's license",
+      "expected_conflict": true,
+      "category": "fact",
+      "description": "Direct boolean negation"
+    },
+    {
+      "name": "living_situation_contradiction",
+      "memory_a": "I live alone",
+      "memory_b": "I have 3 roommates",
+      "expected_conflict": true,
+      "category": "fact",
+      "description": "Living alone vs with roommates contradicts"
+    },
+    {
+      "name": "career_duration_contradiction",
+      "memory_a": "I've been a consultant for 10 years",
+      "memory_b": "I've been a consultant for 3 years",
+      "expected_conflict": true,
+      "category": "fact",
+      "description": "Different durations for same role contradict"
+    },
+    {
+      "name": "height_contradiction",
+      "memory_a": "I am 6 feet tall",
+      "memory_b": "I am 5 feet 8 inches tall",
+      "expected_conflict": true,
+      "category": "fact",
+      "description": "Different physical measurements contradict"
+    },
+    {
+      "name": "pet_name_refinement",
+      "memory_a": "I have a dog",
+      "memory_b": "I have a golden retriever named Max",
+      "expected_conflict": false,
+      "category": "refinement",
+      "description": "Adding breed and name to pet is refinement"
+    },
+    {
+      "name": "relationship_refinement",
+      "memory_a": "I'm in a relationship",
+      "memory_b": "I'm engaged to Alex",
+      "expected_conflict": false,
+      "category": "refinement",
+      "description": "Engagement is a refinement of being in relationship"
+    },
+    {
+      "name": "certification_refinement",
+      "memory_a": "I am certified",
+      "memory_b": "I am AWS certified solutions architect",
+      "expected_conflict": false,
+      "category": "refinement",
+      "description": "Specific certification refines general statement"
+    },
+    {
+      "name": "language_count_compatible",
+      "memory_a": "I speak 3 languages",
+      "memory_b": "I speak Mandarin",
+      "expected_conflict": false,
+      "category": "compatible",
+      "description": "Specific language compatible with language count"
+    },
+    {
+      "name": "education_level_contradiction",
+      "memory_a": "I have a high school diploma",
+      "memory_b": "I have a bachelor's degree",
+      "expected_conflict": false,
+      "category": "compatible",
+      "description": "Higher education includes lower levels - compatible"
+    },
+    {
+      "name": "hobby_skill_levels",
+      "memory_a": "I'm learning to play drums",
+      "memory_b": "I'm a professional drummer",
+      "expected_conflict": true,
+      "category": "skill",
+      "description": "Learning vs professional level contradicts"
+    },
+    {
+      "name": "frequency_partial_contradiction",
+      "memory_a": "I always exercise in the morning",
+      "memory_b": "I sometimes exercise in the morning",
+      "expected_conflict": true,
+      "category": "preference",
+      "description": "Always vs sometimes is a contradiction"
+    },
+    {
+      "name": "vehicle_type_contradiction",
+      "memory_a": "I drive a sedan",
+      "memory_b": "I drive a truck",
+      "expected_conflict": true,
+      "category": "fact",
+      "description": "Different vehicle types contradict (assuming single vehicle)"
+    },
+    {
+      "name": "citizenship_compatible",
+      "memory_a": "I am a US citizen",
+      "memory_b": "I am a Canadian citizen",
+      "expected_conflict": false,
+      "category": "compatible",
+      "description": "Dual citizenship is possible - compatible"
+    },
+    {
+      "name": "employment_status_contradiction",
+      "memory_a": "I am employed",
+      "memory_b": "I am unemployed",
+      "expected_conflict": true,
+      "category": "status",
+      "description": "Employed vs unemployed contradicts"
+    },
+    {
+      "name": "birth_year_vs_age",
+      "memory_a": "I was born in 1990",
+      "memory_b": "I am 34 years old",
+      "expected_conflict": false,
+      "category": "compatible",
+      "description": "Birth year and age are consistent (as of 2024)"
+    },
+    {
+      "name": "dietary_restriction_refinement",
+      "memory_a": "I don't eat meat",
+      "memory_b": "I am vegan",
+      "expected_conflict": false,
+      "category": "refinement",
+      "description": "Vegan is a refinement of not eating meat"
+    },
+    {
+      "name": "skill_different_domains",
+      "memory_a": "I'm good at math",
+      "memory_b": "I'm bad at math",
+      "expected_conflict": true,
+      "category": "skill",
+      "description": "Opposite skill assessments contradict"
     }
   ]
 }

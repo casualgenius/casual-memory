@@ -1,0 +1,23 @@
+{
+  "models": [
+    {
+      "name": "gpt-4o-mini",
+      "provider": "openai",
+      "api_key_env": "OPENAI_API_KEY",
+      "enabled": true,
+      "description": "OpenAI GPT-4o-mini - Fast and cost-effective"
+    },
+    {
+      "name": "qwen2.5:7b-instruct",
+      "provider": "ollama",
+      "base_url_env": "OLLAMA_ENDPOINT",
+      "enabled": true,
+      "description": "Qwen 2.5 7B via Ollama - Local model"
+    }
+  ],
+  "metadata": {
+    "version": "1.0",
+    "description": "Default model configurations for conflict classifier benchmark",
+    "note": "Set OPENAI_API_KEY and optionally OLLAMA_ENDPOINT environment variables"
+  }
+}
