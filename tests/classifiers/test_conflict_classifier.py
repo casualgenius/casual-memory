@@ -1,17 +1,18 @@
 """
-Unit tests for Conflict classifier.
+Unit tests for Conflict classifier with pass-through architecture.
 
 Tests the LLM-based conflict detection logic including:
-- Conflict detection → CONFLICT classification
-- No conflict → Pass to next classifier
-- Auto-resolution metadata handling
+- Conflict detection → conflict outcome
+- No conflict → pass through (return None)
+- Categorization and clarification hints
+- Pass-through of existing results
 - Error handling
 """
 
 import pytest
 from unittest.mock import Mock, AsyncMock
-from casual_memory.models import MemoryFact, MemoryConflict
-from casual_memory.classifiers.models import MemoryPair, ClassificationRequest
+from casual_memory.models import MemoryFact
+from casual_memory.classifiers.models import SimilarMemory, SimilarityResult
 from casual_memory.classifiers.conflict_classifier import ConflictClassifier
 
 
@@ -28,19 +29,9 @@ def mock_llm_verifier():
 
 
 @pytest.fixture
-def conflicting_memory_pair():
-    """Create a pair of conflicting memories."""
-    existing = MemoryFact(
-        text="I live in London",
-        type="fact",
-        tags=["location"],
-        importance=0.8,
-        user_id="user123",
-        confidence=0.7,
-        mention_count=3,
-    )
-
-    new = MemoryFact(
+def new_memory_conflicting():
+    """Create a new memory that conflicts."""
+    return MemoryFact(
         text="I live in Paris",
         type="fact",
         tags=["location"],
@@ -50,28 +41,11 @@ def conflicting_memory_pair():
         mention_count=1,
     )
 
-    return MemoryPair(
-        existing_memory=existing,
-        new_memory=new,
-        similarity_score=0.91,
-        existing_memory_id="mem_123",
-    )
-
 
 @pytest.fixture
-def non_conflicting_memory_pair():
-    """Create a pair of non-conflicting memories."""
-    existing = MemoryFact(
-        text="I live in Bangkok",
-        type="fact",
-        tags=["location"],
-        importance=0.8,
-        user_id="user123",
-        confidence=0.7,
-        mention_count=3,
-    )
-
-    new = MemoryFact(
+def new_memory_non_conflicting():
+    """Create a new memory that doesn't conflict."""
+    return MemoryFact(
         text="I work in Bangkok",
         type="fact",
         tags=["location", "work"],
@@ -81,254 +55,300 @@ def non_conflicting_memory_pair():
         mention_count=1,
     )
 
-    return MemoryPair(
-        existing_memory=existing,
-        new_memory=new,
-        similarity_score=0.88,
-        existing_memory_id="mem_456",
+
+@pytest.fixture
+def similar_memory_location():
+    """Create a similar memory about location."""
+    return SimilarMemory(
+        memory_id="mem_123",
+        memory=MemoryFact(
+            text="I live in London",
+            type="fact",
+            tags=["location"],
+            importance=0.8,
+            user_id="user123",
+            confidence=0.7,
+            mention_count=3,
+        ),
+        similarity_score=0.91,
     )
 
 
 @pytest.mark.asyncio
-async def test_conflict_classifier_detects_conflict(mock_llm_verifier, conflicting_memory_pair):
-    """Test that detected conflicts result in CONFLICT classification."""
+async def test_conflict_classifier_detects_conflict(
+    mock_llm_verifier, new_memory_conflicting, similar_memory_location
+):
+    """Test that detected conflicts result in conflict classification."""
     # Mock LLM to detect conflict
     mock_llm_verifier.verify_conflict.return_value = (True, "llm")
 
     classifier = ConflictClassifier(llm_conflict_verifier=mock_llm_verifier)
 
-    request = ClassificationRequest(
-        pairs=[conflicting_memory_pair],
-        results=[],
-        user_id="user123",
+    result = await classifier.classify_pair(
+        new_memory_conflicting,
+        similar_memory_location,
+        check_type="primary",
+        existing_result=None,
     )
 
-    result = await classifier.classify(request)
-
-    # Should classify as CONFLICT
-    assert len(result.results) == 1
-    assert len(result.pairs) == 0
-    assert result.results[0].classification == "CONFLICT"
-    assert result.results[0].classifier_name == "conflict"
+    # Should classify as conflict
+    assert result is not None
+    assert result.outcome == "conflict"
+    assert result.classifier_name == "conflict"
+    assert result.confidence == 0.9
 
     # Should have conflict metadata
-    assert "detection_method" in result.results[0].metadata
-    assert result.results[0].metadata["detection_method"] == "llm"
-    assert "conflict" in result.results[0].metadata
-
-    # Verify conflict object structure
-    conflict = result.results[0].metadata["conflict"]
-    assert isinstance(conflict, MemoryConflict)
-    assert conflict.memory_a_id == "mem_123"
-    assert conflict.memory_b_id == "pending"
-    assert conflict.user_id == "user123"
+    assert "detection_method" in result.metadata
+    assert result.metadata["detection_method"] == "llm"
+    assert "category" in result.metadata
+    assert result.metadata["category"] == "location"
+    assert "clarification_hint" in result.metadata
 
 
 @pytest.mark.asyncio
-async def test_conflict_classifier_no_conflict_pass(mock_llm_verifier, non_conflicting_memory_pair):
-    """Test that non-conflicts are passed to next classifier."""
+async def test_conflict_classifier_no_conflict_pass(
+    mock_llm_verifier, new_memory_non_conflicting, similar_memory_location
+):
+    """Test that non-conflicts are passed to next classifier (return None)."""
     # Mock LLM to not detect conflict
     mock_llm_verifier.verify_conflict.return_value = (False, "llm")
 
     classifier = ConflictClassifier(llm_conflict_verifier=mock_llm_verifier)
 
-    request = ClassificationRequest(
-        pairs=[non_conflicting_memory_pair],
-        results=[],
-        user_id="user123",
+    result = await classifier.classify_pair(
+        new_memory_non_conflicting,
+        similar_memory_location,
+        check_type="primary",
+        existing_result=None,
     )
 
-    result = await classifier.classify(request)
-
     # Should pass to next classifier
-    assert len(result.results) == 0
-    assert len(result.pairs) == 1
+    assert result is None
 
 
 @pytest.mark.asyncio
-async def test_conflict_classifier_heuristic_fallback(mock_llm_verifier, conflicting_memory_pair):
+async def test_conflict_classifier_pass_through_existing_result(
+    mock_llm_verifier, new_memory_conflicting, similar_memory_location
+):
+    """Test that existing results are passed through unchanged."""
+    # Create an existing result from a previous classifier
+    existing_result = SimilarityResult(
+        similar_memory=similar_memory_location,
+        outcome="same",
+        confidence=0.95,
+        classifier_name="nli",
+        metadata={"nli_scores": [0.1, 0.95, 0.05]},
+    )
+
+    classifier = ConflictClassifier(llm_conflict_verifier=mock_llm_verifier)
+
+    result = await classifier.classify_pair(
+        new_memory_conflicting,
+        similar_memory_location,
+        check_type="primary",
+        existing_result=existing_result,
+    )
+
+    # Should pass through the existing result
+    assert result == existing_result
+    assert result.outcome == "same"
+    assert result.classifier_name == "nli"
+
+    # LLM should not be called
+    mock_llm_verifier.verify_conflict.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_conflict_classifier_secondary_check(
+    mock_llm_verifier, new_memory_conflicting, similar_memory_location
+):
+    """Test that conflict detection works on secondary checks."""
+    # Mock LLM to detect conflict
+    mock_llm_verifier.verify_conflict.return_value = (True, "llm")
+
+    classifier = ConflictClassifier(llm_conflict_verifier=mock_llm_verifier)
+
+    result = await classifier.classify_pair(
+        new_memory_conflicting,
+        similar_memory_location,
+        check_type="secondary",
+        existing_result=None,
+    )
+
+    # Should detect conflict on secondary check too
+    assert result is not None
+    assert result.outcome == "conflict"
+
+    # Verify LLM was called
+    mock_llm_verifier.verify_conflict.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_conflict_classifier_heuristic_fallback(
+    mock_llm_verifier, new_memory_conflicting, similar_memory_location
+):
     """Test that heuristic fallback is captured in metadata."""
     # Mock LLM to use heuristic fallback
     mock_llm_verifier.verify_conflict.return_value = (True, "heuristic_fallback")
 
     classifier = ConflictClassifier(llm_conflict_verifier=mock_llm_verifier)
 
-    request = ClassificationRequest(
-        pairs=[conflicting_memory_pair],
-        results=[],
-        user_id="user123",
+    result = await classifier.classify_pair(
+        new_memory_conflicting,
+        similar_memory_location,
+        check_type="primary",
+        existing_result=None,
     )
 
-    result = await classifier.classify(request)
-
-    # Should classify as CONFLICT with heuristic method
-    assert len(result.results) == 1
-    assert result.results[0].classification == "CONFLICT"
-    assert result.results[0].metadata["detection_method"] == "heuristic_fallback"
+    # Should classify as conflict with heuristic method
+    assert result is not None
+    assert result.outcome == "conflict"
+    assert result.metadata["detection_method"] == "heuristic_fallback"
 
 
 @pytest.mark.asyncio
-async def test_conflict_classifier_error_handling(mock_llm_verifier, conflicting_memory_pair):
+async def test_conflict_classifier_error_handling(
+    mock_llm_verifier, new_memory_conflicting, similar_memory_location
+):
     """Test that errors are handled gracefully."""
     # Mock LLM to raise exception
     mock_llm_verifier.verify_conflict.side_effect = Exception("LLM call failed")
 
     classifier = ConflictClassifier(llm_conflict_verifier=mock_llm_verifier)
 
-    request = ClassificationRequest(
-        pairs=[conflicting_memory_pair],
-        results=[],
-        user_id="user123",
+    result = await classifier.classify_pair(
+        new_memory_conflicting,
+        similar_memory_location,
+        check_type="primary",
+        existing_result=None,
     )
 
-    result = await classifier.classify(request)
-
-    # Should pass to next classifier on error
-    assert len(result.results) == 0
-    assert len(result.pairs) == 1
+    # Should pass to next classifier on error (return None)
+    assert result is None
 
 
 @pytest.mark.asyncio
-async def test_conflict_classifier_multiple_pairs(mock_llm_verifier):
-    """Test classification of multiple pairs."""
-    pair1 = MemoryPair(
-        existing_memory=MemoryFact(
+async def test_conflict_classifier_categorization():
+    """Test that conflicts are categorized correctly."""
+    mock_llm_verifier = Mock()
+    mock_llm_verifier.verify_conflict = AsyncMock(return_value=(True, "llm"))
+    mock_llm_verifier.get_metrics.return_value = {}
+
+    classifier = ConflictClassifier(llm_conflict_verifier=mock_llm_verifier)
+
+    # Location conflict
+    new_location = MemoryFact(
+        text="I live in Paris",
+        type="fact",
+        tags=[],
+        importance=0.8,
+        user_id="user123",
+    )
+    similar_location = SimilarMemory(
+        memory_id="mem_1",
+        memory=MemoryFact(
             text="I live in London",
             type="fact",
             tags=[],
             importance=0.8,
             user_id="user123",
         ),
-        new_memory=MemoryFact(
-            text="I live in Paris",
-            type="fact",
-            tags=[],
-            importance=0.8,
-            user_id="user123",
-        ),
         similarity_score=0.91,
-        existing_memory_id="mem_1",
     )
 
-    pair2 = MemoryPair(
-        existing_memory=MemoryFact(
-            text="I live in Bangkok",
+    result = await classifier.classify_pair(
+        new_location, similar_location, "primary", None
+    )
+    assert result.metadata["category"] == "location"
+
+    # Job conflict
+    new_job = MemoryFact(
+        text="I work as a teacher",
+        type="fact",
+        tags=[],
+        importance=0.7,
+        user_id="user123",
+    )
+    similar_job = SimilarMemory(
+        memory_id="mem_2",
+        memory=MemoryFact(
+            text="I work as a doctor",
             type="fact",
             tags=[],
-            importance=0.8,
-            user_id="user123",
-        ),
-        new_memory=MemoryFact(
-            text="I work in Bangkok",
-            type="fact",
-            tags=[],
-            importance=0.8,
+            importance=0.7,
             user_id="user123",
         ),
         similarity_score=0.88,
-        existing_memory_id="mem_2",
     )
 
-    # Mock LLM to return different results
-    mock_llm_verifier.verify_conflict.side_effect = [
-        (True, "llm"),  # pair1: conflict
-        (False, "llm"),  # pair2: no conflict
-    ]
-
-    classifier = ConflictClassifier(llm_conflict_verifier=mock_llm_verifier)
-
-    request = ClassificationRequest(
-        pairs=[pair1, pair2],
-        results=[],
-        user_id="user123",
-    )
-
-    result = await classifier.classify(request)
-
-    # Should classify 1, pass 1
-    assert len(result.results) == 1
-    assert len(result.pairs) == 1
-
-    assert result.results[0].classification == "CONFLICT"
-    assert result.results[0].pair.existing_memory_id == "mem_1"
-    assert result.pairs[0].existing_memory_id == "mem_2"
+    result = await classifier.classify_pair(new_job, similar_job, "primary", None)
+    assert result.metadata["category"] == "job"
 
 
 @pytest.mark.asyncio
-async def test_conflict_classifier_categorization(mock_llm_verifier):
-    """Test that conflicts are categorized correctly."""
-    # Location conflict
-    location_pair = MemoryPair(
-        existing_memory=MemoryFact(
-            text="I live in London",
-            type="fact",
-            tags=[],
-            importance=0.8,
-            user_id="user123",
-        ),
-        new_memory=MemoryFact(
-            text="I live in Paris",
-            type="fact",
-            tags=[],
-            importance=0.8,
-            user_id="user123",
-        ),
-        similarity_score=0.91,
-        existing_memory_id="mem_1",
-    )
-
-    mock_llm_verifier.verify_conflict.return_value = (True, "llm")
-
-    classifier = ConflictClassifier(llm_conflict_verifier=mock_llm_verifier)
-
-    request = ClassificationRequest(
-        pairs=[location_pair],
-        results=[],
-        user_id="user123",
-    )
-
-    result = await classifier.classify(request)
-
-    conflict = result.results[0].metadata["conflict"]
-    assert conflict.category == "location"
-
-
-@pytest.mark.asyncio
-async def test_conflict_classifier_preference_category(mock_llm_verifier):
+async def test_conflict_classifier_preference_category():
     """Test preference conflict categorization."""
-    preference_pair = MemoryPair(
-        existing_memory=MemoryFact(
+    mock_llm_verifier = Mock()
+    mock_llm_verifier.verify_conflict = AsyncMock(return_value=(True, "llm"))
+    mock_llm_verifier.get_metrics.return_value = {}
+
+    classifier = ConflictClassifier(llm_conflict_verifier=mock_llm_verifier)
+
+    new_pref = MemoryFact(
+        text="I hate coffee",
+        type="preference",
+        tags=[],
+        importance=0.6,
+        user_id="user123",
+    )
+    similar_pref = SimilarMemory(
+        memory_id="mem_2",
+        memory=MemoryFact(
             text="I love coffee",
             type="preference",
             tags=[],
             importance=0.6,
             user_id="user123",
         ),
-        new_memory=MemoryFact(
-            text="I hate coffee",
-            type="preference",
-            tags=[],
-            importance=0.6,
-            user_id="user123",
-        ),
         similarity_score=0.93,
-        existing_memory_id="mem_2",
     )
 
-    mock_llm_verifier.verify_conflict.return_value = (True, "llm")
+    result = await classifier.classify_pair(new_pref, similar_pref, "primary", None)
+    assert result.metadata["category"] == "preference"
+
+
+@pytest.mark.asyncio
+async def test_conflict_classifier_clarification_hints():
+    """Test that appropriate clarification hints are generated."""
+    mock_llm_verifier = Mock()
+    mock_llm_verifier.verify_conflict = AsyncMock(return_value=(True, "llm"))
+    mock_llm_verifier.get_metrics.return_value = {}
 
     classifier = ConflictClassifier(llm_conflict_verifier=mock_llm_verifier)
 
-    request = ClassificationRequest(
-        pairs=[preference_pair],
-        results=[],
+    # Location conflict
+    new_mem = MemoryFact(
+        text="I live in Paris",
+        type="fact",
+        tags=[],
+        importance=0.8,
         user_id="user123",
     )
+    similar_mem = SimilarMemory(
+        memory_id="mem_1",
+        memory=MemoryFact(
+            text="I live in London",
+            type="fact",
+            tags=[],
+            importance=0.8,
+            user_id="user123",
+        ),
+        similarity_score=0.91,
+    )
 
-    result = await classifier.classify(request)
-
-    conflict = result.results[0].metadata["conflict"]
-    assert conflict.category == "preference"
+    result = await classifier.classify_pair(new_mem, similar_mem, "primary", None)
+    assert "clarification_hint" in result.metadata
+    assert "Where do you currently live?" == result.metadata["clarification_hint"]
 
 
 def test_conflict_classifier_get_metrics(mock_llm_verifier):

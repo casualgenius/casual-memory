@@ -1,30 +1,37 @@
 """
-Classifier pipeline for memory classification.
+Memory-centric classifier pipeline for memory classification.
 
-Provides a pipeline architecture for classifying memory pairs into
-MERGE, CONFLICT, or ADD outcomes using multiple specialized classifiers.
+Provides a pipeline architecture for classifying new memories against similar memories,
+determining both overall outcomes (add/conflict/skip) and individual similarity outcomes
+(conflict/superseded/same/neutral) using multiple specialized classifiers.
 """
 
 from casual_memory.classifiers.models import (
-    MemoryPair,
-    ClassificationResult,
-    ClassificationRequest,
-    MemoryClassifier,
+    CheckType,
+    MemoryClassificationResult,
+    SimilarMemory,
+    SimilarityOutcome,
+    MemoryOutcome,
+    SimilarityResult,
 )
-from casual_memory.classifiers.pipeline import ClassificationPipeline
+from casual_memory.classifiers.pipeline import MemoryClassificationPipeline
 from casual_memory.classifiers.nli_classifier import NLIClassifier
 from casual_memory.classifiers.conflict_classifier import ConflictClassifier
 from casual_memory.classifiers.duplicate_classifier import DuplicateClassifier
-from casual_memory.classifiers.auto_resolution_classifier import AutoResolutionClassifier
+from casual_memory.classifiers.auto_resolution_classifier import (
+    AutoResolutionClassifier,
+)
 
 __all__ = [
     # Data structures
-    "MemoryPair",
-    "ClassificationResult",
-    "ClassificationRequest",
-    "MemoryClassifier",
+    "CheckType",
+    "MemoryClassificationResult",
+    "SimilarMemory",
+    "SimilarityOutcome",
+    "MemoryOutcome",
+    "SimilarityResult",
     # Pipeline
-    "ClassificationPipeline",
+    "MemoryClassificationPipeline",
     # Classifiers
     "NLIClassifier",
     "ConflictClassifier",

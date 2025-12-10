@@ -1,18 +1,23 @@
 """
 LLM-based conflict detection classifier.
 
-Detects contradictions between memory pairs using LLM verification.
-Passes non-conflicts to the next classifier in the pipeline.
+Detects contradictions between memories using LLM verification.
+Returns conflict outcome if detected, None otherwise.
 
 Performance: ~500-2000ms per LLM call
 Accuracy: 96.2% (with qwen3-next-80b)
 """
 
 import logging
+from typing import Optional
 
-from casual_memory.classifiers.models import ClassificationRequest, ClassificationResult, MemoryPair
+from casual_memory.classifiers.models import (
+    CheckType,
+    SimilarMemory,
+    SimilarityResult,
+)
 from casual_memory.intelligence.conflict_verifier import LLMConflictVerifier
-from casual_memory.models import MemoryConflict
+from casual_memory.models import MemoryFact
 
 logger = logging.getLogger(__name__)
 
@@ -21,9 +26,8 @@ class ConflictClassifier:
     """
     LLM-based conflict detection classifier.
 
-    Uses LLM to detect contradictions between memory pairs.
-    Classifies contradictions as CONFLICT and passes non-conflicts
-    to the next classifier.
+    Uses LLM to detect contradictions between memories.
+    Returns conflict outcome if detected, None to pass to next classifier.
     """
 
     def __init__(self, llm_conflict_verifier: LLMConflictVerifier):
@@ -38,121 +42,88 @@ class ConflictClassifier:
 
         logger.info("Conflict classifier initialized")
 
-    async def classify(self, request: ClassificationRequest) -> ClassificationRequest:
+    async def classify_pair(
+        self,
+        new_memory: MemoryFact,
+        similar_memory: SimilarMemory,
+        check_type: CheckType = "primary",
+        existing_result: Optional[SimilarityResult] = None,
+    ) -> Optional[SimilarityResult]:
         """
-        Classify pairs using LLM conflict detection.
+        Classify a memory pair using LLM conflict detection.
 
         Classification logic:
-        1. LLM detects contradiction → CONFLICT
-        2. LLM confirms no contradiction → Pass to next classifier
+        1. If existing_result is provided → pass through (conflict only does initial classification)
+        2. LLM detects contradiction → conflict outcome
+        3. LLM confirms no contradiction → None (pass to next classifier)
 
         Args:
-            request: Classification request with pairs to classify
+            new_memory: New memory being added
+            similar_memory: Similar memory to compare against
+            check_type: Type of check ("primary" or "secondary")
+                       Conflict checks both types as conflicts are important to detect
+            existing_result: Result from previous classifier (if any)
 
         Returns:
-            Updated request with classified pairs moved to results
+            SimilarityResult with conflict outcome if detected, None otherwise
         """
-        unclassified_pairs = []
+        # If another classifier already classified, pass through
+        if existing_result is not None:
+            return existing_result
+        try:
+            # Verify conflict using LLM
+            is_conflicting, detection_method = await self.verifier.verify_conflict(
+                memory_a=similar_memory.memory,
+                memory_b=new_memory,
+                similarity_score=similar_memory.similarity_score,
+            )
 
-        for pair in request.pairs:
-            try:
-                # Verify conflict using LLM
-                is_conflicting, detection_method = await self.verifier.verify_conflict(
-                    memory_a=pair.existing_memory,
-                    memory_b=pair.new_memory,
-                    similarity_score=pair.similarity_score,
+            if is_conflicting:
+                # Conflict detected - determine category and hint
+                category = self._categorize_conflict(
+                    similar_memory.memory.text, new_memory.text
+                )
+                clarification_hint = self._generate_clarification_hint(
+                    similar_memory.memory.text, new_memory.text, category
                 )
 
-                if is_conflicting:
-                    # Conflict detected - create conflict object
-                    conflict = self._create_conflict_object(pair, detection_method)
+                # Calculate average importance
+                avg_importance = (
+                    similar_memory.memory.importance + new_memory.importance
+                ) / 2
 
-                    logger.debug(
-                        f"CONFLICT detected ({detection_method}): "
-                        f"{pair.existing_memory.text[:50]}... ↔ {pair.new_memory.text[:50]}..."
-                    )
-
-                    request.results.append(
-                        ClassificationResult(
-                            pair=pair,
-                            classification="CONFLICT",
-                            classifier_name=self.name,
-                            metadata={
-                                "detection_method": detection_method,
-                                "conflict": conflict,  # Full MemoryConflict object
-                            },
-                        )
-                    )
-                else:
-                    # Not a conflict - pass to duplicate classifier
-                    logger.debug(
-                        f"NO CONFLICT ({detection_method}): "
-                        f"{pair.existing_memory.text[:50]}... ↔ {pair.new_memory.text[:50]}..."
-                    )
-                    unclassified_pairs.append(pair)
-
-            except Exception as e:
-                logger.error(
-                    f"Conflict classifier failed for pair (passing to next classifier): {e}",
-                    exc_info=True,
+                logger.debug(
+                    f"CONFLICT detected ({detection_method}, category={category}): "
+                    f"{similar_memory.memory.text[:50]}... ↔ {new_memory.text[:50]}..."
                 )
-                # On error, pass to next classifier
-                unclassified_pairs.append(pair)
 
-        # Update request with unclassified pairs
-        request.pairs = unclassified_pairs
+                return SimilarityResult(
+                    similar_memory=similar_memory,
+                    outcome="conflict",
+                    confidence=0.9,  # High confidence from LLM
+                    classifier_name=self.name,
+                    metadata={
+                        "detection_method": detection_method,
+                        "category": category,
+                        "clarification_hint": clarification_hint,
+                        "avg_importance": avg_importance,
+                    },
+                )
+            else:
+                # Not a conflict - pass to next classifier
+                logger.debug(
+                    f"NO CONFLICT ({detection_method}): "
+                    f"{similar_memory.memory.text[:50]}... ↔ {new_memory.text[:50]}..."
+                )
+                return None
 
-        logger.info(
-            f"Conflict classifier: classified {len(request.results) - len([r for r in request.results if r.classifier_name != self.name])} pairs, "
-            f"{len(unclassified_pairs)} remaining"
-        )
-
-        return request
-
-    def _create_conflict_object(self, pair: MemoryPair, detection_method: str) -> MemoryConflict:
-        """
-        Create a MemoryConflict object for a conflicting pair.
-
-        Args:
-            pair: The memory pair with conflict
-            detection_method: Method used to detect conflict ("llm" or "heuristic_fallback")
-
-        Returns:
-            MemoryConflict object with all metadata
-        """
-        memory_a = pair.existing_memory
-        memory_b = pair.new_memory
-
-        # Determine conflict category
-        category = self._categorize_conflict(memory_a.text, memory_b.text)
-
-        # Generate clarification hint
-        clarification_hint = self._generate_clarification_hint(
-            memory_a.text, memory_b.text, category
-        )
-
-        # Calculate average importance
-        avg_importance = (memory_a.importance + memory_b.importance) / 2
-
-        # Build metadata
-        metadata = {
-            "memory_a_text": memory_a.text,
-            "memory_b_text": memory_b.text,
-            "memory_a_type": memory_a.type,
-            "memory_b_type": memory_b.type,
-            "detection_method": detection_method,
-        }
-
-        return MemoryConflict(
-            user_id=memory_a.user_id or "default_user",
-            memory_a_id=pair.existing_memory_id,
-            memory_b_id="pending",  # Will be set after insertion
-            category=category,
-            similarity_score=pair.similarity_score,
-            avg_importance=avg_importance,
-            clarification_hint=clarification_hint,
-            metadata=metadata,
-        )
+        except Exception as e:
+            logger.error(
+                f"Conflict classifier failed (passing to next classifier): {e}",
+                exc_info=True,
+            )
+            # On error, pass to next classifier
+            return None
 
     def _categorize_conflict(self, text_a: str, text_b: str) -> str:
         """
@@ -168,15 +139,24 @@ class ConflictClassifier:
         text_combined = (text_a + " " + text_b).lower()
 
         # Location keywords
-        if any(word in text_combined for word in ["live", "reside", "located", "city", "country"]):
+        if any(
+            word in text_combined
+            for word in ["live", "reside", "located", "city", "country"]
+        ):
             return "location"
 
         # Job/career keywords
-        if any(word in text_combined for word in ["work", "job", "career", "employed", "position"]):
+        if any(
+            word in text_combined
+            for word in ["work", "job", "career", "employed", "position"]
+        ):
             return "job"
 
         # Preference keywords
-        if any(word in text_combined for word in ["like", "love", "hate", "prefer", "favorite"]):
+        if any(
+            word in text_combined
+            for word in ["like", "love", "hate", "prefer", "favorite"]
+        ):
             return "preference"
 
         # Temporal keywords
@@ -189,7 +169,9 @@ class ConflictClassifier:
         # Default category
         return "factual"
 
-    def _generate_clarification_hint(self, text_a: str, text_b: str, category: str) -> str:
+    def _generate_clarification_hint(
+        self, text_a: str, text_b: str, category: str
+    ) -> str:
         """
         Generate a hint for user clarification.
 

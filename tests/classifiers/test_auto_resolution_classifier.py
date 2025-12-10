@@ -2,468 +2,265 @@
 Unit tests for Auto-resolution classifier.
 
 Tests the confidence-based auto-resolution logic including:
-- High confidence ratio → MERGE (keep_new)
-- Low confidence ratio → MERGE (keep_old)
-- Mid confidence ratio → Keep as CONFLICT
+- High confidence ratio → superseded (keep_new)
+- Low confidence ratio → same (keep_old)
+- Mid confidence ratio → Keep as conflict
+- Pass-through behavior
 - Error handling
-- Post-processing of existing results
 """
 
 import pytest
-from casual_memory.models import MemoryFact, MemoryConflict
-from casual_memory.classifiers.models import (
-    MemoryPair,
-    ClassificationRequest,
-    ClassificationResult,
-)
+from casual_memory.models import MemoryFact
+from casual_memory.classifiers.models import SimilarMemory, SimilarityResult
 from casual_memory.classifiers.auto_resolution_classifier import AutoResolutionClassifier
 
 
 @pytest.fixture
-def conflict_result_high_new_confidence():
-    """Create a CONFLICT result where new memory has much higher confidence."""
-    existing = MemoryFact(
-        text="I live in London",
-        type="fact",
-        tags=["location"],
-        importance=0.8,
-        user_id="user123",
-        confidence=0.5,  # Lower confidence
-        mention_count=2,
-    )
-
-    new = MemoryFact(
+def new_memory_high_confidence():
+    """Create a new memory with high confidence."""
+    return MemoryFact(
         text="I live in Paris",
         type="fact",
         tags=["location"],
         importance=0.8,
+        confidence=0.8,  # High confidence
         user_id="user123",
-        confidence=0.8,  # Higher confidence (ratio = 1.6)
-        mention_count=5,
-    )
-
-    pair = MemoryPair(
-        existing_memory=existing,
-        new_memory=new,
-        similarity_score=0.91,
-        existing_memory_id="mem_123",
-    )
-
-    conflict = MemoryConflict(
-        user_id="user123",
-        memory_a_id="mem_123",
-        memory_b_id="pending",
-        category="location",
-        similarity_score=0.91,
-        avg_importance=0.8,
-        clarification_hint="Where do you currently live?",
-    )
-
-    return ClassificationResult(
-        pair=pair,
-        classification="CONFLICT",
-        classifier_name="conflict",
-        metadata={"conflict": conflict},
     )
 
 
 @pytest.fixture
-def conflict_result_high_old_confidence():
-    """Create a CONFLICT result where old memory has much higher confidence."""
-    existing = MemoryFact(
-        text="I live in London",
-        type="fact",
-        tags=["location"],
-        importance=0.8,
-        user_id="user123",
-        confidence=0.8,  # Higher confidence
-        mention_count=10,
-    )
-
-    new = MemoryFact(
+def new_memory_low_confidence():
+    """Create a new memory with low confidence."""
+    return MemoryFact(
         text="I live in Paris",
         type="fact",
         tags=["location"],
         importance=0.8,
+        confidence=0.4,  # Low confidence
         user_id="user123",
-        confidence=0.4,  # Lower confidence (ratio = 0.5)
-        mention_count=1,
-    )
-
-    pair = MemoryPair(
-        existing_memory=existing,
-        new_memory=new,
-        similarity_score=0.91,
-        existing_memory_id="mem_456",
-    )
-
-    conflict = MemoryConflict(
-        user_id="user123",
-        memory_a_id="mem_456",
-        memory_b_id="pending",
-        category="location",
-        similarity_score=0.91,
-        avg_importance=0.8,
-        clarification_hint="Where do you currently live?",
-    )
-
-    return ClassificationResult(
-        pair=pair,
-        classification="CONFLICT",
-        classifier_name="conflict",
-        metadata={"conflict": conflict},
     )
 
 
 @pytest.fixture
-def conflict_result_similar_confidence():
-    """Create a CONFLICT result where both memories have similar confidence."""
-    existing = MemoryFact(
-        text="I live in London",
-        type="fact",
-        tags=["location"],
-        importance=0.8,
-        user_id="user123",
-        confidence=0.6,
-        mention_count=4,
-    )
-
-    new = MemoryFact(
-        text="I live in Paris",
-        type="fact",
-        tags=["location"],
-        importance=0.8,
-        user_id="user123",
-        confidence=0.7,  # Similar confidence (ratio = 1.16)
-        mention_count=5,
-    )
-
-    pair = MemoryPair(
-        existing_memory=existing,
-        new_memory=new,
+def similar_memory_low_confidence():
+    """Create a similar memory with low confidence."""
+    return SimilarMemory(
+        memory_id="mem_123",
+        memory=MemoryFact(
+            text="I live in London",
+            type="fact",
+            tags=["location"],
+            importance=0.8,
+            confidence=0.5,  # Low confidence
+            user_id="user123",
+        ),
         similarity_score=0.91,
-        existing_memory_id="mem_789",
     )
 
-    conflict = MemoryConflict(
-        user_id="user123",
-        memory_a_id="mem_789",
-        memory_b_id="pending",
-        category="location",
+
+@pytest.fixture
+def similar_memory_high_confidence():
+    """Create a similar memory with high confidence."""
+    return SimilarMemory(
+        memory_id="mem_456",
+        memory=MemoryFact(
+            text="I live in London",
+            type="fact",
+            tags=["location"],
+            importance=0.8,
+            confidence=0.8,  # High confidence
+            user_id="user123",
+        ),
         similarity_score=0.91,
-        avg_importance=0.8,
-        clarification_hint="Where do you currently live?",
     )
 
-    return ClassificationResult(
-        pair=pair,
-        classification="CONFLICT",
-        classifier_name="conflict",
-        metadata={"conflict": conflict},
-    )
+
+@pytest.fixture
+def conflict_result():
+    """Create a conflict result."""
+    def _create(similar_memory):
+        return SimilarityResult(
+            similar_memory=similar_memory,
+            outcome="conflict",
+            confidence=0.9,
+            classifier_name="conflict",
+            metadata={"category": "location"},
+        )
+    return _create
 
 
 @pytest.mark.asyncio
-async def test_auto_resolution_keeps_new_high_confidence(conflict_result_high_new_confidence):
-    """Test that high new confidence ratio results in keep_new resolution."""
-    classifier = AutoResolutionClassifier(
-        supersede_threshold=1.3,
-        keep_threshold=0.7,
-    )
-
-    request = ClassificationRequest(
-        pairs=[],
-        results=[conflict_result_high_new_confidence],
-        user_id="user123",
-    )
-
-    result = await classifier.classify(request)
-
-    # Should be reclassified to MERGE with keep_new decision
-    assert len(result.results) == 1
-    assert result.results[0].classification == "MERGE"
-    assert result.results[0].metadata["auto_resolved"] is True
-    assert result.results[0].metadata["resolution_decision"] == "keep_new"
-    assert result.results[0].metadata["confidence_ratio"] == 1.6
-
-
-@pytest.mark.asyncio
-async def test_auto_resolution_keeps_old_high_confidence(conflict_result_high_old_confidence):
-    """Test that low confidence ratio results in keep_old resolution."""
-    classifier = AutoResolutionClassifier(
-        supersede_threshold=1.3,
-        keep_threshold=0.7,
-    )
-
-    request = ClassificationRequest(
-        pairs=[],
-        results=[conflict_result_high_old_confidence],
-        user_id="user123",
-    )
-
-    result = await classifier.classify(request)
-
-    # Should be reclassified to MERGE with keep_old decision
-    assert len(result.results) == 1
-    assert result.results[0].classification == "MERGE"
-    assert result.results[0].metadata["auto_resolved"] is True
-    assert result.results[0].metadata["resolution_decision"] == "keep_old"
-    assert result.results[0].metadata["confidence_ratio"] == 0.5
-
-
-@pytest.mark.asyncio
-async def test_auto_resolution_keeps_conflict_similar_confidence(
-    conflict_result_similar_confidence,
+async def test_auto_resolve_high_new_confidence(
+    new_memory_high_confidence, similar_memory_low_confidence, conflict_result
 ):
-    """Test that similar confidence keeps conflict for manual resolution."""
-    classifier = AutoResolutionClassifier(
-        supersede_threshold=1.3,
-        keep_threshold=0.7,
+    """Test that high new confidence ratio auto-resolves to superseded."""
+    classifier = AutoResolutionClassifier(supersede_threshold=1.3, keep_threshold=0.7)
+
+    existing_conflict = conflict_result(similar_memory_low_confidence)
+
+    # Ratio = 0.8 / 0.5 = 1.6 (≥ 1.3) → superseded
+    result = await classifier.classify_pair(
+        new_memory_high_confidence,
+        similar_memory_low_confidence,
+        check_type="primary",
+        existing_result=existing_conflict,
     )
 
-    request = ClassificationRequest(
-        pairs=[],
-        results=[conflict_result_similar_confidence],
-        user_id="user123",
-    )
-
-    result = await classifier.classify(request)
-
-    # Should remain as CONFLICT
-    assert len(result.results) == 1
-    assert result.results[0].classification == "CONFLICT"
-    assert result.results[0].metadata.get("auto_resolved", False) is False
-    assert "confidence_ratio" in result.results[0].metadata
-    assert result.results[0].metadata["confidence_ratio"] == pytest.approx(1.166, rel=0.01)
+    assert result.outcome == "superseded"
+    assert result.classifier_name == "auto_resolution"
+    assert result.metadata["auto_resolved"] is True
+    assert result.metadata["resolution_decision"] == "keep_new"
+    assert result.metadata["confidence_ratio"] == 1.6
 
 
 @pytest.mark.asyncio
-async def test_auto_resolution_zero_old_confidence():
-    """Test handling of zero old confidence (cannot calculate ratio)."""
-    existing = MemoryFact(
-        text="I live in London",
-        type="fact",
-        tags=[],
-        importance=0.8,
-        user_id="user123",
-        confidence=0.0,  # Zero confidence
-        mention_count=1,
+async def test_auto_resolve_high_old_confidence(
+    new_memory_low_confidence, similar_memory_high_confidence, conflict_result
+):
+    """Test that high old confidence ratio auto-resolves to same."""
+    classifier = AutoResolutionClassifier(supersede_threshold=1.3, keep_threshold=0.7)
+
+    existing_conflict = conflict_result(similar_memory_high_confidence)
+
+    # Ratio = 0.4 / 0.8 = 0.5 (≤ 0.7) → same
+    result = await classifier.classify_pair(
+        new_memory_low_confidence,
+        similar_memory_high_confidence,
+        check_type="primary",
+        existing_result=existing_conflict,
     )
 
-    new = MemoryFact(
-        text="I live in Paris",
-        type="fact",
-        tags=[],
-        importance=0.8,
-        user_id="user123",
-        confidence=0.8,
-        mention_count=1,
-    )
-
-    pair = MemoryPair(
-        existing_memory=existing,
-        new_memory=new,
-        similarity_score=0.91,
-        existing_memory_id="mem_000",
-    )
-
-    conflict = MemoryConflict(
-        user_id="user123",
-        memory_a_id="mem_000",
-        memory_b_id="pending",
-        category="location",
-        similarity_score=0.91,
-        avg_importance=0.8,
-        clarification_hint="Where do you currently live?",
-    )
-
-    conflict_result = ClassificationResult(
-        pair=pair,
-        classification="CONFLICT",
-        classifier_name="conflict",
-        metadata={"conflict": conflict},
-    )
-
-    classifier = AutoResolutionClassifier(
-        supersede_threshold=1.3,
-        keep_threshold=0.7,
-    )
-
-    request = ClassificationRequest(
-        pairs=[],
-        results=[conflict_result],
-        user_id="user123",
-    )
-
-    result = await classifier.classify(request)
-
-    # Should remain as CONFLICT (cannot calculate ratio)
-    assert result.results[0].classification == "CONFLICT"
+    assert result.outcome == "same"
+    assert result.classifier_name == "auto_resolution"
+    assert result.metadata["auto_resolved"] is True
+    assert result.metadata["resolution_decision"] == "keep_old"
+    assert result.metadata["confidence_ratio"] == 0.5
 
 
 @pytest.mark.asyncio
-async def test_auto_resolution_non_conflict_results_unchanged():
-    """Test that non-CONFLICT results are not modified."""
-    # Create MERGE and ADD results
-    merge_result = ClassificationResult(
-        pair=MemoryPair(
-            existing_memory=MemoryFact(
-                text="I live in London",
-                type="fact",
-                tags=[],
-                importance=0.8,
-                user_id="user123",
-            ),
-            new_memory=MemoryFact(
-                text="I live in Central London",
-                type="fact",
-                tags=[],
-                importance=0.8,
-                user_id="user123",
-            ),
-            similarity_score=0.92,
-            existing_memory_id="mem_1",
-        ),
-        classification="MERGE",
-        classifier_name="nli",
+async def test_auto_resolve_mid_confidence_keeps_conflict(
+    new_memory_high_confidence, similar_memory_high_confidence, conflict_result
+):
+    """Test that mid-range confidence ratio keeps conflict."""
+    classifier = AutoResolutionClassifier(supersede_threshold=1.3, keep_threshold=0.7)
+
+    existing_conflict = conflict_result(similar_memory_high_confidence)
+
+    # Ratio = 0.8 / 0.8 = 1.0 (between 0.7 and 1.3) → keep conflict
+    result = await classifier.classify_pair(
+        new_memory_high_confidence,
+        similar_memory_high_confidence,
+        check_type="primary",
+        existing_result=existing_conflict,
     )
 
-    add_result = ClassificationResult(
-        pair=MemoryPair(
-            existing_memory=MemoryFact(
-                text="I like coffee",
-                type="preference",
-                tags=[],
-                importance=0.5,
-                user_id="user123",
-            ),
-            new_memory=MemoryFact(
-                text="I like tea",
-                type="preference",
-                tags=[],
-                importance=0.5,
-                user_id="user123",
-            ),
-            similarity_score=0.87,
-            existing_memory_id="mem_2",
-        ),
-        classification="ADD",
-        classifier_name="nli",
-    )
+    assert result.outcome == "conflict"
+    assert result.classifier_name == "conflict"  # Original classifier
+    assert result.metadata["auto_resolved"] is False
+    assert result.metadata["confidence_ratio"] == 1.0
 
+
+@pytest.mark.asyncio
+async def test_pass_through_non_conflict(
+    new_memory_high_confidence, similar_memory_low_confidence
+):
+    """Test that non-conflict results pass through unchanged."""
     classifier = AutoResolutionClassifier()
 
-    request = ClassificationRequest(
-        pairs=[],
-        results=[merge_result, add_result],
-        user_id="user123",
-    )
-
-    result = await classifier.classify(request)
-
-    # Should remain unchanged
-    assert len(result.results) == 2
-    assert result.results[0].classification == "MERGE"
-    assert result.results[1].classification == "ADD"
-
-
-@pytest.mark.asyncio
-async def test_auto_resolution_mixed_results(
-    conflict_result_high_new_confidence,
-    conflict_result_similar_confidence,
-):
-    """Test processing of mixed CONFLICT and non-CONFLICT results."""
-    merge_result = ClassificationResult(
-        pair=MemoryPair(
-            existing_memory=MemoryFact(
-                text="I like pizza",
-                type="preference",
-                tags=[],
-                importance=0.5,
-                user_id="user123",
-            ),
-            new_memory=MemoryFact(
-                text="I really enjoy pizza",
-                type="preference",
-                tags=[],
-                importance=0.5,
-                user_id="user123",
-            ),
-            similarity_score=0.94,
-            existing_memory_id="mem_999",
-        ),
-        classification="MERGE",
-        classifier_name="nli",
-    )
-
-    classifier = AutoResolutionClassifier(
-        supersede_threshold=1.3,
-        keep_threshold=0.7,
-    )
-
-    request = ClassificationRequest(
-        pairs=[],
-        results=[
-            merge_result,
-            conflict_result_high_new_confidence,
-            conflict_result_similar_confidence,
-        ],
-        user_id="user123",
-    )
-
-    result = await classifier.classify(request)
-
-    # Should process all results
-    assert len(result.results) == 3
-
-    # MERGE should be unchanged
-    assert result.results[0].classification == "MERGE"
-
-    # High confidence conflict should be resolved
-    assert result.results[1].classification == "MERGE"
-    assert result.results[1].metadata["resolution_decision"] == "keep_new"
-
-    # Similar confidence conflict should remain CONFLICT
-    assert result.results[2].classification == "CONFLICT"
-
-
-@pytest.mark.asyncio
-async def test_auto_resolution_error_handling():
-    """Test that errors during resolution are handled gracefully."""
-    # Create result with invalid data that will cause error
-    invalid_result = ClassificationResult(
-        pair=MemoryPair(
-            existing_memory=None,  # Invalid - will cause error
-            new_memory=None,
-            similarity_score=0.9,
-            existing_memory_id="mem_error",
-        ),
-        classification="CONFLICT",
-        classifier_name="conflict",
+    # Test with superseded result
+    superseded_result = SimilarityResult(
+        similar_memory=similar_memory_low_confidence,
+        outcome="superseded",
+        confidence=0.9,
+        classifier_name="duplicate",
         metadata={},
     )
 
+    result = await classifier.classify_pair(
+        new_memory_high_confidence,
+        similar_memory_low_confidence,
+        check_type="primary",
+        existing_result=superseded_result,
+    )
+
+    assert result == superseded_result
+    assert result.outcome == "superseded"
+
+
+@pytest.mark.asyncio
+async def test_pass_through_none_result(
+    new_memory_high_confidence, similar_memory_low_confidence
+):
+    """Test that None result passes through."""
     classifier = AutoResolutionClassifier()
 
-    request = ClassificationRequest(
-        pairs=[],
-        results=[invalid_result],
-        user_id="user123",
+    result = await classifier.classify_pair(
+        new_memory_high_confidence,
+        similar_memory_low_confidence,
+        check_type="primary",
+        existing_result=None,
     )
 
-    result = await classifier.classify(request)
-
-    # Should keep result despite error
-    assert len(result.results) == 1
-    assert result.results[0].classification == "CONFLICT"
+    assert result is None
 
 
-def test_auto_resolution_get_metrics():
-    """Test that metrics return configuration values."""
-    classifier = AutoResolutionClassifier(
-        supersede_threshold=1.5,
-        keep_threshold=0.6,
+@pytest.mark.asyncio
+async def test_zero_confidence_handling(new_memory_high_confidence, conflict_result):
+    """Test handling when old confidence is zero."""
+    classifier = AutoResolutionClassifier()
+
+    # Create similar memory with zero confidence
+    similar_memory_zero = SimilarMemory(
+        memory_id="mem_789",
+        memory=MemoryFact(
+            text="I live in London",
+            type="fact",
+            tags=[],
+            importance=0.5,
+            confidence=0.0,  # Zero confidence
+            user_id="user123",
+        ),
+        similarity_score=0.90,
     )
+
+    existing_conflict = conflict_result(similar_memory_zero)
+
+    result = await classifier.classify_pair(
+        new_memory_high_confidence,
+        similar_memory_zero,
+        check_type="primary",
+        existing_result=existing_conflict,
+    )
+
+    # Should keep as conflict (cannot calculate ratio)
+    assert result.outcome == "conflict"
+
+
+@pytest.mark.asyncio
+async def test_custom_thresholds(
+    new_memory_high_confidence, similar_memory_low_confidence, conflict_result
+):
+    """Test that custom thresholds are respected."""
+    # Set more lenient thresholds
+    classifier = AutoResolutionClassifier(supersede_threshold=1.5, keep_threshold=0.5)
+
+    existing_conflict = conflict_result(similar_memory_low_confidence)
+
+    # Ratio = 0.8 / 0.5 = 1.6 (≥ 1.5) → superseded
+    result = await classifier.classify_pair(
+        new_memory_high_confidence,
+        similar_memory_low_confidence,
+        check_type="primary",
+        existing_result=existing_conflict,
+    )
+
+    assert result.outcome == "superseded"
+    assert result.metadata["confidence_ratio"] == 1.6
+
+
+def test_get_metrics():
+    """Test that classifier returns correct metrics."""
+    classifier = AutoResolutionClassifier(supersede_threshold=1.5, keep_threshold=0.6)
 
     metrics = classifier.get_metrics()
 

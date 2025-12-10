@@ -1,119 +1,112 @@
 """
-Data structures for the classifier pipeline.
+Data structures for the memory-centric classifier pipeline.
 
 Defines the core data models used throughout the classification pipeline:
-- MemoryPair: A pair of memories being compared
-- ClassificationResult: The outcome of classifying a pair
-- ClassificationRequest: Request object passed through the pipeline
-- MemoryClassifier: Protocol defining the classifier interface
+- SimilarMemory: A memory similar to the new memory being added
+- SimilarityResult: Result of classifying new memory against one similar memory
+- MemoryClassificationResult: Overall result for a new memory
 """
 
 from dataclasses import dataclass, field
-from typing import Protocol, Literal, Optional
+from typing import Literal, Optional
 
 from casual_memory.models import MemoryFact
 
 
-# Type alias for classification outcomes
-ClassificationOutcome = Literal["MERGE", "CONFLICT", "ADD"]
+# Type aliases for memory-centric classification
+SimilarityOutcome = Literal["conflict", "superseded", "same", "neutral"]
+MemoryOutcome = Literal["add", "conflict", "skip"]
+CheckType = Literal["primary", "secondary"]
 
 
 @dataclass
-class MemoryPair:
+class SimilarMemory:
     """
-    A pair of memories being compared for classification.
+    A memory similar to the new memory being added.
+
+    Used in the memory-centric classification pipeline to represent
+    existing memories that might be related to a new memory.
 
     Attributes:
-        existing_memory: The memory already stored in the system
-        new_memory: The new memory being added
-        similarity_score: Vector similarity score (0.0-1.0)
-        existing_memory_id: Qdrant point ID of the existing memory
+        memory_id: ID of the memory in vector store
+        memory: The memory fact itself
+        similarity_score: Cosine similarity to new memory (0.0-1.0)
     """
 
-    existing_memory: MemoryFact
-    new_memory: MemoryFact
+    memory_id: str
+    memory: MemoryFact
     similarity_score: float
-    existing_memory_id: str  # Qdrant point ID
 
 
 @dataclass
-class ClassificationResult:
+class SimilarityResult:
     """
-    Result of classifying a memory pair.
+    Result of classifying a new memory against one similar memory.
+
+    Defines what should happen to the existing similar memory.
 
     Attributes:
-        pair: The memory pair that was classified
-        classification: The classification outcome (MERGE, CONFLICT, or ADD)
-        classifier_name: Name of the classifier that made the decision
-        confidence: Optional confidence score (0.0-1.0)
-        metadata: Additional classifier-specific metadata (e.g., NLI scores, detection method)
+        similar_memory: The similar memory being compared
+        outcome: What to do with this similar memory
+            - "conflict": New memory conflicts with this one (reference in conflict record)
+            - "superseded": This memory is superseded by new one (archive it)
+            - "same": Memories are the same (update metadata)
+            - "neutral": Memories can coexist (no action)
+        confidence: Confidence score (0.0-1.0)
+        classifier_name: Name of classifier that made the decision
+        metadata: Additional classifier-specific info (e.g., conflict details)
     """
 
-    pair: MemoryPair
-    classification: ClassificationOutcome
+    similar_memory: SimilarMemory
+    outcome: SimilarityOutcome
+    confidence: float
     classifier_name: str
-    confidence: Optional[float] = None
     metadata: dict = field(default_factory=dict)
 
 
 @dataclass
-class ClassificationRequest:
+class MemoryClassificationResult:
     """
-    Request object passed through the classifier pipeline.
+    Overall result for classifying a new memory.
 
-    As the request flows through the pipeline:
-    - Classifiers examine pairs in the `pairs` list
-    - For pairs they confidently classify, they:
-      1. Create a ClassificationResult
-      2. Add it to the `results` list
-      3. Remove the pair from `pairs`
-    - Unclassified pairs remain in `pairs` for the next classifier
+    Defines what should happen to the new memory and provides
+    derived properties for action execution.
 
     Attributes:
-        pairs: List of memory pairs awaiting classification
-        results: List of classification results
-        user_id: User ID for logging and context
+        new_memory: The new memory being classified
+        overall_outcome: What to do with the new memory
+            - "add": Insert to vector store (may archive similar memories as side effect)
+            - "conflict": Insert to conflict store, don't add to vector store
+            - "skip": Do nothing (memory already exists, update existing metadata)
+        similarity_results: Individual results for each similar memory
     """
 
-    pairs: list[MemoryPair]
-    results: list[ClassificationResult]
-    user_id: str
+    new_memory: MemoryFact
+    overall_outcome: MemoryOutcome
+    similarity_results: list[SimilarityResult]
 
+    @property
+    def conflicts_with(self) -> list[str]:
+        """IDs of memories this conflicts with (for conflict records)."""
+        return [
+            r.similar_memory.memory_id
+            for r in self.similarity_results
+            if r.outcome == "conflict"
+        ]
 
-class MemoryClassifier(Protocol):
-    """
-    Protocol defining the interface for memory classifiers.
+    @property
+    def supersedes(self) -> list[str]:
+        """IDs of memories to archive (when overall_outcome = "add")."""
+        return [
+            r.similar_memory.memory_id
+            for r in self.similarity_results
+            if r.outcome == "superseded"
+        ]
 
-    All classifiers must implement this protocol to participate in the pipeline.
-    Classifiers should only classify pairs they are confident about, passing
-    uncertain pairs to the next classifier in the pipeline.
-
-    Attributes:
-        name: Classifier name for logging and result tracking
-    """
-
-    name: str
-
-    async def classify(self, request: ClassificationRequest) -> ClassificationRequest:
-        """
-        Classify pairs in the request.
-
-        This method should:
-        1. Examine pairs in request.pairs
-        2. For pairs it can confidently classify:
-           - Create a ClassificationResult
-           - Add it to request.results
-           - Remove the pair from request.pairs
-        3. Return the updated request
-
-        Error Handling:
-        - On error: Log the error, don't modify the request, let next classifier handle
-        - Errors should not break the pipeline
-
-        Args:
-            request: The classification request containing pairs to classify
-
-        Returns:
-            Updated request with classified pairs moved from pairs to results
-        """
-        ...
+    @property
+    def same_as(self) -> Optional[str]:
+        """ID of memory to update metadata (when overall_outcome = "skip")."""
+        for r in self.similarity_results:
+            if r.outcome == "same":
+                return r.similar_memory.memory_id
+        return None

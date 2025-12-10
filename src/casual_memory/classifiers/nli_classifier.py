@@ -1,9 +1,9 @@
 """
-NLI-based classifier for fast pre-filtering of memory pairs.
+NLI-based classifier for fast pre-filtering.
 
 Uses DeBERTa-v3 cross-encoder to quickly classify obvious cases:
-- High entailment → MERGE (duplicate/refinement)
-- High neutral + low entailment → ADD (distinct facts)
+- High entailment → same (duplicate/refinement)
+- High neutral + low entailment → neutral (distinct facts)
 - Uncertain → Pass to next classifier
 
 Performance: ~50-200ms on CPU, ~10-50ms on GPU
@@ -13,12 +13,17 @@ Accuracy: 92.38% on SNLI, 90.04% on MNLI
 import logging
 from typing import Optional
 
-from casual_memory.classifiers.models import ClassificationRequest, ClassificationResult
+from casual_memory.classifiers.models import (
+    CheckType,
+    SimilarMemory,
+    SimilarityResult,
+)
 from casual_memory.intelligence.nli_filter import NLIPreFilter
+from casual_memory.models import MemoryFact
 
 logger = logging.getLogger(__name__)
 
-# Configuration constants (previously from app.config)
+# Configuration constants
 NLI_ENTAILMENT_THRESHOLD = 0.85
 NLI_NEUTRAL_THRESHOLD = 0.5
 
@@ -43,8 +48,8 @@ class NLIClassifier:
 
         Args:
             nli_filter: NLI pre-filter instance (default: creates new instance)
-            entailment_threshold: Minimum entailment score for MERGE (default: from config)
-            neutral_threshold: Minimum neutral score for ADD (default: from config)
+            entailment_threshold: Minimum entailment score for same (default: 0.85)
+            neutral_threshold: Minimum neutral score for neutral (default: 0.5)
         """
         self.name = "nli"
         self.nli_filter = nli_filter or NLIPreFilter()
@@ -57,113 +62,108 @@ class NLIClassifier:
             f"neutral_threshold={self.neutral_threshold}"
         )
 
-    async def classify(self, request: ClassificationRequest) -> ClassificationRequest:
+    async def classify_pair(
+        self,
+        new_memory: MemoryFact,
+        similar_memory: SimilarMemory,
+        check_type: CheckType = "primary",
+        existing_result: Optional[SimilarityResult] = None,
+    ) -> Optional[SimilarityResult]:
         """
-        Classify pairs using NLI model.
+        Classify a memory pair using NLI model.
 
         Classification logic:
-        1. High entailment (≥ entailment_threshold) → MERGE
-           - Indicates paraphrase or refinement
-        2. High neutral (≥ neutral_threshold) + low entailment (< 0.3) → ADD
-           - Indicates distinct but related facts
-        3. Otherwise → Pass to next classifier
+        1. If existing_result is provided → pass through (NLI only does initial classification)
+        2. High entailment (≥ entailment_threshold) → same
+           - Indicates paraphrase or refinement (memories are the same)
+        3. High neutral (≥ neutral_threshold) + low entailment (< 0.3) → neutral
+           - Indicates distinct but related facts (can coexist)
+        4. Otherwise → None (pass to next classifier)
            - Uncertain or potential contradiction
 
         Args:
-            request: Classification request with pairs to classify
+            new_memory: New memory being added
+            similar_memory: Similar memory to compare against
+            check_type: Type of check ("primary" or "secondary")
+                       NLI checks both types as it's fast and useful for pre-filtering
+            existing_result: Result from previous classifier (if any)
 
         Returns:
-            Updated request with classified pairs moved to results
+            SimilarityResult if confident classification, None otherwise
         """
-        unclassified_pairs = []
+        # If another classifier already classified, pass through
+        if existing_result is not None:
+            return existing_result
+        try:
+            # Run NLI prediction
+            label, scores = self.nli_filter.predict(
+                premise=similar_memory.memory.text,
+                hypothesis=new_memory.text,
+            )
 
-        for pair in request.pairs:
-            try:
-                # Run NLI prediction
-                label, scores = self.nli_filter.predict(
-                    premise=pair.existing_memory.text,
-                    hypothesis=pair.new_memory.text,
-                )
+            # Extract scores: [contradiction, entailment, neutral]
+            contradiction_score = scores[0]
+            entailment_score = scores[1]
+            neutral_score = scores[2]
 
-                # Extract scores: [contradiction, entailment, neutral]
-                contradiction_score = scores[0]
-                entailment_score = scores[1]
-                neutral_score = scores[2]
-
-                # High entailment = paraphrase/refinement → MERGE
-                if entailment_score >= self.entailment_threshold:
-                    logger.debug(
-                        f"NLI MERGE (entailment={entailment_score:.3f}): "
-                        f"{pair.existing_memory.text[:50]}... ↔ {pair.new_memory.text[:50]}..."
-                    )
-
-                    request.results.append(
-                        ClassificationResult(
-                            pair=pair,
-                            classification="MERGE",
-                            classifier_name=self.name,
-                            confidence=entailment_score,
-                            metadata={
-                                "nli_label": label,
-                                "nli_scores": {
-                                    "contradiction": contradiction_score,
-                                    "entailment": entailment_score,
-                                    "neutral": neutral_score,
-                                },
-                            },
-                        )
-                    )
-                    continue
-
-                # High neutral + low entailment = distinct facts → ADD
-                if neutral_score >= self.neutral_threshold and entailment_score < 0.3:
-                    logger.debug(
-                        f"NLI ADD (neutral={neutral_score:.3f}, entailment={entailment_score:.3f}): "
-                        f"{pair.existing_memory.text[:50]}... ↔ {pair.new_memory.text[:50]}..."
-                    )
-
-                    request.results.append(
-                        ClassificationResult(
-                            pair=pair,
-                            classification="ADD",
-                            classifier_name=self.name,
-                            confidence=neutral_score,
-                            metadata={
-                                "nli_label": label,
-                                "nli_scores": {
-                                    "contradiction": contradiction_score,
-                                    "entailment": entailment_score,
-                                    "neutral": neutral_score,
-                                },
-                            },
-                        )
-                    )
-                    continue
-
-                # Uncertain - pass to next classifier
+            # High entailment = paraphrase/refinement → same
+            if entailment_score >= self.entailment_threshold:
                 logger.debug(
-                    f"NLI PASS (C={contradiction_score:.3f}, E={entailment_score:.3f}, N={neutral_score:.3f}): "
-                    f"{pair.existing_memory.text[:50]}... ↔ {pair.new_memory.text[:50]}..."
+                    f"NLI same (entailment={entailment_score:.3f}): "
+                    f"{similar_memory.memory.text[:50]}... ↔ {new_memory.text[:50]}..."
                 )
-                unclassified_pairs.append(pair)
 
-            except Exception as e:
-                logger.error(
-                    f"NLI classifier failed for pair (passing to next classifier): {e}",
-                    exc_info=True,
+                return SimilarityResult(
+                    similar_memory=similar_memory,
+                    outcome="same",
+                    confidence=entailment_score,
+                    classifier_name=self.name,
+                    metadata={
+                        "nli_label": label,
+                        "nli_scores": {
+                            "contradiction": contradiction_score,
+                            "entailment": entailment_score,
+                            "neutral": neutral_score,
+                        },
+                    },
                 )
-                # On error, pass to next classifier
-                unclassified_pairs.append(pair)
 
-        # Update request with unclassified pairs
-        request.pairs = unclassified_pairs
+            # High neutral + low entailment = distinct facts → neutral
+            if neutral_score >= self.neutral_threshold and entailment_score < 0.3:
+                logger.debug(
+                    f"NLI neutral (neutral={neutral_score:.3f}, entailment={entailment_score:.3f}): "
+                    f"{similar_memory.memory.text[:50]}... ↔ {new_memory.text[:50]}..."
+                )
 
-        logger.info(
-            f"NLI classifier: classified {len(request.results)} pairs, "
-            f"{len(unclassified_pairs)} remaining"
-        )
+                return SimilarityResult(
+                    similar_memory=similar_memory,
+                    outcome="neutral",
+                    confidence=neutral_score,
+                    classifier_name=self.name,
+                    metadata={
+                        "nli_label": label,
+                        "nli_scores": {
+                            "contradiction": contradiction_score,
+                            "entailment": entailment_score,
+                            "neutral": neutral_score,
+                        },
+                    },
+                )
 
-        return request
+            # Uncertain - pass to next classifier
+            logger.debug(
+                f"NLI pass (C={contradiction_score:.3f}, E={entailment_score:.3f}, N={neutral_score:.3f}): "
+                f"{similar_memory.memory.text[:50]}... ↔ {new_memory.text[:50]}..."
+            )
+            return None
+
+        except Exception as e:
+            logger.error(
+                f"NLI classifier failed (passing to next classifier): {e}",
+                exc_info=True,
+            )
+            # On error, pass to next classifier
+            return None
 
     def get_metrics(self) -> dict:
         """

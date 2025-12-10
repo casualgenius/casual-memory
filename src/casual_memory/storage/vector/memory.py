@@ -64,6 +64,9 @@ class InMemoryVectorStore:
             return True
 
         for key, value in filters.items():
+            if value is None:
+                continue
+
             if key == "user_id":
                 if payload.get("user_id") != value:
                     return False
@@ -92,6 +95,7 @@ class InMemoryVectorStore:
         results = []
 
         for memory_id, memory_data in self._memories.items():
+            
             vector = memory_data["vector"]
             payload = memory_data["payload"]
 

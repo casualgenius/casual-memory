@@ -1,17 +1,18 @@
 """
-Unit tests for NLI classifier.
+Unit tests for NLI classifier with pass-through architecture.
 
 Tests the NLI-based classification logic including:
-- High entailment → MERGE
-- High neutral + low entailment → ADD
-- Uncertain cases → Pass to next classifier
+- High entailment → same outcome
+- High neutral + low entailment → neutral outcome
+- Uncertain cases → pass through (return None)
+- Pass-through of existing results
 - Error handling
 """
 
 import pytest
 from unittest.mock import Mock
 from casual_memory.models import MemoryFact
-from casual_memory.classifiers.models import MemoryPair, ClassificationRequest
+from casual_memory.classifiers.models import SimilarMemory, SimilarityResult
 from casual_memory.classifiers.nli_classifier import NLIClassifier
 
 
@@ -27,19 +28,9 @@ def mock_nli_filter():
 
 
 @pytest.fixture
-def sample_memory_pair():
-    """Create a sample memory pair for testing."""
-    existing = MemoryFact(
-        text="I live in London",
-        type="fact",
-        tags=["location"],
-        importance=0.8,
-        user_id="user123",
-        confidence=0.7,
-        mention_count=3,
-    )
-
-    new = MemoryFact(
+def new_memory():
+    """Create a new memory for testing."""
+    return MemoryFact(
         text="I live in Central London",
         type="fact",
         tags=["location"],
@@ -49,17 +40,30 @@ def sample_memory_pair():
         mention_count=1,
     )
 
-    return MemoryPair(
-        existing_memory=existing,
-        new_memory=new,
+
+@pytest.fixture
+def similar_memory():
+    """Create a similar memory for testing."""
+    return SimilarMemory(
+        memory_id="mem_123",
+        memory=MemoryFact(
+            text="I live in London",
+            type="fact",
+            tags=["location"],
+            importance=0.8,
+            user_id="user123",
+            confidence=0.7,
+            mention_count=3,
+        ),
         similarity_score=0.92,
-        existing_memory_id="mem_123",
     )
 
 
 @pytest.mark.asyncio
-async def test_nli_classifier_high_entailment_merge(mock_nli_filter, sample_memory_pair):
-    """Test that high entailment scores result in MERGE classification."""
+async def test_nli_classifier_high_entailment_same(
+    mock_nli_filter, new_memory, similar_memory
+):
+    """Test that high entailment scores result in same classification."""
     # Mock NLI to return high entailment score
     mock_nli_filter.predict.return_value = (
         "entailment",
@@ -72,26 +76,23 @@ async def test_nli_classifier_high_entailment_merge(mock_nli_filter, sample_memo
         neutral_threshold=0.5,
     )
 
-    request = ClassificationRequest(
-        pairs=[sample_memory_pair],
-        results=[],
-        user_id="user123",
+    result = await classifier.classify_pair(
+        new_memory, similar_memory, check_type="primary", existing_result=None
     )
 
-    result = await classifier.classify(request)
-
-    # Should classify as MERGE
-    assert len(result.results) == 1
-    assert len(result.pairs) == 0
-    assert result.results[0].classification == "MERGE"
-    assert result.results[0].classifier_name == "nli"
-    assert result.results[0].confidence == 0.95
-    assert "nli_scores" in result.results[0].metadata
+    # Should classify as same
+    assert result is not None
+    assert result.outcome == "same"
+    assert result.classifier_name == "nli"
+    assert result.confidence == 0.95
+    assert "nli_scores" in result.metadata
 
 
 @pytest.mark.asyncio
-async def test_nli_classifier_high_neutral_add(mock_nli_filter, sample_memory_pair):
-    """Test that high neutral + low entailment results in ADD classification."""
+async def test_nli_classifier_high_neutral_neutral(
+    mock_nli_filter, new_memory, similar_memory
+):
+    """Test that high neutral + low entailment results in neutral classification."""
     # Mock NLI to return high neutral, low entailment
     mock_nli_filter.predict.return_value = (
         "neutral",
@@ -104,25 +105,22 @@ async def test_nli_classifier_high_neutral_add(mock_nli_filter, sample_memory_pa
         neutral_threshold=0.5,
     )
 
-    request = ClassificationRequest(
-        pairs=[sample_memory_pair],
-        results=[],
-        user_id="user123",
+    result = await classifier.classify_pair(
+        new_memory, similar_memory, check_type="primary", existing_result=None
     )
 
-    result = await classifier.classify(request)
-
-    # Should classify as ADD
-    assert len(result.results) == 1
-    assert len(result.pairs) == 0
-    assert result.results[0].classification == "ADD"
-    assert result.results[0].classifier_name == "nli"
-    assert result.results[0].confidence == 0.7
+    # Should classify as neutral
+    assert result is not None
+    assert result.outcome == "neutral"
+    assert result.classifier_name == "nli"
+    assert result.confidence == 0.7
 
 
 @pytest.mark.asyncio
-async def test_nli_classifier_uncertain_pass(mock_nli_filter, sample_memory_pair):
-    """Test that uncertain cases are passed to next classifier."""
+async def test_nli_classifier_uncertain_pass(
+    mock_nli_filter, new_memory, similar_memory
+):
+    """Test that uncertain cases are passed to next classifier (return None)."""
     # Mock NLI to return uncertain scores (no clear winner)
     mock_nli_filter.predict.return_value = (
         "contradiction",
@@ -135,21 +133,18 @@ async def test_nli_classifier_uncertain_pass(mock_nli_filter, sample_memory_pair
         neutral_threshold=0.5,
     )
 
-    request = ClassificationRequest(
-        pairs=[sample_memory_pair],
-        results=[],
-        user_id="user123",
+    result = await classifier.classify_pair(
+        new_memory, similar_memory, check_type="primary", existing_result=None
     )
 
-    result = await classifier.classify(request)
-
-    # Should pass to next classifier (not classify)
-    assert len(result.results) == 0
-    assert len(result.pairs) == 1
+    # Should pass to next classifier (return None)
+    assert result is None
 
 
 @pytest.mark.asyncio
-async def test_nli_classifier_neutral_but_high_entailment_pass(mock_nli_filter, sample_memory_pair):
+async def test_nli_classifier_neutral_but_high_entailment_pass(
+    mock_nli_filter, new_memory, similar_memory
+):
     """Test that high neutral but also high entailment is passed (ambiguous)."""
     # Mock NLI to return high neutral BUT also higher entailment
     mock_nli_filter.predict.return_value = (
@@ -163,22 +158,19 @@ async def test_nli_classifier_neutral_but_high_entailment_pass(mock_nli_filter, 
         neutral_threshold=0.5,
     )
 
-    request = ClassificationRequest(
-        pairs=[sample_memory_pair],
-        results=[],
-        user_id="user123",
+    result = await classifier.classify_pair(
+        new_memory, similar_memory, check_type="primary", existing_result=None
     )
 
-    result = await classifier.classify(request)
-
     # Entailment is 0.5, below threshold of 0.85, so should pass
-    # Neutral is 0.4, below threshold of 0.5, so doesn't meet ADD criteria
-    assert len(result.results) == 0
-    assert len(result.pairs) == 1
+    # Neutral is 0.4, below threshold of 0.5, so doesn't meet neutral criteria
+    assert result is None
 
 
 @pytest.mark.asyncio
-async def test_nli_classifier_error_handling(mock_nli_filter, sample_memory_pair):
+async def test_nli_classifier_error_handling(
+    mock_nli_filter, new_memory, similar_memory
+):
     """Test that NLI errors are handled gracefully."""
     # Mock NLI to raise an exception
     mock_nli_filter.predict.side_effect = Exception("NLI model failed")
@@ -189,86 +181,47 @@ async def test_nli_classifier_error_handling(mock_nli_filter, sample_memory_pair
         neutral_threshold=0.5,
     )
 
-    request = ClassificationRequest(
-        pairs=[sample_memory_pair],
-        results=[],
-        user_id="user123",
+    result = await classifier.classify_pair(
+        new_memory, similar_memory, check_type="primary", existing_result=None
     )
 
-    result = await classifier.classify(request)
-
-    # Should pass to next classifier on error
-    assert len(result.results) == 0
-    assert len(result.pairs) == 1
+    # Should pass to next classifier on error (return None)
+    assert result is None
 
 
 @pytest.mark.asyncio
-async def test_nli_classifier_multiple_pairs(mock_nli_filter):
-    """Test classification of multiple pairs."""
-    # Create multiple pairs
-    pair1 = MemoryPair(
-        existing_memory=MemoryFact(
-            text="I live in London",
-            type="fact",
-            tags=[],
-            importance=0.8,
-            user_id="user123",
-        ),
-        new_memory=MemoryFact(
-            text="I live in Central London",
-            type="fact",
-            tags=[],
-            importance=0.8,
-            user_id="user123",
-        ),
-        similarity_score=0.92,
-        existing_memory_id="mem_1",
+async def test_nli_classifier_pass_through_existing_result(
+    mock_nli_filter, new_memory, similar_memory
+):
+    """Test that existing results are passed through unchanged."""
+    # Create an existing result from a previous classifier
+    existing_result = SimilarityResult(
+        similar_memory=similar_memory,
+        outcome="conflict",
+        confidence=0.9,
+        classifier_name="conflict",
+        metadata={"detection_method": "llm"},
     )
 
-    pair2 = MemoryPair(
-        existing_memory=MemoryFact(
-            text="I like coffee",
-            type="preference",
-            tags=[],
-            importance=0.5,
-            user_id="user123",
-        ),
-        new_memory=MemoryFact(
-            text="I like tea",
-            type="preference",
-            tags=[],
-            importance=0.5,
-            user_id="user123",
-        ),
-        similarity_score=0.87,
-        existing_memory_id="mem_2",
+    classifier = NLIClassifier(nli_filter=mock_nli_filter)
+
+    result = await classifier.classify_pair(
+        new_memory, similar_memory, check_type="primary", existing_result=existing_result
     )
 
-    pair3 = MemoryPair(
-        existing_memory=MemoryFact(
-            text="I work as a teacher",
-            type="fact",
-            tags=[],
-            importance=0.7,
-            user_id="user123",
-        ),
-        new_memory=MemoryFact(
-            text="I work as a doctor",
-            type="fact",
-            tags=[],
-            importance=0.7,
-            user_id="user123",
-        ),
-        similarity_score=0.91,
-        existing_memory_id="mem_3",
-    )
+    # Should pass through the existing result
+    assert result == existing_result
+    assert result.outcome == "conflict"
+    assert result.classifier_name == "conflict"
 
-    # Mock NLI to return different results for each pair
-    mock_nli_filter.predict.side_effect = [
-        ("entailment", [0.1, 0.95, 0.05]),  # pair1: high entailment → MERGE
-        ("neutral", [0.1, 0.2, 0.7]),  # pair2: high neutral → ADD
-        ("contradiction", [0.8, 0.1, 0.1]),  # pair3: contradiction → PASS
-    ]
+    # NLI should not be called
+    mock_nli_filter.predict.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_nli_classifier_multiple_scenarios():
+    """Test various entailment/neutral combinations."""
+    mock_nli_filter = Mock()
 
     classifier = NLIClassifier(
         nli_filter=mock_nli_filter,
@@ -276,26 +229,40 @@ async def test_nli_classifier_multiple_pairs(mock_nli_filter):
         neutral_threshold=0.5,
     )
 
-    request = ClassificationRequest(
-        pairs=[pair1, pair2, pair3],
-        results=[],
+    new_mem = MemoryFact(
+        text="Test memory",
+        type="fact",
+        tags=[],
+        importance=0.7,
         user_id="user123",
     )
 
-    result = await classifier.classify(request)
+    similar_mem = SimilarMemory(
+        memory_id="mem_1",
+        memory=MemoryFact(
+            text="Similar memory",
+            type="fact",
+            tags=[],
+            importance=0.7,
+            user_id="user123",
+        ),
+        similarity_score=0.90,
+    )
 
-    # Should classify 2, pass 1
-    assert len(result.results) == 2
-    assert len(result.pairs) == 1
+    # Test 1: Very high entailment → same
+    mock_nli_filter.predict.return_value = ("entailment", [0.02, 0.96, 0.02])
+    result = await classifier.classify_pair(new_mem, similar_mem, "primary", None)
+    assert result.outcome == "same"
 
-    # Check classifications
-    assert result.results[0].classification == "MERGE"
-    assert result.results[0].pair.existing_memory_id == "mem_1"
+    # Test 2: Very high neutral, low entailment → neutral
+    mock_nli_filter.predict.return_value = ("neutral", [0.05, 0.15, 0.80])
+    result = await classifier.classify_pair(new_mem, similar_mem, "primary", None)
+    assert result.outcome == "neutral"
 
-    assert result.results[1].classification == "ADD"
-    assert result.results[1].pair.existing_memory_id == "mem_2"
-
-    assert result.pairs[0].existing_memory_id == "mem_3"
+    # Test 3: High contradiction → pass through
+    mock_nli_filter.predict.return_value = ("contradiction", [0.85, 0.10, 0.05])
+    result = await classifier.classify_pair(new_mem, similar_mem, "primary", None)
+    assert result is None
 
 
 def test_nli_classifier_get_metrics(mock_nli_filter):

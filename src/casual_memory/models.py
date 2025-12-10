@@ -93,3 +93,8 @@ class ShortTermMemory(BaseModel):
     content: str
     role: Literal["user", "assistant"]
     timestamp: str
+
+class MemoryQueryFilter(BaseModel):
+    type: Optional[List[str] | None] = None
+    min_importance: Optional[float | None] = None
+    user_id: Optional[str | None] = None
