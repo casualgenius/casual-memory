@@ -17,8 +17,9 @@ from casual_memory.models import (
     MemoryConflict,
     ConflictResolution,
     ShortTermMemory,
+    MemoryQueryFilter
 )
-from casual_memory.extractors import LLMMemoryExtracter
+from casual_memory.memory_service import MemoryService
 
 __all__ = [
     "__version__",
@@ -28,5 +29,6 @@ __all__ = [
     "MemoryConflict",
     "ConflictResolution",
     "ShortTermMemory",
-    "LLMMemoryExtracter"
+    "MemoryQueryFilter",
+    "MemoryService"
 ]

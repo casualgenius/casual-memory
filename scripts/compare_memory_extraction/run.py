@@ -41,7 +41,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../src/')))
 
 from casual_llm import ChatMessage, ModelConfig, create_provider
-from casual_memory import LLMMemoryExtracter
+from casual_memory.extractors import LLMMemoryExtracter
 from config_loader import ConfigLoader
 
 

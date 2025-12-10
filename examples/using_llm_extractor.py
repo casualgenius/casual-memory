@@ -7,7 +7,7 @@ system prompts for extracting user memories vs. assistant-provided information.
 
 import asyncio
 from casual_llm import create_provider, ModelConfig, Provider, UserMessage, AssistantMessage
-from casual_memory import LLMMemoryExtracter
+from casual_memory.extractors import LLMMemoryExtracter
 from casual_memory.extractors.prompts import USER_MEMORY_PROMPT, ASSISTANT_MEMORY_PROMPT
 
 
