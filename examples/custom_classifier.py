@@ -59,7 +59,7 @@ async def main():
     custom_classifier = SimpleRuleBasedClassifier(similarity_threshold=0.95)
 
     # Build pipeline with custom classifier
-    pipeline = ClassificationPipeline(classifiers=[custom_classifier])
+    _pipeline = ClassificationPipeline(classifiers=[custom_classifier])
 
     print("Pipeline created with custom classifier")
     print("Ready to classify memory pairs!\n")

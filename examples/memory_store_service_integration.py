@@ -95,7 +95,7 @@ def get_db():
 # ==============================================================================
 
 from app.database.connection import engine
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 
 from casual_memory.models import ConflictResolution, MemoryConflict
 from casual_memory.storage.conflicts.sqlalchemy import SQLAlchemyConflictStore

@@ -15,7 +15,6 @@ This provides true integration testing of the classification pipeline
 while remaining fast and deterministic.
 """
 
-
 import pytest
 
 from casual_memory.classifiers import (

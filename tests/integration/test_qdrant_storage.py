@@ -61,7 +61,7 @@ async def test_qdrant_update_memory(skip_if_no_qdrant):
     """Test updating memories in Qdrant."""
     pytest.importorskip("qdrant_client")
 
-    storage = QdrantVectorStorage(
+    storage = QdrantMemoryStore(
         collection_name=f"test_collection_{uuid4().hex[:8]}", host="localhost", port=6333
     )
 
@@ -107,7 +107,7 @@ async def test_qdrant_archive_memory(skip_if_no_qdrant):
     """Test archiving memories in Qdrant."""
     pytest.importorskip("qdrant_client")
 
-    storage = QdrantVectorStorage(
+    storage = QdrantMemoryStore(
         collection_name=f"test_collection_{uuid4().hex[:8]}", host="localhost", port=6333
     )
 
@@ -146,7 +146,7 @@ async def test_qdrant_user_isolation(skip_if_no_qdrant):
     """Test that memories are isolated by user_id."""
     pytest.importorskip("qdrant_client")
 
-    storage = QdrantVectorStorage(
+    storage = QdrantMemoryStore(
         collection_name=f"test_collection_{uuid4().hex[:8]}", host="localhost", port=6333
     )
 

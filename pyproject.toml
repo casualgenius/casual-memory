@@ -95,8 +95,14 @@ target-version = ["py310", "py311", "py312"]
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+
+[tool.ruff.lint]
 select = ["E", "F", "I", "N", "W"]
 ignore = ["E501"]  # Line too long (handled by black)
+
+[tool.ruff.lint.per-file-ignores]
+"examples/*" = ["E402"]  # Module level imports not at top (intentional for demonstration)
+"scripts/*" = ["E402"]  # Module level imports not at top (need sys.path modification first)
 
 [tool.mypy]
 python_version = "3.10"

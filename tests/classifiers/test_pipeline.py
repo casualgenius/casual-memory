@@ -207,7 +207,7 @@ async def test_pipeline_strategy_tiered(new_memory, similar_memories):
         max_secondary_checks=2,
     )
 
-    result = await pipeline.classify(new_memory, similar_memories)
+    _result = await pipeline.classify(new_memory, similar_memories)
 
     # Should check mem_1 (0.95) as primary, mem_2 (0.92) as secondary
     # mem_3 (0.87) and mem_4 (0.82) are below threshold

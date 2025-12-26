@@ -188,7 +188,7 @@ class QdrantMemoryStore:
             List of tuples containing (MemoryPoint, similarity_score)
         """
         if threshold is None:
-            threshold = config.MEMORY_SIMILARITY_THRESHOLD
+            threshold = 0.85  # Default similarity threshold
 
         # Build filter conditions
         conditions = []

@@ -4,7 +4,6 @@ Unit tests for in-memory conflict storage.
 Tests conflict storage, retrieval, resolution, and management.
 """
 
-
 import pytest
 
 from casual_memory.models import ConflictResolution, MemoryConflict

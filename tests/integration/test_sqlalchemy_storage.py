@@ -1,6 +1,5 @@
 """Integration tests for SQLAlchemy conflict storage backend."""
 
-
 import pytest
 
 from casual_memory.models import MemoryConflict
@@ -58,7 +57,7 @@ async def test_sqlalchemy_list_pending_conflicts(skip_if_no_postgres):
     """Test listing pending conflicts."""
     pytest.importorskip("sqlalchemy")
 
-    storage = SQLAlchemyConflictStorage(
+    storage = SQLAlchemyConflictStore(
         connection_string="postgresql://postgres:postgres@localhost:5432/test_conflicts"
     )
 
@@ -101,7 +100,7 @@ async def test_sqlalchemy_resolve_conflict(skip_if_no_postgres):
     """Test resolving conflicts."""
     pytest.importorskip("sqlalchemy")
 
-    storage = SQLAlchemyConflictStorage(
+    storage = SQLAlchemyConflictStore(
         connection_string="postgresql://postgres:postgres@localhost:5432/test_conflicts"
     )
 
@@ -149,7 +148,7 @@ async def test_sqlalchemy_user_isolation(skip_if_no_postgres):
     """Test that conflicts are isolated by user_id."""
     pytest.importorskip("sqlalchemy")
 
-    storage = SQLAlchemyConflictStorage(
+    storage = SQLAlchemyConflictStore(
         connection_string="postgresql://postgres:postgres@localhost:5432/test_conflicts"
     )
 
@@ -204,7 +203,7 @@ async def test_sqlalchemy_count_conflicts(skip_if_no_postgres):
     """Test counting conflicts by status."""
     pytest.importorskip("sqlalchemy")
 
-    storage = SQLAlchemyConflictStorage(
+    storage = SQLAlchemyConflictStore(
         connection_string="postgresql://postgres:postgres@localhost:5432/test_conflicts"
     )
 

@@ -58,7 +58,7 @@ async def test_redis_message_limit(skip_if_no_redis):
     """Test that Redis respects the message limit."""
     pytest.importorskip("redis")
 
-    storage = RedisShortTermStorage(
+    storage = RedisShortTermStore(
         host="localhost", port=6379, db=15, max_messages=5  # Limit to 5 messages
     )
 
@@ -97,7 +97,7 @@ async def test_redis_clear_messages(skip_if_no_redis):
     """Test clearing messages from Redis."""
     pytest.importorskip("redis")
 
-    storage = RedisShortTermStorage(host="localhost", port=6379, db=15)
+    storage = RedisShortTermStore(host="localhost", port=6379, db=15)
 
     await storage.initialize()
 
@@ -133,7 +133,7 @@ async def test_redis_user_isolation(skip_if_no_redis):
     """Test that messages are isolated by user_id."""
     pytest.importorskip("redis")
 
-    storage = RedisShortTermStorage(host="localhost", port=6379, db=15)
+    storage = RedisShortTermStore(host="localhost", port=6379, db=15)
 
     await storage.initialize()
 
@@ -175,7 +175,7 @@ async def test_redis_get_with_limit(skip_if_no_redis):
     """Test retrieving messages with a limit."""
     pytest.importorskip("redis")
 
-    storage = RedisShortTermStorage(host="localhost", port=6379, db=15)
+    storage = RedisShortTermStore(host="localhost", port=6379, db=15)
 
     await storage.initialize()
 
