@@ -116,12 +116,11 @@ async def test_normalization_enabled():
     """Test that vectors are normalized when enabled."""
     pytest.importorskip("sentence_transformers")
 
-    from casual_memory.embeddings import E5Embedding
     import math
 
-    embedder = E5Embedding(
-        model_name="intfloat/e5-small-v2", normalize_embeddings=True
-    )
+    from casual_memory.embeddings import E5Embedding
+
+    embedder = E5Embedding(model_name="intfloat/e5-small-v2", normalize_embeddings=True)
 
     vector = await embedder.embed_document("test text")
 

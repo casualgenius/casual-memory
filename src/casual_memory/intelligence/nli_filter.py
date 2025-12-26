@@ -11,9 +11,9 @@ Architecture: Cross-encoder processes both sentences jointly, optimized
 for pairwise sentence comparison tasks like contradiction detection.
 """
 
+import importlib.util
 import logging
 from typing import Literal, Optional
-import importlib.util
 
 logger = logging.getLogger(__name__)
 

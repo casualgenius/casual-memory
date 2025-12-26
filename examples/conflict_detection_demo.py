@@ -5,27 +5,29 @@ Demonstrates conflict detection with LLM verifier and heuristic fallback.
 """
 
 import asyncio
+
+from casual_llm import ModelConfig, Provider, create_provider
+
 from casual_memory.intelligence import LLMConflictVerifier
 from casual_memory.models import MemoryFact
-from casual_llm import create_provider, ModelConfig, Provider
 
 
 async def main():
     print("=== Conflict Detection Demo ===\n")
 
     # Initialize LLM provider
-    llm_provider = create_provider(ModelConfig(
-        name="qwen2.5:7b-instruct",
-        provider=Provider.OLLAMA,
-        base_url="http://localhost:11434",
-        temperature=0.1
-    ))
+    llm_provider = create_provider(
+        ModelConfig(
+            name="qwen2.5:7b-instruct",
+            provider=Provider.OLLAMA,
+            base_url="http://localhost:11434",
+            temperature=0.1,
+        )
+    )
 
     # Create conflict verifier with fallback enabled
     verifier = LLMConflictVerifier(
-        llm_provider=llm_provider,
-        model_name="qwen2.5:7b-instruct",
-        enable_fallback=True
+        llm_provider=llm_provider, model_name="qwen2.5:7b-instruct", enable_fallback=True
     )
 
     # Test cases
@@ -37,16 +39,16 @@ async def main():
                 type="fact",
                 tags=["location"],
                 importance=0.8,
-                source="user"
+                source="user",
             ),
             "memory_b": MemoryFact(
                 text="I live in Paris",
                 type="fact",
                 tags=["location"],
                 importance=0.9,
-                source="user"
+                source="user",
             ),
-            "similarity": 0.88
+            "similarity": 0.88,
         },
         {
             "name": "Job Refinement (No Conflict)",
@@ -55,16 +57,16 @@ async def main():
                 type="fact",
                 tags=["job"],
                 importance=0.7,
-                source="user"
+                source="user",
             ),
             "memory_b": MemoryFact(
                 text="I work as a senior software engineer at Google",
                 type="fact",
                 tags=["job"],
                 importance=0.9,
-                source="user"
+                source="user",
             ),
-            "similarity": 0.85
+            "similarity": 0.85,
         },
         {
             "name": "Preference Negation",
@@ -73,17 +75,17 @@ async def main():
                 type="preference",
                 tags=["drink"],
                 importance=0.6,
-                source="user"
+                source="user",
             ),
             "memory_b": MemoryFact(
                 text="I don't like coffee",
                 type="preference",
                 tags=["drink"],
                 importance=0.7,
-                source="user"
+                source="user",
             ),
-            "similarity": 0.92
-        }
+            "similarity": 0.92,
+        },
     ]
 
     # Test each case
@@ -94,9 +96,7 @@ async def main():
         print(f"  Similarity: {case['similarity']:.2f}")
 
         is_conflict, method = await verifier.verify_conflict(
-            case['memory_a'],
-            case['memory_b'],
-            case['similarity']
+            case["memory_a"], case["memory_b"], case["similarity"]
         )
 
         print(f"  Result: {'CONFLICT' if is_conflict else 'NO CONFLICT'}")

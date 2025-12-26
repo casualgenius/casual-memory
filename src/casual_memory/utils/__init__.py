@@ -1,8 +1,8 @@
 """Utility functions for memory management."""
 
 from casual_memory.utils.date_normalizer import (
-    extract_and_normalize_date,
     calculate_valid_until,
+    extract_and_normalize_date,
     normalize_memory_dates,
 )
 

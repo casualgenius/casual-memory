@@ -1,9 +1,11 @@
 """Integration tests for Qdrant vector storage backend."""
 
-import pytest
 from uuid import uuid4
-from casual_memory.storage.vector.qdrant import QdrantMemoryStore
+
+import pytest
+
 from casual_memory.models import MemoryFact
+from casual_memory.storage.vector.qdrant import QdrantMemoryStore
 
 
 @pytest.mark.integration
@@ -14,9 +16,7 @@ async def test_qdrant_add_and_search(skip_if_no_qdrant):
 
     # Create storage instance
     storage = QdrantMemoryStore(
-        collection_name=f"test_collection_{uuid4().hex[:8]}",
-        host="localhost",
-        port=6333
+        collection_name=f"test_collection_{uuid4().hex[:8]}", host="localhost", port=6333
     )
 
     # Wait for initialization
@@ -29,7 +29,7 @@ async def test_qdrant_add_and_search(skip_if_no_qdrant):
             type="fact",
             tags=["job", "career"],
             importance=0.9,
-            source="user"
+            source="user",
         )
 
         # Add memory
@@ -38,9 +38,7 @@ async def test_qdrant_add_and_search(skip_if_no_qdrant):
 
         # Search for similar memory
         results = await storage.search(
-            query_text="software engineering job",
-            user_id="test_user",
-            limit=5
+            query_text="software engineering job", user_id="test_user", limit=5
         )
 
         # Should find the memory we just added
@@ -64,9 +62,7 @@ async def test_qdrant_update_memory(skip_if_no_qdrant):
     pytest.importorskip("qdrant_client")
 
     storage = QdrantVectorStorage(
-        collection_name=f"test_collection_{uuid4().hex[:8]}",
-        host="localhost",
-        port=6333
+        collection_name=f"test_collection_{uuid4().hex[:8]}", host="localhost", port=6333
     )
 
     await storage.initialize()
@@ -74,11 +70,7 @@ async def test_qdrant_update_memory(skip_if_no_qdrant):
     try:
         # Add initial memory
         memory = MemoryFact(
-            text="I live in London",
-            type="fact",
-            tags=["location"],
-            importance=0.8,
-            source="user"
+            text="I live in London", type="fact", tags=["location"], importance=0.8, source="user"
         )
 
         memory_id = await storage.add(memory, user_id="test_user")
@@ -89,17 +81,13 @@ async def test_qdrant_update_memory(skip_if_no_qdrant):
             type="fact",
             tags=["location", "residence"],
             importance=0.9,
-            source="user"
+            source="user",
         )
 
         await storage.update(memory_id, updated_memory, user_id="test_user")
 
         # Search for updated memory
-        results = await storage.search(
-            query_text="where do you live",
-            user_id="test_user",
-            limit=1
-        )
+        results = await storage.search(query_text="where do you live", user_id="test_user", limit=1)
 
         assert len(results) > 0
         assert results[0].text == "I live in Central London"
@@ -120,9 +108,7 @@ async def test_qdrant_archive_memory(skip_if_no_qdrant):
     pytest.importorskip("qdrant_client")
 
     storage = QdrantVectorStorage(
-        collection_name=f"test_collection_{uuid4().hex[:8]}",
-        host="localhost",
-        port=6333
+        collection_name=f"test_collection_{uuid4().hex[:8]}", host="localhost", port=6333
     )
 
     await storage.initialize()
@@ -130,11 +116,7 @@ async def test_qdrant_archive_memory(skip_if_no_qdrant):
     try:
         # Add memory
         memory = MemoryFact(
-            text="I work as a teacher",
-            type="fact",
-            tags=["job"],
-            importance=0.8,
-            source="user"
+            text="I work as a teacher", type="fact", tags=["job"], importance=0.8, source="user"
         )
 
         memory_id = await storage.add(memory, user_id="test_user")
@@ -144,10 +126,7 @@ async def test_qdrant_archive_memory(skip_if_no_qdrant):
 
         # Search excluding archived (default behavior)
         results = await storage.search(
-            query_text="what is your job",
-            user_id="test_user",
-            limit=5,
-            exclude_archived=True
+            query_text="what is your job", user_id="test_user", limit=5, exclude_archived=True
         )
 
         # Should not find archived memory
@@ -168,9 +147,7 @@ async def test_qdrant_user_isolation(skip_if_no_qdrant):
     pytest.importorskip("qdrant_client")
 
     storage = QdrantVectorStorage(
-        collection_name=f"test_collection_{uuid4().hex[:8]}",
-        host="localhost",
-        port=6333
+        collection_name=f"test_collection_{uuid4().hex[:8]}", host="localhost", port=6333
     )
 
     await storage.initialize()
@@ -182,7 +159,7 @@ async def test_qdrant_user_isolation(skip_if_no_qdrant):
             type="fact",
             tags=["hobby"],
             importance=0.7,
-            source="user"
+            source="user",
         )
         await storage.add(memory1, user_id="user_1")
 
@@ -192,23 +169,15 @@ async def test_qdrant_user_isolation(skip_if_no_qdrant):
             type="fact",
             tags=["hobby"],
             importance=0.7,
-            source="user"
+            source="user",
         )
         await storage.add(memory2, user_id="user_2")
 
         # Search as user1
-        results_user1 = await storage.search(
-            query_text="hobby",
-            user_id="user_1",
-            limit=5
-        )
+        results_user1 = await storage.search(query_text="hobby", user_id="user_1", limit=5)
 
         # Search as user2
-        results_user2 = await storage.search(
-            query_text="hobby",
-            user_id="user_2",
-            limit=5
-        )
+        results_user2 = await storage.search(query_text="hobby", user_id="user_2", limit=5)
 
         # Each user should only see their own memories
         assert len(results_user1) > 0

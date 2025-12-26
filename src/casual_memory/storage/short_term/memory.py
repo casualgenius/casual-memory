@@ -7,8 +7,9 @@ with multiple replicas, use Redis implementation instead.
 """
 
 import logging
-from typing import List, Dict
 from collections import deque
+from typing import Dict, List
+
 from casual_memory.models import ShortTermMemory
 
 logger = logging.getLogger(__name__)

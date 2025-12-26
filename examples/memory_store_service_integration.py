@@ -35,6 +35,7 @@ class ConflictDetector:
 # memory-store-service/app/config.py
 from pydantic_settings import BaseSettings
 
+
 class Settings(BaseSettings):
     # Database configuration
     POSTGRES_HOST: str = "localhost"
@@ -57,6 +58,7 @@ class Settings(BaseSettings):
             f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
         )
 
+
 settings = Settings()
 
 # ==============================================================================
@@ -72,11 +74,12 @@ engine = create_engine(
     pool_size=10,
     max_overflow=20,
     pool_pre_ping=True,
-    echo=False  # Set to True for SQL debugging
+    echo=False,  # Set to True for SQL debugging
 )
 
 # Create session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
 
 def get_db():
     """Dependency for FastAPI endpoints."""
@@ -86,20 +89,22 @@ def get_db():
     finally:
         db.close()
 
+
 # ==============================================================================
 # memory-store-service/app/main.py
 # ==============================================================================
 
-from fastapi import FastAPI, Depends
-from sqlalchemy.orm import Session
+from app.database.connection import engine
+from fastapi import FastAPI
+
+from casual_memory.models import ConflictResolution, MemoryConflict
 from casual_memory.storage.conflicts.sqlalchemy import SQLAlchemyConflictStore
-from casual_memory.models import MemoryConflict, ConflictResolution
-from app.database.connection import engine, get_db
 
 app = FastAPI()
 
 # Initialize conflict store with shared engine
 conflict_store = SQLAlchemyConflictStore(engine)
+
 
 # Create tables on startup (or use Alembic migrations)
 @app.on_event("startup")
@@ -110,9 +115,11 @@ async def startup_event():
     # Option 2: Use Alembic migrations (production)
     # alembic upgrade head
 
+
 # ==============================================================================
 # API Endpoints
 # ==============================================================================
+
 
 @app.post("/conflicts")
 async def create_conflict(conflict: MemoryConflict):
@@ -120,17 +127,20 @@ async def create_conflict(conflict: MemoryConflict):
     conflict_id = conflict_store.add_conflict(conflict)
     return {"conflict_id": conflict_id}
 
+
 @app.get("/conflicts/pending/{user_id}")
 async def get_pending_conflicts(user_id: str, limit: int = 10):
     """Get pending conflicts for a user."""
     conflicts = conflict_store.get_pending_conflicts(user_id, limit=limit)
     return {"conflicts": conflicts}
 
+
 @app.post("/conflicts/{conflict_id}/resolve")
 async def resolve_conflict(conflict_id: str, resolution: ConflictResolution):
     """Resolve a conflict."""
     success = conflict_store.resolve_conflict(conflict_id, resolution)
     return {"success": success}
+
 
 @app.get("/conflicts/{conflict_id}")
 async def get_conflict(conflict_id: str):
@@ -140,13 +150,16 @@ async def get_conflict(conflict_id: str):
         raise HTTPException(status_code=404, detail="Conflict not found")
     return conflict
 
+
 # ==============================================================================
 # Usage in existing services
 # ==============================================================================
 
 # memory-store-service/app/conflict/detector.py (NEW)
-from casual_memory.storage.conflicts.sqlalchemy import SQLAlchemyConflictStore
 from app.database.connection import engine
+
+from casual_memory.storage.conflicts.sqlalchemy import SQLAlchemyConflictStore
+
 
 class ConflictDetector:
     def __init__(self):
@@ -159,6 +172,7 @@ class ConflictDetector:
     def get_pending_for_user(self, user_id: str) -> list[MemoryConflict]:
         """Get all pending conflicts for resolution."""
         return self.conflict_store.get_pending_conflicts(user_id)
+
 
 # ==============================================================================
 # Development vs Production Configuration
@@ -190,34 +204,37 @@ Create conflicts table
 
 Revision ID: 001
 """
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
+
 
 def upgrade():
     op.create_table(
-        'conflicts',
-        sa.Column('id', sa.String, primary_key=True),
-        sa.Column('user_id', sa.String, nullable=False, index=True),
-        sa.Column('memory_a_id', sa.String, nullable=False),
-        sa.Column('memory_b_id', sa.String, nullable=False),
-        sa.Column('category', sa.String, nullable=False),
-        sa.Column('is_singleton_category', sa.Boolean, nullable=False, default=False),
-        sa.Column('similarity_score', sa.Float, nullable=False),
-        sa.Column('status', sa.String, nullable=False, default='pending', index=True),
-        sa.Column('avg_importance', sa.Float, nullable=False),
-        sa.Column('clarification_hint', sa.Text, nullable=False),
-        sa.Column('resolution_type', sa.String, nullable=True),
-        sa.Column('winning_memory_id', sa.String, nullable=True),
-        sa.Column('resolution_attempts', sa.Integer, nullable=False, default=0),
-        sa.Column('created_at', sa.DateTime, nullable=False),
-        sa.Column('resolved_at', sa.DateTime, nullable=True),
-        sa.Column('metadata_json', sa.Text, nullable=False, default='{}'),
+        "conflicts",
+        sa.Column("id", sa.String, primary_key=True),
+        sa.Column("user_id", sa.String, nullable=False, index=True),
+        sa.Column("memory_a_id", sa.String, nullable=False),
+        sa.Column("memory_b_id", sa.String, nullable=False),
+        sa.Column("category", sa.String, nullable=False),
+        sa.Column("is_singleton_category", sa.Boolean, nullable=False, default=False),
+        sa.Column("similarity_score", sa.Float, nullable=False),
+        sa.Column("status", sa.String, nullable=False, default="pending", index=True),
+        sa.Column("avg_importance", sa.Float, nullable=False),
+        sa.Column("clarification_hint", sa.Text, nullable=False),
+        sa.Column("resolution_type", sa.String, nullable=True),
+        sa.Column("winning_memory_id", sa.String, nullable=True),
+        sa.Column("resolution_attempts", sa.Integer, nullable=False, default=0),
+        sa.Column("created_at", sa.DateTime, nullable=False),
+        sa.Column("resolved_at", sa.DateTime, nullable=True),
+        sa.Column("metadata_json", sa.Text, nullable=False, default="{}"),
     )
 
-    op.create_index('idx_conflicts_user_status', 'conflicts', ['user_id', 'status'])
+    op.create_index("idx_conflicts_user_status", "conflicts", ["user_id", "status"])
+
 
 def downgrade():
-    op.drop_table('conflicts')
+    op.drop_table("conflicts")
+
 
 # ==============================================================================
 # Benefits of This Approach
@@ -259,8 +276,10 @@ def downgrade():
 
 import pytest
 from sqlalchemy import create_engine
-from casual_memory.storage.conflicts.sqlalchemy import SQLAlchemyConflictStore
+
 from casual_memory.models import MemoryConflict
+from casual_memory.storage.conflicts.sqlalchemy import SQLAlchemyConflictStore
+
 
 @pytest.fixture
 def test_store():
@@ -269,6 +288,7 @@ def test_store():
     store = SQLAlchemyConflictStore(engine)
     store.create_tables()
     return store
+
 
 def test_conflict_workflow(test_store):
     """Test full conflict lifecycle."""
@@ -281,7 +301,7 @@ def test_conflict_workflow(test_store):
         category="location",
         similarity_score=0.91,
         avg_importance=0.8,
-        clarification_hint="Which location?"
+        clarification_hint="Which location?",
     )
 
     # Store it
@@ -294,10 +314,7 @@ def test_conflict_workflow(test_store):
 
     # Resolve it
     resolution = ConflictResolution(
-        conflict_id=conflict_id,
-        decision="keep_a",
-        resolution_type="manual",
-        resolved_by="user"
+        conflict_id=conflict_id, decision="keep_a", resolution_type="manual", resolved_by="user"
     )
     success = test_store.resolve_conflict(conflict_id, resolution)
     assert success is True

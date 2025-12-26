@@ -15,20 +15,20 @@ This provides true integration testing of the classification pipeline
 while remaining fast and deterministic.
 """
 
-import pytest
-from unittest.mock import Mock, AsyncMock
 
-from casual_memory.memory_service import MemoryService
-from casual_memory.models import MemoryFact, MemoryQueryFilter
-from casual_memory.storage.vector.memory import InMemoryVectorStore
-from casual_memory.storage.conflicts.memory import InMemoryConflictStore
+import pytest
+
 from casual_memory.classifiers import (
-    MemoryClassificationPipeline,
-    NLIClassifier,
+    AutoResolutionClassifier,
     ConflictClassifier,
     DuplicateClassifier,
-    AutoResolutionClassifier,
+    MemoryClassificationPipeline,
+    NLIClassifier,
 )
+from casual_memory.memory_service import MemoryService
+from casual_memory.models import MemoryFact, MemoryQueryFilter
+from casual_memory.storage.conflicts.memory import InMemoryConflictStore
+from casual_memory.storage.vector.memory import InMemoryVectorStore
 
 
 class MockEmbedding:
@@ -58,8 +58,17 @@ class MockEmbedding:
 
         # Boost important keywords (locations, jobs, preferences)
         important_keywords = {
-            "live", "work", "like", "prefer", "paris", "london", "teacher",
-            "doctor", "engineer", "coffee", "pizza"
+            "live",
+            "work",
+            "like",
+            "prefer",
+            "paris",
+            "london",
+            "teacher",
+            "doctor",
+            "engineer",
+            "coffee",
+            "pizza",
         }
 
         for i, word in enumerate(words):
@@ -122,8 +131,10 @@ class MockNLIFilter:
 
                 # Skip articles and get the actual noun
                 articles = {"a", "an", "the"}
-                premise_obj = next((w.rstrip('.,;') for w in premise_words if w not in articles), "")
-                hypo_obj = next((w.rstrip('.,;') for w in hypo_words if w not in articles), "")
+                premise_obj = next(
+                    (w.rstrip(".,;") for w in premise_words if w not in articles), ""
+                )
+                hypo_obj = next((w.rstrip(".,;") for w in hypo_words if w not in articles), "")
 
                 if premise_obj and hypo_obj and premise_obj != hypo_obj:
                     # Return [contradiction, entailment, neutral] scores
@@ -181,8 +192,8 @@ class MockConflictVerifier:
             a_words = a_text.split("live in")[-1].strip().split()
             b_words = b_text.split("live in")[-1].strip().split()
             articles = {"a", "an", "the"}
-            a_loc = next((w.rstrip('.,;') for w in a_words if w not in articles), "")
-            b_loc = next((w.rstrip('.,;') for w in b_words if w not in articles), "")
+            a_loc = next((w.rstrip(".,;") for w in a_words if w not in articles), "")
+            b_loc = next((w.rstrip(".,;") for w in b_words if w not in articles), "")
             if a_loc and b_loc and a_loc != b_loc:
                 return True, {
                     "category": "location",
@@ -208,8 +219,8 @@ class MockConflictVerifier:
             articles = {"a", "an", "the"}
             a_words = [w for w in a_job_text.split() if w not in articles]
             b_words = [w for w in b_job_text.split() if w not in articles]
-            a_job = a_words[-1].rstrip('.,;') if a_words else ""
-            b_job = b_words[-1].rstrip('.,;') if b_words else ""
+            a_job = a_words[-1].rstrip(".,;") if a_words else ""
+            b_job = b_words[-1].rstrip(".,;") if b_words else ""
 
             # Only conflict if jobs are different AND not related (one doesn't contain the other)
             if a_job and b_job and a_job != b_job and a_job not in b_job and b_job not in a_job:
@@ -226,8 +237,8 @@ class MockConflictVerifier:
             a_words = a_text.split("work in")[-1].strip().split()
             b_words = b_text.split("work in")[-1].strip().split()
             articles = {"a", "an", "the"}
-            a_loc = next((w.rstrip('.,;') for w in a_words if w not in articles), "")
-            b_loc = next((w.rstrip('.,;') for w in b_words if w not in articles), "")
+            a_loc = next((w.rstrip(".,;") for w in a_words if w not in articles), "")
+            b_loc = next((w.rstrip(".,;") for w in b_words if w not in articles), "")
             if a_loc and b_loc and a_loc != b_loc:
                 return True, {
                     "category": "job_location",
@@ -325,8 +336,8 @@ class MockDuplicateDetector:
                 a_words = a_text.split(pattern_a)[-1].strip().split()
                 b_words = b_text.split(pattern_b)[-1].strip().split()
                 articles = {"a", "an", "the"}
-                a_obj = next((w.rstrip('.,;') for w in a_words if w not in articles), "")
-                b_obj = next((w.rstrip('.,;') for w in b_words if w not in articles), "")
+                a_obj = next((w.rstrip(".,;") for w in a_words if w not in articles), "")
+                b_obj = next((w.rstrip(".,;") for w in b_words if w not in articles), "")
 
                 if a_obj and b_obj and (a_obj == b_obj or a_obj in b_obj or b_obj in a_obj):
                     # Same core fact, check for refinement
@@ -514,7 +525,9 @@ async def test_add_refinement_supersedes_old(memory_service, vector_store):
 
 
 @pytest.mark.asyncio
-async def test_add_conflicting_memory_creates_conflict(memory_service, conflict_store, vector_store):
+async def test_add_conflicting_memory_creates_conflict(
+    memory_service, conflict_store, vector_store
+):
     """Test adding a conflicting memory creates a conflict record."""
     # Add first memory
     memory1 = MemoryFact(
@@ -624,9 +637,15 @@ async def test_query_memory_returns_relevant_results(memory_service):
     """Test querying memories returns relevant results."""
     # Add some memories
     memories = [
-        MemoryFact(text="I live in Paris", type="fact", tags=[], user_id="user_123", importance=0.8),
-        MemoryFact(text="I work in London", type="fact", tags=[], user_id="user_123", importance=0.7),
-        MemoryFact(text="I like pizza", type="preference", tags=[], user_id="user_123", importance=0.5),
+        MemoryFact(
+            text="I live in Paris", type="fact", tags=[], user_id="user_123", importance=0.8
+        ),
+        MemoryFact(
+            text="I work in London", type="fact", tags=[], user_id="user_123", importance=0.7
+        ),
+        MemoryFact(
+            text="I like pizza", type="preference", tags=[], user_id="user_123", importance=0.5
+        ),
     ]
 
     for memory in memories:
@@ -676,7 +695,7 @@ async def test_multiple_users_isolation(memory_service):
 
     # Query for user 1
     filter1 = MemoryQueryFilter(user_id="user_1")
-    print('Fetch results 1')
+    print("Fetch results 1")
     results1 = await memory_service.query_memory(
         query="Where do I live?",
         filter=filter1,
@@ -685,7 +704,7 @@ async def test_multiple_users_isolation(memory_service):
 
     # Query for user 2
     filter2 = MemoryQueryFilter(user_id="user_2")
-    print('Fetch results 2')
+    print("Fetch results 2")
     results2 = await memory_service.query_memory(
         query="Where do I live?",
         filter=filter2,
@@ -693,7 +712,7 @@ async def test_multiple_users_isolation(memory_service):
     )
 
     # Each user should only see their own memories
-    print('debug')
+    print("debug")
     print(results1)
     assert len(results1) >= 1
     assert all(r.user_id == "user_1" for r in results1)
@@ -714,10 +733,14 @@ async def test_complex_scenario_multiple_memories(memory_service, vector_store, 
         MemoryFact(text="I live in London", type="fact", tags=[], user_id=user_id, confidence=0.8)
     )
     await memory_service.add_memory(
-        MemoryFact(text="I work as a teacher", type="fact", tags=[], user_id=user_id, confidence=0.7)
+        MemoryFact(
+            text="I work as a teacher", type="fact", tags=[], user_id=user_id, confidence=0.7
+        )
     )
     await memory_service.add_memory(
-        MemoryFact(text="I like coffee", type="preference", tags=[], user_id=user_id, confidence=0.6)
+        MemoryFact(
+            text="I like coffee", type="preference", tags=[], user_id=user_id, confidence=0.6
+        )
     )
 
     # 2. Add refinement (should supersede)
@@ -725,7 +748,7 @@ async def test_complex_scenario_multiple_memories(memory_service, vector_store, 
         MemoryFact(
             text="I work as a senior teacher at Cambridge",
             type="fact",
-        tags=[],
+            tags=[],
             user_id=user_id,
             confidence=0.9,
         )
@@ -735,7 +758,9 @@ async def test_complex_scenario_multiple_memories(memory_service, vector_store, 
 
     # 3. Add duplicate (should update)
     result = await memory_service.add_memory(
-        MemoryFact(text="I like coffee", type="preference", tags=[], user_id=user_id, confidence=0.7)
+        MemoryFact(
+            text="I like coffee", type="preference", tags=[], user_id=user_id, confidence=0.7
+        )
     )
     assert result.action == "updated"
 

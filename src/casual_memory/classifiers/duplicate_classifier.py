@@ -13,8 +13,8 @@ from typing import Optional
 
 from casual_memory.classifiers.models import (
     CheckType,
-    SimilarMemory,
     SimilarityResult,
+    SimilarMemory,
 )
 from casual_memory.intelligence.duplicate_detector import LLMDuplicateDetector
 from casual_memory.models import MemoryFact

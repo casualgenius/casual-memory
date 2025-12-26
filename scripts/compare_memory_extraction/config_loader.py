@@ -2,23 +2,23 @@
 
 import json
 import os
-from pathlib import Path
-from typing import List, Literal, Optional, Dict, Any
-from pydantic import BaseModel, Field, ValidationError
-from datetime import datetime
 
 # Make sure we can import from casual-llm
 import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../src/')))
+from pathlib import Path
+from typing import Any, Dict, List, Literal, Optional
+
+from pydantic import BaseModel, Field, ValidationError
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src/")))
 
 from casual_llm import (
-    ChatMessage,
-    UserMessage,
     AssistantMessage,
+    ChatMessage,
     ModelConfig,
     Provider,
+    UserMessage,
 )
-
 
 # ============================================================================
 # Pydantic Models for Configuration Validation
@@ -27,6 +27,7 @@ from casual_llm import (
 
 class ModelConfigEntry(BaseModel):
     """Single model configuration entry"""
+
     name: str = Field(..., description="Model name/identifier")
     provider: Literal["openai", "ollama"] = Field(..., description="LLM provider type")
     base_url: Optional[str] = Field(None, description="Static base URL")
@@ -39,18 +40,21 @@ class ModelConfigEntry(BaseModel):
 
 class ModelsConfig(BaseModel):
     """Container for all model configurations"""
+
     models: List[ModelConfigEntry]
     metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
 
 class ConversationMessage(BaseModel):
     """Single message in a conversation"""
+
     role: Literal["user", "assistant"]
     content: str
 
 
 class ConversationEntry(BaseModel):
     """Single test conversation"""
+
     id: str = Field(..., description="Unique identifier for this conversation")
     description: str = Field(..., description="What this conversation tests")
     enabled: bool = Field(True, description="Whether to include in tests")
@@ -61,6 +65,7 @@ class ConversationEntry(BaseModel):
 
 class ConversationsConfig(BaseModel):
     """Container for all test conversations"""
+
     conversations: List[ConversationEntry]
     metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
@@ -141,7 +146,9 @@ To fix this:
             elif entry.api_key_env:
                 api_key = os.getenv(entry.api_key_env)
                 if not api_key:
-                    print(f"Warning: Environment variable {entry.api_key_env} not set for model {entry.name}")
+                    print(
+                        f"Warning: Environment variable {entry.api_key_env} not set for model {entry.name}"
+                    )
 
             base_url = None
             if entry.base_url:
@@ -149,7 +156,9 @@ To fix this:
             elif entry.base_url_env:
                 base_url = os.getenv(entry.base_url_env)
                 if not base_url:
-                    print(f"Warning: Environment variable {entry.base_url_env} not set for model {entry.name}")
+                    print(
+                        f"Warning: Environment variable {entry.base_url_env} not set for model {entry.name}"
+                    )
 
             # Convert provider string to Provider enum
             provider_map = {
@@ -159,16 +168,13 @@ To fix this:
             provider = provider_map[entry.provider]
 
             model_configs.append(
-                ModelConfig(
-                    name=entry.name,
-                    provider=provider,
-                    base_url=base_url,
-                    api_key=api_key
-                )
+                ModelConfig(name=entry.name, provider=provider, base_url=base_url, api_key=api_key)
             )
 
         if not model_configs:
-            raise ValueError(f"No enabled models found in {config_path}. Set 'enabled': true for at least one model.")
+            raise ValueError(
+                f"No enabled models found in {config_path}. Set 'enabled': true for at least one model."
+            )
 
         return model_configs
 
@@ -242,7 +248,9 @@ To fix this:
             conversations.append(messages)
 
         if not conversations:
-            raise ValueError(f"No enabled conversations found in {config_path}. Set 'enabled': true for at least one conversation.")
+            raise ValueError(
+                f"No enabled conversations found in {config_path}. Set 'enabled': true for at least one conversation."
+            )
 
         return conversations
 

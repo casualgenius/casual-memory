@@ -1,16 +1,30 @@
-from typing import List, Optional, Any
-import uuid
-from qdrant_client import QdrantClient
-from qdrant_client.models import PointStruct, Filter, FieldCondition, MatchValue, MatchAny, Range, VectorParams, Distance
-from casual_memory.storage.vector.models import MemoryPointPayload, MemoryPoint
 import logging
+import uuid
+from typing import Any, List, Optional
+
+from qdrant_client import QdrantClient
+from qdrant_client.models import (
+    Distance,
+    FieldCondition,
+    Filter,
+    MatchAny,
+    MatchValue,
+    PointStruct,
+    Range,
+    VectorParams,
+)
+
+from casual_memory.storage.vector.models import MemoryPoint, MemoryPointPayload
 
 logger = logging.getLogger(__name__)
 
 vector_dimension = 768
 
+
 class QdrantMemoryStore:
-    def __init__(self, host: str = "localhost", port: int = 6333, collection_name: str = "memories"):
+    def __init__(
+        self, host: str = "localhost", port: int = 6333, collection_name: str = "memories"
+    ):
         """
         Initialize Qdrant memory store.
 
@@ -27,9 +41,12 @@ class QdrantMemoryStore:
         if not self.client.collection_exists(self.collection_name):
             self.client.recreate_collection(
                 collection_name=self.collection_name,
-                vectors_config={"size": vector_dimension, "distance": "Cosine"},  # Adjust size as needed
+                vectors_config={
+                    "size": vector_dimension,
+                    "distance": "Cosine",
+                },  # Adjust size as needed
             )
-            
+
     def clear(self):
         """Clear ALL memories from the collection (dangerous!)"""
         self.client.recreate_collection(
@@ -56,7 +73,7 @@ class QdrantMemoryStore:
                 ),
                 limit=10000,  # Large enough to get all user memories in one call
                 with_payload=False,
-                with_vectors=False
+                with_vectors=False,
             )
 
             points_to_delete = [point.id for point in scroll_result[0]]
@@ -65,8 +82,7 @@ class QdrantMemoryStore:
             if count > 0:
                 # Delete all matching points
                 self.client.delete(
-                    collection_name=self.collection_name,
-                    points_selector=points_to_delete
+                    collection_name=self.collection_name, points_selector=points_to_delete
                 )
                 logger.info(f"Cleared {count} memories for user_id={user_id}")
             else:
@@ -91,18 +107,18 @@ class QdrantMemoryStore:
         id = str(uuid.uuid4())
         self.client.upsert(
             collection_name=self.collection_name,
-            points=[
-                PointStruct(
-                    id=id,
-                    vector=vector,
-                    payload=payload
-                )
-            ]
+            points=[PointStruct(id=id, vector=vector, payload=payload)],
         )
         logger.debug(f"Inserted memory {id}: '{payload.get('text', '')[:50]}...'")
         return id
 
-    def search(self, query_embedding: List[float], top_k: int = 5, min_score: float = 0.7, filters: Optional[Any] = None) -> List[MemoryPoint]:
+    def search(
+        self,
+        query_embedding: List[float],
+        top_k: int = 5,
+        min_score: float = 0.7,
+        filters: Optional[Any] = None,
+    ) -> List[MemoryPoint]:
         qdrant_filter = None
         if filters:
             conditions = []
@@ -115,9 +131,7 @@ class QdrantMemoryStore:
 
             # Handle type filter (list of types)
             if filters.type is not None:
-                conditions.append(
-                    FieldCondition(key="type", match=MatchAny(any=filters.type))
-                )
+                conditions.append(FieldCondition(key="type", match=MatchAny(any=filters.type)))
 
             # Handle min_importance filter
             if filters.min_importance is not None:
@@ -133,22 +147,22 @@ class QdrantMemoryStore:
             limit=top_k,
             query_filter=qdrant_filter,
             with_vectors=True,
-            with_payload=True
+            with_payload=True,
         )
 
         results = []
         logger.debug(f"{len(hits)} hits found")
         for hit in hits:
-            if (hit.score >= min_score):
+            if hit.score >= min_score:
                 logger.debug(f"Score: {hit.score}, Memory: '{hit.payload.get('text', '')[:50]}...'")
                 memory = MemoryPoint(
-                    id=str(hit.id),
-                    vector=hit.vector,
-                    payload=MemoryPointPayload(**hit.payload)
+                    id=str(hit.id), vector=hit.vector, payload=MemoryPointPayload(**hit.payload)
                 )
                 results.append(memory)
             else:
-                logger.debug(f"Skipping Due to Low Score: {hit.score}, Memory: '{hit.payload.get('text', '')[:50]}...'")
+                logger.debug(
+                    f"Skipping Due to Low Score: {hit.score}, Memory: '{hit.payload.get('text', '')[:50]}...'"
+                )
 
         return results
 
@@ -158,7 +172,7 @@ class QdrantMemoryStore:
         user_id: Optional[str] = None,
         threshold: Optional[float] = None,
         limit: int = 5,
-        exclude_archived: bool = True
+        exclude_archived: bool = True,
     ) -> List[tuple[MemoryPoint, float]]:
         """
         Find similar memories based on vector similarity.
@@ -180,9 +194,7 @@ class QdrantMemoryStore:
         conditions = []
 
         if user_id:
-            conditions.append(
-                FieldCondition(key="user_id", match=MatchValue(value=user_id))
-            )
+            conditions.append(FieldCondition(key="user_id", match=MatchValue(value=user_id)))
 
         # Note: We don't filter by archived here because:
         # 1. The field might not exist in older records
@@ -199,16 +211,14 @@ class QdrantMemoryStore:
             query_filter=qdrant_filter,
             score_threshold=threshold,
             with_vectors=True,
-            with_payload=True
+            with_payload=True,
         )
 
         # Convert results and filter archived in post-processing
         results = []
         for hit in hits:
             memory_point = MemoryPoint(
-                id=str(hit.id),
-                vector=hit.vector,
-                payload=MemoryPointPayload(**hit.payload)
+                id=str(hit.id), vector=hit.vector, payload=MemoryPointPayload(**hit.payload)
             )
 
             # Skip archived memories if requested
@@ -223,16 +233,11 @@ class QdrantMemoryStore:
             )
 
         logger.info(
-            f"Found {len(results)} similar memories "
-            f"(threshold={threshold}, user_id={user_id})"
+            f"Found {len(results)} similar memories " f"(threshold={threshold}, user_id={user_id})"
         )
         return results
 
-    def update_memory(
-        self,
-        memory_id: str,
-        payload_updates: dict
-    ) -> bool:
+    def update_memory(self, memory_id: str, payload_updates: dict) -> bool:
         """
         Update specific fields in a memory's payload.
 
@@ -245,9 +250,7 @@ class QdrantMemoryStore:
         """
         try:
             self.client.set_payload(
-                collection_name=self.collection_name,
-                payload=payload_updates,
-                points=[memory_id]
+                collection_name=self.collection_name, payload=payload_updates, points=[memory_id]
             )
             logger.debug(f"Updated memory {memory_id}: {payload_updates}")
             return True
@@ -270,7 +273,7 @@ class QdrantMemoryStore:
                 collection_name=self.collection_name,
                 ids=[memory_id],
                 with_vectors=True,
-                with_payload=True
+                with_payload=True,
             )
 
             if result and len(result) > 0:
@@ -278,18 +281,14 @@ class QdrantMemoryStore:
                 return MemoryPoint(
                     id=str(point.id),
                     vector=point.vector,
-                    payload=MemoryPointPayload(**point.payload)
+                    payload=MemoryPointPayload(**point.payload),
                 )
             return None
         except Exception as e:
             logger.error(f"Failed to retrieve memory {memory_id}: {e}")
             return None
 
-    def archive_memory(
-        self,
-        memory_id: str,
-        superseded_by: Optional[str] = None
-    ) -> bool:
+    def archive_memory(self, memory_id: str, superseded_by: Optional[str] = None) -> bool:
         """
         Archive a memory by marking it as archived.
 
@@ -310,10 +309,7 @@ class QdrantMemoryStore:
                 return False
 
             # Prepare update payload
-            updates = {
-                "archived": True,
-                "archived_at": datetime.now().isoformat()
-            }
+            updates = {"archived": True, "archived_at": datetime.now().isoformat()}
 
             if superseded_by:
                 updates["superseded_by"] = superseded_by

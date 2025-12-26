@@ -6,15 +6,16 @@ database (PostgreSQL, SQLite, MySQL, etc.). Uses SQLModel for type-safe
 ORM operations with Pydantic validation.
 """
 
-import logging
 import json
-from typing import List, Optional
-from datetime import datetime
-from sqlalchemy import Engine, Column, String, Float, Integer, Boolean, DateTime, Text, Index
-from sqlalchemy.orm import Session, declarative_base
+import logging
 from contextlib import contextmanager
+from datetime import datetime
+from typing import List, Optional
 
-from casual_memory.models import MemoryConflict, ConflictResolution
+from sqlalchemy import Boolean, Column, DateTime, Engine, Float, Index, Integer, String, Text
+from sqlalchemy.orm import Session, declarative_base
+
+from casual_memory.models import ConflictResolution, MemoryConflict
 
 logger = logging.getLogger(__name__)
 
@@ -56,9 +57,7 @@ class ConflictDB(Base):
     metadata_json = Column(Text, nullable=False, default="{}")
 
     # Indexes
-    __table_args__ = (
-        Index("idx_conflicts_user_status", "user_id", "status"),
-    )
+    __table_args__ = (Index("idx_conflicts_user_status", "user_id", "status"),)
 
     def to_memory_conflict(self) -> MemoryConflict:
         """Convert database model to MemoryConflict."""
@@ -172,9 +171,7 @@ class SQLAlchemyConflictStore:
     def get_conflict(self, conflict_id: str) -> Optional[MemoryConflict]:
         """Retrieve a conflict by ID."""
         with self._session() as session:
-            db_conflict = session.query(ConflictDB).filter(
-                ConflictDB.id == conflict_id
-            ).first()
+            db_conflict = session.query(ConflictDB).filter(ConflictDB.id == conflict_id).first()
 
             if not db_conflict:
                 return None
@@ -186,10 +183,11 @@ class SQLAlchemyConflictStore:
     ) -> List[MemoryConflict]:
         """Get all pending conflicts for a user."""
         with self._session() as session:
-            query = session.query(ConflictDB).filter(
-                ConflictDB.user_id == user_id,
-                ConflictDB.status == "pending"
-            ).order_by(ConflictDB.avg_importance.desc())
+            query = (
+                session.query(ConflictDB)
+                .filter(ConflictDB.user_id == user_id, ConflictDB.status == "pending")
+                .order_by(ConflictDB.avg_importance.desc())
+            )
 
             if limit:
                 query = query.limit(limit)
@@ -197,14 +195,10 @@ class SQLAlchemyConflictStore:
             db_conflicts = query.all()
             return [db_conflict.to_memory_conflict() for db_conflict in db_conflicts]
 
-    def resolve_conflict(
-        self, conflict_id: str, resolution: ConflictResolution
-    ) -> bool:
+    def resolve_conflict(self, conflict_id: str, resolution: ConflictResolution) -> bool:
         """Mark a conflict as resolved."""
         with self._session() as session:
-            db_conflict = session.query(ConflictDB).filter(
-                ConflictDB.id == conflict_id
-            ).first()
+            db_conflict = session.query(ConflictDB).filter(ConflictDB.id == conflict_id).first()
 
             if not db_conflict:
                 logger.warning(f"Cannot resolve conflict {conflict_id}: not found")
@@ -225,12 +219,14 @@ class SQLAlchemyConflictStore:
 
             # Update metadata
             metadata = json.loads(db_conflict.metadata_json) if db_conflict.metadata_json else {}
-            metadata.update({
-                "resolution_decision": resolution.decision,
-                "resolution_notes": resolution.notes,
-                "resolved_by": resolution.resolved_by,
-                "resolved_at": datetime.now().isoformat(),
-            })
+            metadata.update(
+                {
+                    "resolution_decision": resolution.decision,
+                    "resolution_notes": resolution.notes,
+                    "resolved_by": resolution.resolved_by,
+                    "resolved_at": datetime.now().isoformat(),
+                }
+            )
             db_conflict.metadata_json = json.dumps(metadata)
 
             logger.info(
@@ -240,14 +236,10 @@ class SQLAlchemyConflictStore:
 
             return True
 
-    def get_conflict_count(
-        self, user_id: str, status: Optional[str] = None
-    ) -> int:
+    def get_conflict_count(self, user_id: str, status: Optional[str] = None) -> int:
         """Count conflicts for a user."""
         with self._session() as session:
-            query = session.query(ConflictDB).filter(
-                ConflictDB.user_id == user_id
-            )
+            query = session.query(ConflictDB).filter(ConflictDB.user_id == user_id)
 
             if status:
                 query = query.filter(ConflictDB.status == status)
@@ -257,9 +249,7 @@ class SQLAlchemyConflictStore:
     def escalate_conflict(self, conflict_id: str) -> bool:
         """Escalate a conflict that couldn't be auto-resolved."""
         with self._session() as session:
-            db_conflict = session.query(ConflictDB).filter(
-                ConflictDB.id == conflict_id
-            ).first()
+            db_conflict = session.query(ConflictDB).filter(ConflictDB.id == conflict_id).first()
 
             if not db_conflict:
                 logger.warning(f"Cannot escalate conflict {conflict_id}: not found")
@@ -269,20 +259,15 @@ class SQLAlchemyConflictStore:
             db_conflict.resolution_attempts += 1
 
             logger.info(
-                f"Escalated conflict {conflict_id} "
-                f"(attempts={db_conflict.resolution_attempts})"
+                f"Escalated conflict {conflict_id} " f"(attempts={db_conflict.resolution_attempts})"
             )
 
             return True
 
-    def clear_user_conflicts(
-        self, user_id: str, status: Optional[str] = None
-    ) -> int:
+    def clear_user_conflicts(self, user_id: str, status: Optional[str] = None) -> int:
         """Clear conflicts for a user."""
         with self._session() as session:
-            query = session.query(ConflictDB).filter(
-                ConflictDB.user_id == user_id
-            )
+            query = session.query(ConflictDB).filter(ConflictDB.user_id == user_id)
 
             if status:
                 query = query.filter(ConflictDB.status == status)
@@ -290,8 +275,7 @@ class SQLAlchemyConflictStore:
             count = query.delete()
 
             logger.info(
-                f"Cleared {count} conflicts for user {user_id} "
-                f"(status={status or 'all'})"
+                f"Cleared {count} conflicts for user {user_id} " f"(status={status or 'all'})"
             )
 
             return count

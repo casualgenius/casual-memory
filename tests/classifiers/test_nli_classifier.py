@@ -9,11 +9,13 @@ Tests the NLI-based classification logic including:
 - Error handling
 """
 
-import pytest
 from unittest.mock import Mock
-from casual_memory.models import MemoryFact
-from casual_memory.classifiers.models import SimilarMemory, SimilarityResult
+
+import pytest
+
+from casual_memory.classifiers.models import SimilarityResult, SimilarMemory
 from casual_memory.classifiers.nli_classifier import NLIClassifier
+from casual_memory.models import MemoryFact
 
 
 @pytest.fixture
@@ -60,9 +62,7 @@ def similar_memory():
 
 
 @pytest.mark.asyncio
-async def test_nli_classifier_high_entailment_same(
-    mock_nli_filter, new_memory, similar_memory
-):
+async def test_nli_classifier_high_entailment_same(mock_nli_filter, new_memory, similar_memory):
     """Test that high entailment scores result in same classification."""
     # Mock NLI to return high entailment score
     mock_nli_filter.predict.return_value = (
@@ -89,9 +89,7 @@ async def test_nli_classifier_high_entailment_same(
 
 
 @pytest.mark.asyncio
-async def test_nli_classifier_high_neutral_neutral(
-    mock_nli_filter, new_memory, similar_memory
-):
+async def test_nli_classifier_high_neutral_neutral(mock_nli_filter, new_memory, similar_memory):
     """Test that high neutral + low entailment results in neutral classification."""
     # Mock NLI to return high neutral, low entailment
     mock_nli_filter.predict.return_value = (
@@ -117,9 +115,7 @@ async def test_nli_classifier_high_neutral_neutral(
 
 
 @pytest.mark.asyncio
-async def test_nli_classifier_uncertain_pass(
-    mock_nli_filter, new_memory, similar_memory
-):
+async def test_nli_classifier_uncertain_pass(mock_nli_filter, new_memory, similar_memory):
     """Test that uncertain cases are passed to next classifier (return None)."""
     # Mock NLI to return uncertain scores (no clear winner)
     mock_nli_filter.predict.return_value = (
@@ -168,9 +164,7 @@ async def test_nli_classifier_neutral_but_high_entailment_pass(
 
 
 @pytest.mark.asyncio
-async def test_nli_classifier_error_handling(
-    mock_nli_filter, new_memory, similar_memory
-):
+async def test_nli_classifier_error_handling(mock_nli_filter, new_memory, similar_memory):
     """Test that NLI errors are handled gracefully."""
     # Mock NLI to raise an exception
     mock_nli_filter.predict.side_effect = Exception("NLI model failed")

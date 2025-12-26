@@ -19,35 +19,35 @@ Usage:
     python run.py --output-dir results
 """
 
+import argparse
 import asyncio
 import json
 import logging
 import os
 import sys
-import argparse
 import time
 from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Optional
 
 # Add src to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../src/')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src/")))
 
-from casual_memory.classifiers.nli_classifier import NLIClassifier
 from casual_memory.classifiers.models import SimilarMemory
+from casual_memory.classifiers.nli_classifier import NLIClassifier
 from casual_memory.models import MemoryFact
 
 # Configure logging
 logger = logging.getLogger("nli-benchmark")
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 
 
 @dataclass
 class TestCase:
     """A single test case for NLI classifier."""
+
     name: str
     existing_memory: str
     new_memory: str
@@ -59,6 +59,7 @@ class TestCase:
 @dataclass
 class BenchmarkResult:
     """Result from testing a single memory pair."""
+
     test_name: str
     existing_memory: str
     new_memory: str
@@ -88,7 +89,7 @@ def load_test_cases(config_path: Optional[str] = None) -> List[TestCase]:
 
     logger.info(f"Loading test cases from: {config_path}")
 
-    with open(config_path, 'r') as f:
+    with open(config_path, "r") as f:
         data = json.load(f)
 
     test_cases = [
@@ -98,7 +99,7 @@ def load_test_cases(config_path: Optional[str] = None) -> List[TestCase]:
             new_memory=tc["new_memory"],
             expected_outcome=tc["expected_outcome"],
             category=tc["category"],
-            description=tc.get("description", "")
+            description=tc.get("description", ""),
         )
         for tc in data["test_cases"]
     ]
@@ -123,12 +124,13 @@ async def run_benchmark(
     Returns:
         List of benchmark results
     """
-    logger.info(f"Initializing NLI classifier (entailment={entailment_threshold}, neutral={neutral_threshold})")
+    logger.info(
+        f"Initializing NLI classifier (entailment={entailment_threshold}, neutral={neutral_threshold})"
+    )
 
     # Initialize NLI classifier with custom thresholds
     classifier = NLIClassifier(
-        entailment_threshold=entailment_threshold,
-        neutral_threshold=neutral_threshold
+        entailment_threshold=entailment_threshold, neutral_threshold=neutral_threshold
     )
 
     results = []
@@ -138,23 +140,17 @@ async def run_benchmark(
 
         # Create memory objects
         new_memory = MemoryFact(
-            text=test_case.new_memory,
-            type="fact",
-            tags=[],
-            user_id="test_user"
+            text=test_case.new_memory, type="fact", tags=[], user_id="test_user"
         )
 
         existing_memory_fact = MemoryFact(
-            text=test_case.existing_memory,
-            type="fact",
-            tags=[],
-            user_id="test_user"
+            text=test_case.existing_memory, type="fact", tags=[], user_id="test_user"
         )
 
         similar_memory = SimilarMemory(
             memory_id="test_memory_1",
             memory=existing_memory_fact,
-            similarity_score=0.9  # Assume high vector similarity
+            similarity_score=0.9,  # Assume high vector similarity
         )
 
         # Run classification with timing
@@ -162,8 +158,7 @@ async def run_benchmark(
 
         try:
             result = await classifier.classify_pair(
-                new_memory=new_memory,
-                similar_memory=similar_memory
+                new_memory=new_memory, similar_memory=similar_memory
             )
 
             duration_ms = (time.time() - start_time) * 1000
@@ -176,39 +171,38 @@ async def run_benchmark(
                 nli_scores = {"contradiction": 0.0, "entailment": 0.0, "neutral": 0.0}
                 # Need to call NLI filter directly to get scores when classifier passes
                 label, scores = classifier.nli_filter.predict(
-                    premise=test_case.existing_memory,
-                    hypothesis=test_case.new_memory
+                    premise=test_case.existing_memory, hypothesis=test_case.new_memory
                 )
                 nli_scores = {
                     "contradiction": scores[0],
                     "entailment": scores[1],
-                    "neutral": scores[2]
+                    "neutral": scores[2],
                 }
             else:
                 actual_outcome = result.outcome
-                nli_scores = result.metadata.get("nli_scores", {
-                    "contradiction": 0.0,
-                    "entailment": 0.0,
-                    "neutral": 0.0
-                })
+                nli_scores = result.metadata.get(
+                    "nli_scores", {"contradiction": 0.0, "entailment": 0.0, "neutral": 0.0}
+                )
 
             # Check if result matches expectation
-            passed = (actual_outcome == test_case.expected_outcome)
+            passed = actual_outcome == test_case.expected_outcome
 
-            results.append(BenchmarkResult(
-                test_name=test_case.name,
-                existing_memory=test_case.existing_memory,
-                new_memory=test_case.new_memory,
-                contradiction_score=nli_scores["contradiction"],
-                entailment_score=nli_scores["entailment"],
-                neutral_score=nli_scores["neutral"],
-                expected_outcome=test_case.expected_outcome,
-                actual_outcome=actual_outcome,
-                passed=passed,
-                duration_ms=duration_ms,
-                category=test_case.category,
-                description=test_case.description
-            ))
+            results.append(
+                BenchmarkResult(
+                    test_name=test_case.name,
+                    existing_memory=test_case.existing_memory,
+                    new_memory=test_case.new_memory,
+                    contradiction_score=nli_scores["contradiction"],
+                    entailment_score=nli_scores["entailment"],
+                    neutral_score=nli_scores["neutral"],
+                    expected_outcome=test_case.expected_outcome,
+                    actual_outcome=actual_outcome,
+                    passed=passed,
+                    duration_ms=duration_ms,
+                    category=test_case.category,
+                    description=test_case.description,
+                )
+            )
 
             status = "✓ PASS" if passed else "✗ FAIL"
             logger.info(
@@ -222,20 +216,22 @@ async def run_benchmark(
         except Exception as e:
             logger.error(f"  Error running test {test_case.name}: {e}", exc_info=True)
             # Add failed result
-            results.append(BenchmarkResult(
-                test_name=test_case.name,
-                existing_memory=test_case.existing_memory,
-                new_memory=test_case.new_memory,
-                contradiction_score=0.0,
-                entailment_score=0.0,
-                neutral_score=0.0,
-                expected_outcome=test_case.expected_outcome,
-                actual_outcome="error",
-                passed=False,
-                duration_ms=0.0,
-                category=test_case.category,
-                description=f"Error: {str(e)}"
-            ))
+            results.append(
+                BenchmarkResult(
+                    test_name=test_case.name,
+                    existing_memory=test_case.existing_memory,
+                    new_memory=test_case.new_memory,
+                    contradiction_score=0.0,
+                    entailment_score=0.0,
+                    neutral_score=0.0,
+                    expected_outcome=test_case.expected_outcome,
+                    actual_outcome="error",
+                    passed=False,
+                    duration_ms=0.0,
+                    category=test_case.category,
+                    description=f"Error: {str(e)}",
+                )
+            )
 
     # Get metrics
     metrics = classifier.get_metrics()
@@ -248,7 +244,7 @@ def generate_report(
     results: List[BenchmarkResult],
     entailment_threshold: float,
     neutral_threshold: float,
-    output_path: str
+    output_path: str,
 ):
     """
     Generate markdown report of benchmark results.
@@ -259,7 +255,7 @@ def generate_report(
         neutral_threshold: Neutral threshold used
         output_path: Path to write report
     """
-    with open(output_path, 'w') as f:
+    with open(output_path, "w") as f:
         # Header
         f.write("# NLI Classifier Benchmark Results\n\n")
         f.write(f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
@@ -268,13 +264,17 @@ def generate_report(
         f.write("## Configuration\n\n")
         f.write(f"- **Entailment Threshold:** {entailment_threshold}\n")
         f.write(f"- **Neutral Threshold:** {neutral_threshold}\n")
-        f.write(f"- **Model:** cross-encoder/nli-deberta-v3-base\n")
+        f.write("- **Model:** cross-encoder/nli-deberta-v3-base\n")
         f.write(f"- **Total Test Cases:** {len(results)}\n\n")
 
         # Results table
         f.write("## Detailed Results\n\n")
-        f.write("| Test Case | Existing Memory | New Memory | C Score | E Score | N Score | Expected | Actual | Status | Time (ms) |\n")
-        f.write("|-----------|----------------|------------|---------|---------|---------|----------|--------|--------|----------|\n")
+        f.write(
+            "| Test Case | Existing Memory | New Memory | C Score | E Score | N Score | Expected | Actual | Status | Time (ms) |\n"
+        )
+        f.write(
+            "|-----------|----------------|------------|---------|---------|---------|----------|--------|--------|----------|\n"
+        )
 
         for result in results:
             status = "✓ PASS" if result.passed else "✗ FAIL"
@@ -342,30 +342,46 @@ def generate_report(
         f.write("Based on the results above, consider:\n\n")
 
         # Analyze false positives/negatives
-        false_same = [r for r in results if r.expected_outcome != "same" and r.actual_outcome == "same"]
-        false_neutral = [r for r in results if r.expected_outcome != "neutral" and r.actual_outcome == "neutral"]
-        missed_same = [r for r in results if r.expected_outcome == "same" and r.actual_outcome != "same"]
-        missed_neutral = [r for r in results if r.expected_outcome == "neutral" and r.actual_outcome != "neutral"]
+        false_same = [
+            r for r in results if r.expected_outcome != "same" and r.actual_outcome == "same"
+        ]
+        false_neutral = [
+            r for r in results if r.expected_outcome != "neutral" and r.actual_outcome == "neutral"
+        ]
+        missed_same = [
+            r for r in results if r.expected_outcome == "same" and r.actual_outcome != "same"
+        ]
+        missed_neutral = [
+            r for r in results if r.expected_outcome == "neutral" and r.actual_outcome != "neutral"
+        ]
 
         if false_same:
             avg_e = sum(r.entailment_score for r in false_same) / len(false_same)
-            f.write(f"- **Lower entailment threshold** if too many false 'same' classifications "
-                   f"(avg E score: {avg_e:.3f})\n")
+            f.write(
+                f"- **Lower entailment threshold** if too many false 'same' classifications "
+                f"(avg E score: {avg_e:.3f})\n"
+            )
 
         if missed_same:
             avg_e = sum(r.entailment_score for r in missed_same) / len(missed_same)
-            f.write(f"- **Raise entailment threshold** if missing 'same' classifications "
-                   f"(avg E score: {avg_e:.3f})\n")
+            f.write(
+                f"- **Raise entailment threshold** if missing 'same' classifications "
+                f"(avg E score: {avg_e:.3f})\n"
+            )
 
         if false_neutral:
             avg_n = sum(r.neutral_score for r in false_neutral) / len(false_neutral)
-            f.write(f"- **Lower neutral threshold** if too many false 'neutral' classifications "
-                   f"(avg N score: {avg_n:.3f})\n")
+            f.write(
+                f"- **Lower neutral threshold** if too many false 'neutral' classifications "
+                f"(avg N score: {avg_n:.3f})\n"
+            )
 
         if missed_neutral:
             avg_n = sum(r.neutral_score for r in missed_neutral) / len(missed_neutral)
-            f.write(f"- **Raise neutral threshold** if missing 'neutral' classifications "
-                   f"(avg N score: {avg_n:.3f})\n")
+            f.write(
+                f"- **Raise neutral threshold** if missing 'neutral' classifications "
+                f"(avg N score: {avg_n:.3f})\n"
+            )
 
         if not (false_same or false_neutral or missed_same or missed_neutral):
             f.write("- Current thresholds appear to be working well! ✓\n")
@@ -393,35 +409,35 @@ Examples:
 
   # Custom output directory
   python run.py --output-dir results
-        """
+        """,
     )
 
     parser.add_argument(
         "--test-cases",
         type=str,
         default=None,
-        help="Path to test cases JSON file (default: test_cases.json in script dir)"
+        help="Path to test cases JSON file (default: test_cases.json in script dir)",
     )
 
     parser.add_argument(
         "--entailment-threshold",
         type=float,
         default=0.85,
-        help="Entailment threshold for 'same' classification (default: 0.85)"
+        help="Entailment threshold for 'same' classification (default: 0.85)",
     )
 
     parser.add_argument(
         "--neutral-threshold",
         type=float,
         default=0.5,
-        help="Neutral threshold for 'neutral' classification (default: 0.5)"
+        help="Neutral threshold for 'neutral' classification (default: 0.5)",
     )
 
     parser.add_argument(
         "--output-dir",
         type=str,
         default="results",
-        help="Output directory for results (default: results)"
+        help="Output directory for results (default: results)",
     )
 
     parser.add_argument(
@@ -429,7 +445,7 @@ Examples:
         type=str,
         choices=["DEBUG", "INFO", "WARNING", "ERROR"],
         default="INFO",
-        help="Logging level (default: INFO)"
+        help="Logging level (default: INFO)",
     )
 
     args = parser.parse_args()
@@ -449,7 +465,7 @@ Examples:
             run_benchmark(
                 test_cases=test_cases,
                 entailment_threshold=args.entailment_threshold,
-                neutral_threshold=args.neutral_threshold
+                neutral_threshold=args.neutral_threshold,
             )
         )
     except Exception as e:
@@ -459,14 +475,14 @@ Examples:
     # Generate report
     try:
         os.makedirs(args.output_dir, exist_ok=True)
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_path = os.path.join(args.output_dir, f"nli_benchmark_{timestamp}.md")
 
         generate_report(
             results=results,
             entailment_threshold=args.entailment_threshold,
             neutral_threshold=args.neutral_threshold,
-            output_path=output_path
+            output_path=output_path,
         )
 
         # Print summary to console
@@ -475,7 +491,7 @@ Examples:
         pass_rate = (passed / total * 100) if total > 0 else 0
 
         logger.info("=" * 60)
-        logger.info(f"Benchmark Complete!")
+        logger.info("Benchmark Complete!")
         logger.info(f"Total: {total}, Passed: {passed}, Failed: {total - passed}")
         logger.info(f"Pass Rate: {pass_rate:.1f}%")
         logger.info(f"Report: {output_path}")

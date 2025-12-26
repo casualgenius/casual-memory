@@ -14,8 +14,8 @@ Install required dependencies:
     pip install casual-memory[embeddings-all]          # For both
 """
 
-import os
 import asyncio
+import os
 
 
 async def example_e5_embedding():
@@ -23,7 +23,9 @@ async def example_e5_embedding():
     try:
         from casual_memory.embeddings import E5Embedding
     except ImportError:
-        print("⚠️  Skipping E5 example - install with: pip install casual-memory[embeddings-transformers]")
+        print(
+            "⚠️  Skipping E5 example - install with: pip install casual-memory[embeddings-transformers]"
+        )
         return
 
     print("\n=== E5 Embedding ===")
@@ -49,11 +51,7 @@ async def example_e5_embedding():
     print(f"Query vector length: {len(query_vector)}")
 
     # Batch embedding documents (automatic prefixes)
-    documents = [
-        "I like pizza",
-        "I enjoy hiking",
-        "Python is my favorite language"
-    ]
+    documents = ["I like pizza", "I enjoy hiking", "Python is my favorite language"]
     doc_vectors = await embedder.embed_documents(documents)
     print(f"Batch embedded {len(doc_vectors)} documents")
 
@@ -67,7 +65,9 @@ async def example_openai():
     try:
         from casual_memory.embeddings import OpenAIEmbedding
     except ImportError:
-        print("⚠️  Skipping OpenAI example - install with: pip install casual-memory[embeddings-openai]")
+        print(
+            "⚠️  Skipping OpenAI example - install with: pip install casual-memory[embeddings-openai]"
+        )
         return
 
     print("\n=== OpenAI Embedding ===")
@@ -88,11 +88,7 @@ async def example_openai():
     print(f"Document vector length: {len(doc_vector)}")
 
     # Batch embedding documents
-    documents = [
-        "I like pizza",
-        "I enjoy hiking",
-        "Python is my favorite language"
-    ]
+    documents = ["I like pizza", "I enjoy hiking", "Python is my favorite language"]
     doc_vectors = await embedder.embed_documents(documents)
     print(f"Batch embedded {len(doc_vectors)} documents")
 
@@ -163,7 +159,7 @@ async def example_dimension_compatibility():
     except ImportError:
         print("⚠️  OpenAI not available, showing E5 dimensions only")
         e5_embedder = E5Embedding(model_name="intfloat/e5-small-v2")
-        print(f"\n=== Dimension Information ===")
+        print("\n=== Dimension Information ===")
         print(f"E5-small dimension: {e5_embedder.dimension}")
         return
 
@@ -174,13 +170,10 @@ async def example_dimension_compatibility():
     print("\n=== Dimension Compatibility ===")
 
     # Both embedders configured to 384 dimensions
-    e5_embedder = E5Embedding(
-        model_name="intfloat/e5-small-v2"  # Native 384 dims
-    )
+    e5_embedder = E5Embedding(model_name="intfloat/e5-small-v2")  # Native 384 dims
 
     openai_embedder = OpenAIEmbedding(
-        model="text-embedding-3-small",
-        dimensions=384  # Configured to match
+        model="text-embedding-3-small", dimensions=384  # Configured to match
     )
 
     print(f"E5-small dimension: {e5_embedder.dimension}")

@@ -16,18 +16,18 @@ These tests verify:
 4. Return of structured MemoryActionResult with appropriate IDs
 """
 
-import pytest
-from unittest.mock import Mock
 from datetime import datetime
+from unittest.mock import Mock
 
-from casual_memory.execution.action_executor import MemoryActionExecutor
-from casual_memory.execution.models import MemoryActionResult
-from casual_memory.models import MemoryFact
+import pytest
+
 from casual_memory.classifiers.models import (
     MemoryClassificationResult,
-    SimilarMemory,
     SimilarityResult,
+    SimilarMemory,
 )
+from casual_memory.execution.action_executor import MemoryActionExecutor
+from casual_memory.models import MemoryFact
 
 
 @pytest.fixture
@@ -221,7 +221,9 @@ async def test_execute_add_with_multiple_superseding(action_executor, mock_vecto
             SimilarityResult(
                 similar_memory=SimilarMemory(
                     memory_id=f"old_mem_{i}",
-                    memory=MemoryFact(text=f"Old fact {i}", type="fact", tags=[], user_id="user_123"),
+                    memory=MemoryFact(
+                        text=f"Old fact {i}", type="fact", tags=[], user_id="user_123"
+                    ),
                     similarity_score=0.9,
                 ),
                 outcome="superseded",  # Each is superseded
@@ -452,7 +454,9 @@ async def test_execute_conflict_multiple(action_executor, mock_conflict_store):
             SimilarityResult(
                 similar_memory=SimilarMemory(
                     memory_id=f"conflict_mem_{i}",
-                    memory=MemoryFact(text=f"Old fact {i}", type="fact", tags=[], user_id="user_123"),
+                    memory=MemoryFact(
+                        text=f"Old fact {i}", type="fact", tags=[], user_id="user_123"
+                    ),
                     similarity_score=0.9,
                 ),
                 outcome="conflict",  # Each is a conflict

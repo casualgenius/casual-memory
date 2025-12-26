@@ -7,9 +7,10 @@ use PostgreSQL or SQLite implementations instead.
 """
 
 import logging
-from typing import List, Optional, Dict
 from datetime import datetime
-from casual_memory.models import MemoryConflict, ConflictResolution
+from typing import Dict, List, Optional
+
+from casual_memory.models import ConflictResolution, MemoryConflict
 
 logger = logging.getLogger(__name__)
 

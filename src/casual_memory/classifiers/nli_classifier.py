@@ -15,8 +15,8 @@ from typing import Optional
 
 from casual_memory.classifiers.models import (
     CheckType,
-    SimilarMemory,
     SimilarityResult,
+    SimilarMemory,
 )
 from casual_memory.intelligence.nli_filter import NLIPreFilter
 from casual_memory.models import MemoryFact

@@ -7,6 +7,7 @@ the VectorStore protocol.
 
 import asyncio
 from typing import List, Optional
+
 from casual_memory.models import MemoryFact
 
 
@@ -37,11 +38,7 @@ class InMemoryVectorStore:
         return memory_id
 
     async def search(
-        self,
-        query_text: str,
-        user_id: str,
-        limit: int = 5,
-        exclude_archived: bool = True
+        self, query_text: str, user_id: str, limit: int = 5, exclude_archived: bool = True
     ) -> List[MemoryFact]:
         """
         Simple keyword search (no embeddings).
@@ -73,9 +70,7 @@ class InMemoryVectorStore:
         if memory_id in self.memories:
             self.memories[memory_id] = memory
 
-    async def archive(
-        self, memory_id: str, user_id: str, superseded_by: Optional[str] = None
-    ):
+    async def archive(self, memory_id: str, user_id: str, superseded_by: Optional[str] = None):
         """Soft-delete memory."""
         if memory_id in self.memories:
             self.memories[memory_id].archived = True
@@ -91,11 +86,7 @@ async def main():
 
     # Add memories
     memory1 = MemoryFact(
-        text="I live in Bangkok",
-        type="fact",
-        tags=["location"],
-        importance=0.8,
-        source="user"
+        text="I live in Bangkok", type="fact", tags=["location"], importance=0.8, source="user"
     )
 
     memory2 = MemoryFact(
@@ -103,13 +94,13 @@ async def main():
         type="fact",
         tags=["location", "job"],
         importance=0.7,
-        source="user"
+        source="user",
     )
 
     mem_id1 = await storage.add(memory1, user_id="user_123")
     mem_id2 = await storage.add(memory2, user_id="user_123")
 
-    print(f"Added 2 memories")
+    print("Added 2 memories")
     print(f"  Memory 1 ID: {mem_id1}")
     print(f"  Memory 2 ID: {mem_id2}\n")
 

@@ -9,15 +9,16 @@ Tests the pipeline orchestration logic including:
 - Metrics aggregation
 """
 
+from unittest.mock import AsyncMock, Mock
+
 import pytest
-from unittest.mock import Mock, AsyncMock
-from casual_memory.models import MemoryFact
+
 from casual_memory.classifiers.models import (
-    SimilarMemory,
     SimilarityResult,
-    MemoryClassificationResult,
+    SimilarMemory,
 )
 from casual_memory.classifiers.pipeline import MemoryClassificationPipeline
+from casual_memory.models import MemoryFact
 
 
 @pytest.fixture
@@ -170,9 +171,7 @@ async def test_pipeline_strategy_single(new_memory, similar_memories):
         return existing_result
 
     classifier = create_mock_classifier("Classifier", classifier_behavior)
-    pipeline = MemoryClassificationPipeline(
-        classifiers=[classifier], strategy="single"
-    )
+    pipeline = MemoryClassificationPipeline(classifiers=[classifier], strategy="single")
 
     result = await pipeline.classify(new_memory, similar_memories)
 
@@ -334,9 +333,7 @@ async def test_pipeline_overall_outcome_derivation(new_memory, similar_memories)
         return None
 
     classifier = create_mock_classifier("Classifier", conflict_behavior)
-    pipeline = MemoryClassificationPipeline(
-        classifiers=[classifier], strategy="single"
-    )
+    pipeline = MemoryClassificationPipeline(classifiers=[classifier], strategy="single")
     result = await pipeline.classify(new_memory, similar_memories[:1])
     assert result.overall_outcome == "conflict"
 
@@ -353,9 +350,7 @@ async def test_pipeline_overall_outcome_derivation(new_memory, similar_memories)
         return None
 
     classifier = create_mock_classifier("Classifier", same_behavior)
-    pipeline = MemoryClassificationPipeline(
-        classifiers=[classifier], strategy="single"
-    )
+    pipeline = MemoryClassificationPipeline(classifiers=[classifier], strategy="single")
     result = await pipeline.classify(new_memory, similar_memories[:1])
     assert result.overall_outcome == "skip"
 
@@ -372,9 +367,7 @@ async def test_pipeline_overall_outcome_derivation(new_memory, similar_memories)
         return None
 
     classifier = create_mock_classifier("Classifier", superseded_behavior)
-    pipeline = MemoryClassificationPipeline(
-        classifiers=[classifier], strategy="single"
-    )
+    pipeline = MemoryClassificationPipeline(classifiers=[classifier], strategy="single")
     result = await pipeline.classify(new_memory, similar_memories[:1])
     assert result.overall_outcome == "add"
 
@@ -391,9 +384,7 @@ async def test_pipeline_overall_outcome_derivation(new_memory, similar_memories)
         return None
 
     classifier = create_mock_classifier("Classifier", neutral_behavior)
-    pipeline = MemoryClassificationPipeline(
-        classifiers=[classifier], strategy="single"
-    )
+    pipeline = MemoryClassificationPipeline(classifiers=[classifier], strategy="single")
     result = await pipeline.classify(new_memory, similar_memories[:1])
     assert result.overall_outcome == "add"
 
