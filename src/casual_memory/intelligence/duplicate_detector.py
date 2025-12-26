@@ -8,9 +8,10 @@ or distinct facts that should both be stored.
 import logging
 from typing import Optional
 
-from casual_memory.models import MemoryFact
+from casual_llm import LLMProvider, SystemMessage, UserMessage
+
 from casual_memory.intelligence.prompts import DUPLICATE_DETECTION_SYSTEM_PROMPT
-from casual_llm import LLMProvider, UserMessage, SystemMessage
+from casual_memory.models import MemoryFact
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -18,6 +19,7 @@ logger.setLevel(logging.DEBUG)
 prompt = """Statement A: "{statement_a}"
 Statement B: "{statement_b}"
 """
+
 
 class LLMDuplicateDetector:
     """
@@ -29,10 +31,7 @@ class LLMDuplicateDetector:
     """
 
     def __init__(
-        self,
-        llm_provider: LLMProvider,
-        model_name: str,
-        system_prompt: Optional[str] = None
+        self, llm_provider: LLMProvider, model_name: str, system_prompt: Optional[str] = None
     ):
         """
         Initialize the duplicate detector.
@@ -99,9 +98,7 @@ class LLMDuplicateDetector:
             True if duplicates/refinements (should merge)
             False if distinct facts (should store separately)
         """
-        user_prompt = prompt.format(
-            statement_a=memory_a.text, statement_b=memory_b.text
-        )
+        user_prompt = prompt.format(statement_a=memory_a.text, statement_b=memory_b.text)
 
         try:
             llm_response = await self._call_llm(user_prompt)

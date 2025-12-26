@@ -1,9 +1,9 @@
 """Integration tests for SQLAlchemy conflict storage backend."""
 
 import pytest
-from datetime import datetime
-from casual_memory.storage.conflicts.sqlalchemy import SQLAlchemyConflictStore
+
 from casual_memory.models import MemoryConflict
+from casual_memory.storage.conflicts.sqlalchemy import SQLAlchemyConflictStore
 
 
 @pytest.mark.integration
@@ -28,7 +28,7 @@ async def test_sqlalchemy_add_and_get_conflict(skip_if_no_postgres):
             memory_b_text="I live in Paris",
             category="location",
             hint="User mentioned different cities for residence",
-            importance=0.9
+            importance=0.9,
         )
 
         # Add conflict
@@ -57,7 +57,7 @@ async def test_sqlalchemy_list_pending_conflicts(skip_if_no_postgres):
     """Test listing pending conflicts."""
     pytest.importorskip("sqlalchemy")
 
-    storage = SQLAlchemyConflictStorage(
+    storage = SQLAlchemyConflictStore(
         connection_string="postgresql://postgres:postgres@localhost:5432/test_conflicts"
     )
 
@@ -73,7 +73,7 @@ async def test_sqlalchemy_list_pending_conflicts(skip_if_no_postgres):
                 memory_b_text=f"Statement B {i}",
                 category="test",
                 hint="Test conflict",
-                importance=0.7
+                importance=0.7,
             )
             for i in range(3)
         ]
@@ -100,7 +100,7 @@ async def test_sqlalchemy_resolve_conflict(skip_if_no_postgres):
     """Test resolving conflicts."""
     pytest.importorskip("sqlalchemy")
 
-    storage = SQLAlchemyConflictStorage(
+    storage = SQLAlchemyConflictStore(
         connection_string="postgresql://postgres:postgres@localhost:5432/test_conflicts"
     )
 
@@ -115,7 +115,7 @@ async def test_sqlalchemy_resolve_conflict(skip_if_no_postgres):
             memory_b_text="I work as a doctor",
             category="job",
             hint="Different occupations mentioned",
-            importance=0.9
+            importance=0.9,
         )
 
         conflict_id = await storage.add(conflict, user_id="test_user")
@@ -124,9 +124,7 @@ async def test_sqlalchemy_resolve_conflict(skip_if_no_postgres):
         from casual_memory.models import ConflictResolution
 
         resolution = ConflictResolution(
-            conflict_id=conflict_id,
-            decision="keep_a",
-            reason="Teacher is the current role"
+            conflict_id=conflict_id, decision="keep_a", reason="Teacher is the current role"
         )
 
         await storage.resolve(resolution, user_id="test_user")
@@ -150,7 +148,7 @@ async def test_sqlalchemy_user_isolation(skip_if_no_postgres):
     """Test that conflicts are isolated by user_id."""
     pytest.importorskip("sqlalchemy")
 
-    storage = SQLAlchemyConflictStorage(
+    storage = SQLAlchemyConflictStore(
         connection_string="postgresql://postgres:postgres@localhost:5432/test_conflicts"
     )
 
@@ -165,7 +163,7 @@ async def test_sqlalchemy_user_isolation(skip_if_no_postgres):
             memory_b_text="User 1 conflict",
             category="test",
             hint="Test",
-            importance=0.7
+            importance=0.7,
         )
         await storage.add(conflict1, user_id="user_1")
 
@@ -177,7 +175,7 @@ async def test_sqlalchemy_user_isolation(skip_if_no_postgres):
             memory_b_text="User 2 conflict",
             category="test",
             hint="Test",
-            importance=0.7
+            importance=0.7,
         )
         await storage.add(conflict2, user_id="user_2")
 
@@ -205,7 +203,7 @@ async def test_sqlalchemy_count_conflicts(skip_if_no_postgres):
     """Test counting conflicts by status."""
     pytest.importorskip("sqlalchemy")
 
-    storage = SQLAlchemyConflictStorage(
+    storage = SQLAlchemyConflictStore(
         connection_string="postgresql://postgres:postgres@localhost:5432/test_conflicts"
     )
 
@@ -221,7 +219,7 @@ async def test_sqlalchemy_count_conflicts(skip_if_no_postgres):
                 memory_b_text="Statement B",
                 category="test",
                 hint="Test",
-                importance=0.7
+                importance=0.7,
             )
             await storage.add(conflict, user_id="test_user")
 

@@ -5,11 +5,10 @@ This module handles converting relative date references (tomorrow, Friday, in 2 
 to absolute dates in memory text and calculates appropriate valid_until timestamps.
 """
 
+import logging
 import re
 from datetime import datetime, timedelta
 from typing import Optional
-import dateparser
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +25,9 @@ WEEKDAY_MAP = {
 }
 
 
-def get_next_weekday(current_date: datetime, target_weekday: int, min_days_ahead: int = 1) -> datetime:
+def get_next_weekday(
+    current_date: datetime, target_weekday: int, min_days_ahead: int = 1
+) -> datetime:
     """
     Get the next occurrence of a target weekday.
 
@@ -44,7 +45,9 @@ def get_next_weekday(current_date: datetime, target_weekday: int, min_days_ahead
     return current_date + timedelta(days=days_ahead)
 
 
-def extract_and_normalize_date(text: str, reference_date: datetime) -> tuple[str, Optional[datetime]]:
+def extract_and_normalize_date(
+    text: str, reference_date: datetime
+) -> tuple[str, Optional[datetime]]:
     """
     Extract relative date references from text and normalize to absolute dates.
 
@@ -64,27 +67,27 @@ def extract_and_normalize_date(text: str, reference_date: datetime) -> tuple[str
     patterns = [
         # "tomorrow" or "tomorrow morning/afternoon/evening"
         (
-            r'\btomorrow(?:\s+(?:morning|afternoon|evening|night))?\b',
+            r"\btomorrow(?:\s+(?:morning|afternoon|evening|night))?\b",
             lambda m: reference_date + timedelta(days=1),
-            lambda m, d: f"on {d.strftime('%B %d')}"
+            lambda m, d: f"on {d.strftime('%B %d')}",
         ),
         # "in X days" or "in X day"
         (
-            r'\bin\s+(\d+)\s+days?\b',
+            r"\bin\s+(\d+)\s+days?\b",
             lambda m: reference_date + timedelta(days=int(m.group(1))),
-            lambda m, d: f"on {d.strftime('%B %d')}"
+            lambda m, d: f"on {d.strftime('%B %d')}",
         ),
         # "next Monday", "next Tuesday", etc.
         (
-            r'\bnext\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b',
+            r"\bnext\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b",
             lambda m: get_next_weekday(reference_date, WEEKDAY_MAP[m.group(1).lower()]),
-            lambda m, d: f"on {d.strftime('%B %d')}"
+            lambda m, d: f"on {d.strftime('%B %d')}",
         ),
         # Standalone weekday: "on Friday", "Friday morning", etc.
         (
-            r'\b(?:on\s+)?(monday|tuesday|wednesday|thursday|friday|saturday|sunday)(?:\s+(?:morning|afternoon|evening|at))?\b',
+            r"\b(?:on\s+)?(monday|tuesday|wednesday|thursday|friday|saturday|sunday)(?:\s+(?:morning|afternoon|evening|at))?\b",
             lambda m: get_next_weekday(reference_date, WEEKDAY_MAP[m.group(1).lower()]),
-            lambda m, d: f"on {d.strftime('%B %d')}"
+            lambda m, d: f"on {d.strftime('%B %d')}",
         ),
     ]
 
@@ -101,7 +104,7 @@ def extract_and_normalize_date(text: str, reference_date: datetime) -> tuple[str
 
                     # Replace the relative reference with absolute date
                     replacement = replacement_func(match, calculated_date)
-                    text = text[:match.start()] + replacement + text[match.end():]
+                    text = text[: match.start()] + replacement + text[match.end() :]
 
                     logger.debug(
                         f"Normalized date: '{match.group(0)}' -> '{replacement}' "
@@ -120,9 +123,7 @@ def extract_and_normalize_date(text: str, reference_date: datetime) -> tuple[str
 
 
 def calculate_valid_until(
-    memory_type: str,
-    absolute_date: Optional[datetime],
-    reference_date: datetime
+    memory_type: str, absolute_date: Optional[datetime], reference_date: datetime
 ) -> Optional[str]:
     """
     Calculate the valid_until timestamp for a memory.

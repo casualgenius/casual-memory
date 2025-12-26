@@ -12,8 +12,8 @@ from typing import Optional
 
 from casual_memory.classifiers.models import (
     CheckType,
-    SimilarMemory,
     SimilarityResult,
+    SimilarMemory,
 )
 from casual_memory.models import MemoryFact
 
@@ -50,9 +50,7 @@ class AutoResolutionClassifier:
             keep_threshold: Max confidence ratio to keep old memory (default: 0.7)
         """
         self.name = "auto_resolution"
-        self.supersede_threshold = (
-            supersede_threshold or CONFLICT_CONFIDENCE_RATIO_SUPERSEDE
-        )
+        self.supersede_threshold = supersede_threshold or CONFLICT_CONFIDENCE_RATIO_SUPERSEDE
         self.keep_threshold = keep_threshold or CONFLICT_CONFIDENCE_RATIO_KEEP
 
         logger.info(

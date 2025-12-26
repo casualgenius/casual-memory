@@ -9,11 +9,13 @@ Tests the LLM-based duplicate/refinement detection logic including:
 - Error handling with fallback to neutral
 """
 
+from unittest.mock import AsyncMock, Mock
+
 import pytest
-from unittest.mock import Mock, AsyncMock
-from casual_memory.models import MemoryFact
-from casual_memory.classifiers.models import SimilarMemory, SimilarityResult
+
 from casual_memory.classifiers.duplicate_classifier import DuplicateClassifier
+from casual_memory.classifiers.models import SimilarityResult, SimilarMemory
+from casual_memory.models import MemoryFact
 
 
 @pytest.fixture
@@ -227,9 +229,7 @@ async def test_duplicate_classifier_error_fallback_neutral(
 ):
     """Test that errors result in neutral classification (conservative fallback)."""
     # Mock LLM to raise exception
-    mock_llm_detector.is_duplicate_or_refinement.side_effect = Exception(
-        "LLM call failed"
-    )
+    mock_llm_detector.is_duplicate_or_refinement.side_effect = Exception("LLM call failed")
 
     classifier = DuplicateClassifier(llm_duplicate_detector=mock_llm_detector)
 

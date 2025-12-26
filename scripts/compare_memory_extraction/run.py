@@ -24,26 +24,28 @@ Usage:
     python run.py --models-config configs/examples/models_ollama_only.json
 """
 
+import argparse
 import asyncio
+import datetime
 import logging
 import os
-import argparse
-from typing import List, Dict, Any
-from dataclasses import dataclass
-import datetime
 import time
+from dataclasses import dataclass
+from typing import Any, Dict, List
+
 from dotenv import load_dotenv
 
 load_dotenv()
 
 # Make sure the app directory is in the python path
 import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../src/')))
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src/")))
 
 from casual_llm import ChatMessage, ModelConfig, create_provider
-from casual_memory.extractors import LLMMemoryExtracter
 from config_loader import ConfigLoader
 
+from casual_memory.extractors import LLMMemoryExtracter
 
 # Configure logging
 logger = logging.getLogger("memory-comparison")
@@ -53,9 +55,11 @@ logging.basicConfig(level=logging.INFO)
 # Configuration and Types
 # ============================================================================
 
+
 @dataclass
 class ExtractionResult:
     """Result from a single memory extraction attempt"""
+
     model_name: str
     memories: List[Dict[str, Any]]  # List of extracted memories
     duration: float
@@ -66,6 +70,7 @@ class ExtractionResult:
 # Report Generation
 # ============================================================================
 
+
 def format_conversation(conversation: List[ChatMessage]) -> str:
     """Format a conversation for display in markdown."""
     return "\n".join([f"- {msg.role}: {msg.content}" for msg in conversation])
@@ -74,7 +79,7 @@ def format_conversation(conversation: List[ChatMessage]) -> str:
 def format_tags(tags: Any) -> str:
     """Format tags field for display in table."""
     if isinstance(tags, list):
-        return ', '.join(tags)
+        return ", ".join(tags)
     return str(tags)
 
 
@@ -113,7 +118,7 @@ def write_results_table(f, results: List[ExtractionResult]):
         else:
             # Write a row for each extracted memory
             for idx, mem in enumerate(result.memories):
-                tags_str = format_tags(mem.get('tags', []))
+                tags_str = format_tags(mem.get("tags", []))
                 # Only show duration on first row for this model
                 duration_str = f"{result.duration:.2f}s" if idx == 0 else ""
 
@@ -155,7 +160,7 @@ def generate_report(
         file.write(f"Generated on: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
 
         # System prompt
-        file.write(f"## Extraction System Prompt\n\n")
+        file.write("## Extraction System Prompt\n\n")
         file.write(system_prompt)
         file.write("\n\n")
 
@@ -175,6 +180,7 @@ def generate_report(
 # Main Execution
 # ============================================================================
 
+
 async def run_extraction_comparison(
     model_configs: List[ModelConfig],
     system_prompt: str,
@@ -191,14 +197,14 @@ async def run_extraction_comparison(
         output_dir: Directory to write results
     """
     os.makedirs(output_dir, exist_ok=True)
-    timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M')
+    timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M")
     results = []
 
     for model in model_configs:
         logger.info(f"Testing {model.name}")
-        logger.info(f"Creating Provider")
+        logger.info("Creating Provider")
         provider = create_provider(model)
-        logger.info(f"Creating Memory Extractor")
+        logger.info("Creating Memory Extractor")
         extractor = LLMMemoryExtracter(llm_provider=provider, prompt=system_prompt)
 
         model_results = []
@@ -215,7 +221,7 @@ async def run_extraction_comparison(
                 ExtractionResult(
                     model_name=model.name,
                     memories=[m.model_dump() for m in memories],
-                    duration=duration
+                    duration=duration,
                 )
             )
 
@@ -223,13 +229,8 @@ async def run_extraction_comparison(
 
     output_path = os.path.join(output_dir, f"memory_comparison_{timestamp}.md")
     generate_report(
-        output_path,
-        "Memory Extraction Comparison",
-        system_prompt,
-        conversations,
-        results
+        output_path, "Memory Extraction Comparison", system_prompt, conversations, results
     )
-
 
 
 def main():
@@ -256,35 +257,35 @@ Configuration:
     - models.json: Model configurations
     - conversations.json: Test conversation pairs
     - system_prompt.md: Extraction prompt template
-        """
+        """,
     )
 
     parser.add_argument(
         "--models-config",
         type=str,
         default=None,
-        help="Path to models config JSON (default: configs/models.json)"
+        help="Path to models config JSON (default: configs/models.json)",
     )
 
     parser.add_argument(
         "--conversations-config",
         type=str,
         default=None,
-        help="Path to conversations config JSON (default: configs/conversations.json)"
+        help="Path to conversations config JSON (default: configs/conversations.json)",
     )
 
     parser.add_argument(
         "--prompt-config",
         type=str,
         default=None,
-        help="Path to system prompt file (default: configs/system_prompt.md)"
+        help="Path to system prompt file (default: configs/system_prompt.md)",
     )
 
     parser.add_argument(
         "--output-dir",
         type=str,
         default="results",
-        help="Output directory for results (default: results)"
+        help="Output directory for results (default: results)",
     )
 
     parser.add_argument(
@@ -292,7 +293,7 @@ Configuration:
         type=str,
         choices=["DEBUG", "INFO", "WARNING", "ERROR"],
         default="INFO",
-        help="Logging level (default: INFO)"
+        help="Logging level (default: INFO)",
     )
 
     args = parser.parse_args()

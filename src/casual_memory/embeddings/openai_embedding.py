@@ -150,9 +150,7 @@ class OpenAIEmbedding:
 
         return self._embed_single(text)
 
-    async def embed_documents(
-        self, texts: List[str], batch_size: int = 32
-    ) -> List[List[float]]:
+    async def embed_documents(self, texts: List[str], batch_size: int = 32) -> List[List[float]]:
         """
         Generate embeddings for multiple documents efficiently.
 
@@ -186,9 +184,7 @@ class OpenAIEmbedding:
         # Ensure correct ordering (API preserves order)
         return [item.embedding for item in response.data]
 
-    async def embed_queries(
-        self, texts: List[str], batch_size: int = 32
-    ) -> List[List[float]]:
+    async def embed_queries(self, texts: List[str], batch_size: int = 32) -> List[List[float]]:
         """
         Generate embeddings for multiple queries efficiently.
 

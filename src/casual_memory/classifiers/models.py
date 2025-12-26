@@ -12,7 +12,6 @@ from typing import Literal, Optional
 
 from casual_memory.models import MemoryFact
 
-
 # Type aliases for memory-centric classification
 SimilarityOutcome = Literal["conflict", "superseded", "same", "neutral"]
 MemoryOutcome = Literal["add", "conflict", "skip"]
@@ -89,18 +88,14 @@ class MemoryClassificationResult:
     def conflicts_with(self) -> list[str]:
         """IDs of memories this conflicts with (for conflict records)."""
         return [
-            r.similar_memory.memory_id
-            for r in self.similarity_results
-            if r.outcome == "conflict"
+            r.similar_memory.memory_id for r in self.similarity_results if r.outcome == "conflict"
         ]
 
     @property
     def supersedes(self) -> list[str]:
         """IDs of memories to archive (when overall_outcome = "add")."""
         return [
-            r.similar_memory.memory_id
-            for r in self.similarity_results
-            if r.outcome == "superseded"
+            r.similar_memory.memory_id for r in self.similarity_results if r.outcome == "superseded"
         ]
 
     @property

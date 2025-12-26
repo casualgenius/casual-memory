@@ -22,31 +22,33 @@ Usage:
     python run.py --output-dir results
 """
 
+import argparse
 import asyncio
 import json
 import logging
 import os
 import sys
-import argparse
 import time
 from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Optional
+
 from dotenv import load_dotenv
 
 load_dotenv()
 
 # Add src to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../src/')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src/")))
+
+from casual_llm import ModelConfig, Provider, create_provider
 
 from casual_memory.intelligence.duplicate_detector import LLMDuplicateDetector
-from casual_memory.intelligence.prompts import DUPLICATE_DETECTION_PROMPT
 from casual_memory.models import MemoryFact
-from casual_llm import create_provider, ModelConfig, Provider
 
 # Try to import config loader, but don't fail if not available
 try:
     from config_loader import ConfigLoader
+
     HAS_CONFIG_LOADER = True
 except ImportError:
     HAS_CONFIG_LOADER = False
@@ -54,14 +56,14 @@ except ImportError:
 # Configure logging
 logger = logging.getLogger("duplicate-benchmark")
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 
 
 @dataclass
 class TestCase:
     """A single test case for duplicate classifier."""
+
     name: str
     memory_a: str
     memory_b: str
@@ -74,6 +76,7 @@ class TestCase:
 @dataclass
 class BenchmarkResult:
     """Result from testing a single memory pair."""
+
     test_name: str
     memory_a: str
     memory_b: str
@@ -101,7 +104,7 @@ def load_test_cases(config_path: Optional[str] = None) -> List[TestCase]:
 
     logger.info(f"Loading test cases from: {config_path}")
 
-    with open(config_path, 'r') as f:
+    with open(config_path, "r") as f:
         data = json.load(f)
 
     test_cases = [
@@ -112,7 +115,7 @@ def load_test_cases(config_path: Optional[str] = None) -> List[TestCase]:
             expected_same=tc["expected_same"],
             category=tc["category"],
             description=tc.get("description", ""),
-            acceptable_either_way=tc.get("acceptable_either_way", False)
+            acceptable_either_way=tc.get("acceptable_either_way", False),
         )
         for tc in data["test_cases"]
     ]
@@ -124,14 +127,12 @@ def load_test_cases(config_path: Optional[str] = None) -> List[TestCase]:
 def load_custom_prompt(prompt_path: str) -> str:
     """Load custom prompt from file."""
     logger.info(f"Loading custom prompt from: {prompt_path}")
-    with open(prompt_path, 'r') as f:
+    with open(prompt_path, "r") as f:
         return f.read()
 
 
 async def run_benchmark(
-    test_cases: List[TestCase],
-    model_config: ModelConfig,
-    custom_prompt: Optional[str] = None
+    test_cases: List[TestCase], model_config: ModelConfig, custom_prompt: Optional[str] = None
 ) -> List[BenchmarkResult]:
     """
     Run duplicate classifier benchmark on all test cases.
@@ -151,9 +152,7 @@ async def run_benchmark(
 
     # Initialize duplicate detector
     detector = LLMDuplicateDetector(
-        llm_provider=provider,
-        model_name=model_config.name,
-        system_prompt=custom_prompt
+        llm_provider=provider, model_name=model_config.name, system_prompt=custom_prompt
     )
 
     results = []
@@ -162,19 +161,9 @@ async def run_benchmark(
         logger.info(f"Running test {i}/{len(test_cases)}: {test_case.name}")
 
         # Create memory objects
-        memory_a = MemoryFact(
-            text=test_case.memory_a,
-            type="fact",
-            tags=[],
-            user_id="test_user"
-        )
+        memory_a = MemoryFact(text=test_case.memory_a, type="fact", tags=[], user_id="test_user")
 
-        memory_b = MemoryFact(
-            text=test_case.memory_b,
-            type="fact",
-            tags=[],
-            user_id="test_user"
-        )
+        memory_b = MemoryFact(text=test_case.memory_b, type="fact", tags=[], user_id="test_user")
 
         # Run classification with timing
         start_time = time.time()
@@ -184,7 +173,7 @@ async def run_benchmark(
             is_same = await detector.is_duplicate_or_refinement(
                 memory_a=memory_a,
                 memory_b=memory_b,
-                similarity_score=0.85  # Mid-range similarity to avoid heuristic fallback
+                similarity_score=0.85,  # Mid-range similarity to avoid heuristic fallback
             )
 
             duration_ms = (time.time() - start_time) * 1000
@@ -194,43 +183,46 @@ async def run_benchmark(
             if test_case.acceptable_either_way:
                 passed = True  # Always pass when both outcomes are acceptable
             else:
-                passed = (is_same == test_case.expected_same)
+                passed = is_same == test_case.expected_same
 
-            results.append(BenchmarkResult(
-                test_name=test_case.name,
-                memory_a=test_case.memory_a,
-                memory_b=test_case.memory_b,
-                expected_same=test_case.expected_same,
-                actual_same=is_same,
-                passed=passed,
-                duration_ms=duration_ms,
-                category=test_case.category,
-                description=test_case.description,
-                llm_response=llm_response
-            ))
+            results.append(
+                BenchmarkResult(
+                    test_name=test_case.name,
+                    memory_a=test_case.memory_a,
+                    memory_b=test_case.memory_b,
+                    expected_same=test_case.expected_same,
+                    actual_same=is_same,
+                    passed=passed,
+                    duration_ms=duration_ms,
+                    category=test_case.category,
+                    description=test_case.description,
+                    llm_response=llm_response,
+                )
+            )
 
             status = "✓ PASS" if passed else "✗ FAIL"
             note = " (either outcome acceptable)" if test_case.acceptable_either_way else ""
             logger.info(
-                f"  {status} - Expected: {test_case.expected_same}, "
-                f"Actual: {is_same}{note}"
+                f"  {status} - Expected: {test_case.expected_same}, " f"Actual: {is_same}{note}"
             )
 
         except Exception as e:
             logger.error(f"  Error running test {test_case.name}: {e}", exc_info=True)
             # Add failed result
-            results.append(BenchmarkResult(
-                test_name=test_case.name,
-                memory_a=test_case.memory_a,
-                memory_b=test_case.memory_b,
-                expected_same=test_case.expected_same,
-                actual_same=False,
-                passed=False,
-                duration_ms=0.0,
-                category=test_case.category,
-                description=f"Error: {str(e)}",
-                llm_response=""
-            ))
+            results.append(
+                BenchmarkResult(
+                    test_name=test_case.name,
+                    memory_a=test_case.memory_a,
+                    memory_b=test_case.memory_b,
+                    expected_same=test_case.expected_same,
+                    actual_same=False,
+                    passed=False,
+                    duration_ms=0.0,
+                    category=test_case.category,
+                    description=f"Error: {str(e)}",
+                    llm_response="",
+                )
+            )
 
     # Get metrics
     metrics = detector.get_metrics()
@@ -243,7 +235,7 @@ def generate_report(
     results: List[BenchmarkResult],
     model_config: ModelConfig,
     custom_prompt_used: bool,
-    output_path: str
+    output_path: str,
 ):
     """
     Generate markdown report of benchmark results.
@@ -254,7 +246,7 @@ def generate_report(
         custom_prompt_used: Whether a custom prompt was used
         output_path: Path to write report
     """
-    with open(output_path, 'w') as f:
+    with open(output_path, "w") as f:
         # Header
         f.write("# Duplicate Classifier Benchmark Results\n\n")
         f.write(f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
@@ -339,14 +331,14 @@ def generate_report(
             f.write(f"### False Positives ({len(false_positives)})\n\n")
             f.write("Cases incorrectly classified as SAME (should be DISTINCT):\n\n")
             for r in false_positives:
-                f.write(f"- **{r.test_name}**: \"{r.memory_a}\" vs \"{r.memory_b}\"\n")
+                f.write(f'- **{r.test_name}**: "{r.memory_a}" vs "{r.memory_b}"\n')
             f.write("\n")
 
         if false_negatives:
             f.write(f"### False Negatives ({len(false_negatives)})\n\n")
             f.write("Cases incorrectly classified as DISTINCT (should be SAME):\n\n")
             for r in false_negatives:
-                f.write(f"- **{r.test_name}**: \"{r.memory_a}\" vs \"{r.memory_b}\"\n")
+                f.write(f'- **{r.test_name}**: "{r.memory_a}" vs "{r.memory_b}"\n')
             f.write("\n")
 
         # Recommendations
@@ -354,7 +346,9 @@ def generate_report(
 
         if false_positives:
             f.write("- **High false positive rate:** Prompt may be too aggressive at merging.\n")
-            f.write("  Consider adding examples that distinguish between similar but distinct facts.\n")
+            f.write(
+                "  Consider adding examples that distinguish between similar but distinct facts.\n"
+            )
 
         if false_negatives:
             f.write("- **Missing duplicates/refinements:** Prompt may need clearer examples\n")
@@ -389,21 +383,21 @@ Examples:
 
   # Custom output directory
   python run.py --output-dir results
-        """
+        """,
     )
 
     parser.add_argument(
         "--test-cases",
         type=str,
         default=None,
-        help="Path to test cases JSON file (default: test_cases.json in script dir)"
+        help="Path to test cases JSON file (default: test_cases.json in script dir)",
     )
 
     parser.add_argument(
         "--models-config",
         type=str,
         default=None,
-        help="Path to models config JSON for multi-model comparison (overrides --provider and --model)"
+        help="Path to models config JSON for multi-model comparison (overrides --provider and --model)",
     )
 
     parser.add_argument(
@@ -411,28 +405,25 @@ Examples:
         type=str,
         default="openai",
         choices=["openai", "ollama"],
-        help="LLM provider (default: openai) - ignored if --models-config is provided"
+        help="LLM provider (default: openai) - ignored if --models-config is provided",
     )
 
     parser.add_argument(
-        "--model",
-        type=str,
-        default="gpt-4o-mini",
-        help="Model name (default: gpt-4o-mini)"
+        "--model", type=str, default="gpt-4o-mini", help="Model name (default: gpt-4o-mini)"
     )
 
     parser.add_argument(
         "--prompt",
         type=str,
         default=None,
-        help="Path to custom prompt template file (default: uses built-in prompt)"
+        help="Path to custom prompt template file (default: uses built-in prompt)",
     )
 
     parser.add_argument(
         "--output-dir",
         type=str,
         default="results",
-        help="Output directory for results (default: results)"
+        help="Output directory for results (default: results)",
     )
 
     parser.add_argument(
@@ -440,7 +431,7 @@ Examples:
         type=str,
         choices=["DEBUG", "INFO", "WARNING", "ERROR"],
         default="INFO",
-        help="Logging level (default: INFO)"
+        help="Logging level (default: INFO)",
     )
 
     args = parser.parse_args()
@@ -478,9 +469,7 @@ Examples:
     else:
         # Single model mode (backward compatible)
         model_config = ModelConfig(
-            provider=Provider.OLLAMA,
-            base_url=os.getenv("OLLAMA_ENDPOINT"),
-            name=args.model
+            provider=Provider.OLLAMA, base_url=os.getenv("OLLAMA_ENDPOINT"), name=args.model
         )
         model_configs = [model_config]
 
@@ -495,9 +484,7 @@ Examples:
 
             results = asyncio.run(
                 run_benchmark(
-                    test_cases=test_cases,
-                    model_config=model_config,
-                    custom_prompt=custom_prompt
+                    test_cases=test_cases, model_config=model_config, custom_prompt=custom_prompt
                 )
             )
             all_results.append((model_config, results))
@@ -508,21 +495,20 @@ Examples:
     # Generate reports
     try:
         os.makedirs(args.output_dir, exist_ok=True)
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
         # Generate individual reports for each model
         for model_config, results in all_results:
-            model_safe_name = model_config.name.replace('/', '_').replace(':', '_')
+            model_safe_name = model_config.name.replace("/", "_").replace(":", "_")
             output_path = os.path.join(
-                args.output_dir,
-                f"duplicate_benchmark_{model_safe_name}_{timestamp}.md"
+                args.output_dir, f"duplicate_benchmark_{model_safe_name}_{timestamp}.md"
             )
 
             generate_report(
                 results=results,
                 model_config=model_config,
                 custom_prompt_used=(custom_prompt is not None),
-                output_path=output_path
+                output_path=output_path,
             )
 
             # Print summary for this model
@@ -540,8 +526,7 @@ Examples:
         # If multiple models, generate comparison report
         if len(all_results) > 1:
             comparison_path = os.path.join(
-                args.output_dir,
-                f"duplicate_benchmark_comparison_{timestamp}.md"
+                args.output_dir, f"duplicate_benchmark_comparison_{timestamp}.md"
             )
             generate_comparison_report(all_results, comparison_path, custom_prompt is not None)
             logger.info(f"\nComparison report: {comparison_path}")
@@ -556,10 +541,10 @@ Examples:
 def generate_comparison_report(
     all_results: List[tuple[ModelConfig, List[BenchmarkResult]]],
     output_path: str,
-    custom_prompt_used: bool
+    custom_prompt_used: bool,
 ):
     """Generate a comparison report across multiple models."""
-    with open(output_path, 'w') as f:
+    with open(output_path, "w") as f:
         f.write("# Duplicate Classifier Model Comparison\n\n")
         f.write(f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
         f.write(f"**Custom Prompt:** {'Yes' if custom_prompt_used else 'No (default)'}\n\n")
@@ -614,9 +599,6 @@ def generate_comparison_report(
         f.write("\n")
 
     logger.info(f"Comparison report written to: {output_path}")
-
-
-
 
 
 if __name__ == "__main__":

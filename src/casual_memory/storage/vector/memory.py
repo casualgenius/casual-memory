@@ -7,8 +7,9 @@ suitable for testing and development. For production, use Qdrant implementation.
 
 import logging
 import uuid
-from typing import List, Optional, Dict, Any
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 from casual_memory.storage.vector.models import MemoryPoint, MemoryPointPayload
 
 logger = logging.getLogger(__name__)
@@ -95,7 +96,7 @@ class InMemoryVectorStore:
         results = []
 
         for memory_id, memory_data in self._memories.items():
-            
+
             vector = memory_data["vector"]
             payload = memory_data["payload"]
 
@@ -168,8 +169,7 @@ class InMemoryVectorStore:
         results = results[:limit]
 
         logger.info(
-            f"Found {len(results)} similar memories "
-            f"(threshold={threshold}, user_id={user_id})"
+            f"Found {len(results)} similar memories " f"(threshold={threshold}, user_id={user_id})"
         )
 
         return results
@@ -199,9 +199,7 @@ class InMemoryVectorStore:
             payload=MemoryPointPayload(**memory_data["payload"]),
         )
 
-    def archive_memory(
-        self, memory_id: str, superseded_by: Optional[str] = None
-    ) -> bool:
+    def archive_memory(self, memory_id: str, superseded_by: Optional[str] = None) -> bool:
         """Archive a memory by marking it as archived."""
         if memory_id not in self._memories:
             logger.warning(f"Cannot archive memory {memory_id}: not found")

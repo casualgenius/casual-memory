@@ -1,9 +1,11 @@
-from datetime import datetime, timedelta
-from typing import List
 import json
-from casual_memory.models import MemoryFact
-from casual_llm import ChatMessage, SystemMessage, UserMessage, LLMProvider
 import logging
+from datetime import datetime
+from typing import List
+
+from casual_llm import ChatMessage, LLMProvider, SystemMessage, UserMessage
+
+from casual_memory.models import MemoryFact
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +25,7 @@ class LLMMemoryExtracter:
 
         # Simplified prompt - no date calculation needed
         system_prompt = self.prompt.format(
-            today_natural = now.strftime("%A, %B %d, %Y"),
-            isonow = now.isoformat()
+            today_natural=now.strftime("%A, %B %d, %Y"), isonow=now.isoformat()
         )
 
         prompt = "\n".join([message.model_dump_json() for message in messages])
@@ -36,8 +37,10 @@ class LLMMemoryExtracter:
         ]
 
         try:
-            logger.debug(f"Extracting memories")
-            response = await self.llm_provider.chat(messages=llm_messages, response_format="json", temperature=0.2)
+            logger.debug("Extracting memories")
+            response = await self.llm_provider.chat(
+                messages=llm_messages, response_format="json", temperature=0.2
+            )
             response_data = json.loads(response.content)
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse memory extraction JSON: {e}")
@@ -60,7 +63,7 @@ class LLMMemoryExtracter:
                     tags=result.get("tags", []),
                     importance=raw_importance,  # Store raw importance
                     source=result["source"],
-                    valid_until=result.get("valid_until", None)
+                    valid_until=result.get("valid_until", None),
                 )
                 memories.append(memory)
 

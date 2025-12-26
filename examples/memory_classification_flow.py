@@ -10,17 +10,16 @@ This example shows:
 """
 
 import asyncio
-from typing import List
 
-from casual_memory.models import MemoryFact
 from casual_memory.classifiers import (
-    MemoryClassificationPipeline,
-    NLIClassifier,
+    AutoResolutionClassifier,
     ConflictClassifier,
     DuplicateClassifier,
-    AutoResolutionClassifier,
+    MemoryClassificationPipeline,
+    NLIClassifier,
     SimilarMemory,
 )
+from casual_memory.models import MemoryFact
 
 
 # Mock implementations for demonstration
@@ -336,7 +335,7 @@ async def example_3_custom_pipeline():
 
     print(f"\nNew memory: {new_memory.text}")
     print(f"Overall outcome: {result.overall_outcome}")
-    print(f"\nClassification results:")
+    print("\nClassification results:")
 
     for sim_result in result.similarity_results:
         print(f"\n  Similar: {sim_result.similar_memory.memory.text}")
@@ -406,9 +405,7 @@ async def example_4_strategy_comparison():
     ]
 
     for strategy in ["single", "tiered", "all"]:
-        pipeline = MemoryClassificationPipeline(
-            classifiers=classifiers, strategy=strategy
-        )
+        pipeline = MemoryClassificationPipeline(classifiers=classifiers, strategy=strategy)
 
         result = await pipeline.classify(new_memory, similar_memories)
 
@@ -417,9 +414,7 @@ async def example_4_strategy_comparison():
         print(f"  Overall outcome: {result.overall_outcome}")
 
         for sim_result in result.similarity_results:
-            print(
-                f"    - {sim_result.similar_memory.memory.text[:40]}... → {sim_result.outcome}"
-            )
+            print(f"    - {sim_result.similar_memory.memory.text[:40]}... → {sim_result.outcome}")
 
     print("\n" + "=" * 70 + "\n")
 

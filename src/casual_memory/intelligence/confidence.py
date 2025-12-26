@@ -5,8 +5,8 @@ Implements the confidence scoring system based on mention frequency,
 recency, and temporal spread.
 """
 
-from datetime import datetime
 import logging
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 

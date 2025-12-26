@@ -8,15 +8,17 @@ with graceful degradation to heuristic-based detection.
 import logging
 from typing import Optional
 
-from casual_memory.models import MemoryFact
+from casual_llm import LLMProvider, SystemMessage, UserMessage
+
 from casual_memory.intelligence.prompts import CONFLICT_DETECTION_SYSTEM_PROMPT
-from casual_llm import LLMProvider, UserMessage, SystemMessage
+from casual_memory.models import MemoryFact
 
 logger = logging.getLogger(__name__)
 
 prompt = """Statement A: "{statement_a}"
 Statement B: "{statement_b}"
 """
+
 
 class LLMConflictVerifier:
     """
@@ -31,7 +33,7 @@ class LLMConflictVerifier:
         llm_provider: LLMProvider,
         model_name: str,
         enable_fallback: bool = True,
-        system_prompt: Optional[str] = None
+        system_prompt: Optional[str] = None,
     ):
         """
         Initialize the LLM conflict verifier.
@@ -102,9 +104,7 @@ class LLMConflictVerifier:
             - is_conflicting: True if memories conflict
             - detection_method: "llm" or "heuristic_fallback"
         """
-        user_prompt = prompt.format(
-            statement_a=memory_a.text, statement_b=memory_b.text
-        )
+        user_prompt = prompt.format(statement_a=memory_a.text, statement_b=memory_b.text)
 
         try:
             # Try LLM-based detection

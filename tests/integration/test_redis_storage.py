@@ -1,8 +1,9 @@
 """Integration tests for Redis short-term memory storage backend."""
 
 import pytest
-from casual_memory.storage.short_term.redis import RedisShortTermStore
+
 from casual_memory.models import ShortTermMemory
+from casual_memory.storage.short_term.redis import RedisShortTermStore
 
 
 @pytest.mark.integration
@@ -12,11 +13,7 @@ async def test_redis_add_and_get_messages(skip_if_no_redis):
     pytest.importorskip("redis")
 
     # Create storage instance
-    storage = RedisShortTermStore(
-        host="localhost",
-        port=6379,
-        db=15  # Use separate DB for testing
-    )
+    storage = RedisShortTermStore(host="localhost", port=6379, db=15)  # Use separate DB for testing
 
     await storage.initialize()
 
@@ -24,20 +21,16 @@ async def test_redis_add_and_get_messages(skip_if_no_redis):
         # Create test messages
         messages = [
             ShortTermMemory(
-                role="user",
-                content="Hello, how are you?",
-                timestamp="2024-01-01T10:00:00"
+                role="user", content="Hello, how are you?", timestamp="2024-01-01T10:00:00"
             ),
             ShortTermMemory(
                 role="assistant",
                 content="I'm doing well, thank you!",
-                timestamp="2024-01-01T10:00:05"
+                timestamp="2024-01-01T10:00:05",
             ),
             ShortTermMemory(
-                role="user",
-                content="What's the weather like?",
-                timestamp="2024-01-01T10:00:10"
-            )
+                role="user", content="What's the weather like?", timestamp="2024-01-01T10:00:10"
+            ),
         ]
 
         # Add messages
@@ -65,11 +58,8 @@ async def test_redis_message_limit(skip_if_no_redis):
     """Test that Redis respects the message limit."""
     pytest.importorskip("redis")
 
-    storage = RedisShortTermStorage(
-        host="localhost",
-        port=6379,
-        db=15,
-        max_messages=5  # Limit to 5 messages
+    storage = RedisShortTermStore(
+        host="localhost", port=6379, db=15, max_messages=5  # Limit to 5 messages
     )
 
     await storage.initialize()
@@ -80,7 +70,7 @@ async def test_redis_message_limit(skip_if_no_redis):
             ShortTermMemory(
                 role="user" if i % 2 == 0 else "assistant",
                 content=f"Message {i}",
-                timestamp=f"2024-01-01T10:{i:02d}:00"
+                timestamp=f"2024-01-01T10:{i:02d}:00",
             )
             for i in range(10)
         ]
@@ -107,22 +97,14 @@ async def test_redis_clear_messages(skip_if_no_redis):
     """Test clearing messages from Redis."""
     pytest.importorskip("redis")
 
-    storage = RedisShortTermStorage(
-        host="localhost",
-        port=6379,
-        db=15
-    )
+    storage = RedisShortTermStore(host="localhost", port=6379, db=15)
 
     await storage.initialize()
 
     try:
         # Add messages
         messages = [
-            ShortTermMemory(
-                role="user",
-                content="Test message",
-                timestamp="2024-01-01T10:00:00"
-            )
+            ShortTermMemory(role="user", content="Test message", timestamp="2024-01-01T10:00:00")
         ]
 
         await storage.add(messages, user_id="test_user")
@@ -151,32 +133,20 @@ async def test_redis_user_isolation(skip_if_no_redis):
     """Test that messages are isolated by user_id."""
     pytest.importorskip("redis")
 
-    storage = RedisShortTermStorage(
-        host="localhost",
-        port=6379,
-        db=15
-    )
+    storage = RedisShortTermStore(host="localhost", port=6379, db=15)
 
     await storage.initialize()
 
     try:
         # Add messages for user1
         messages_user1 = [
-            ShortTermMemory(
-                role="user",
-                content="User 1 message",
-                timestamp="2024-01-01T10:00:00"
-            )
+            ShortTermMemory(role="user", content="User 1 message", timestamp="2024-01-01T10:00:00")
         ]
         await storage.add(messages_user1, user_id="user_1")
 
         # Add messages for user2
         messages_user2 = [
-            ShortTermMemory(
-                role="user",
-                content="User 2 message",
-                timestamp="2024-01-01T10:00:00"
-            )
+            ShortTermMemory(role="user", content="User 2 message", timestamp="2024-01-01T10:00:00")
         ]
         await storage.add(messages_user2, user_id="user_2")
 
@@ -205,11 +175,7 @@ async def test_redis_get_with_limit(skip_if_no_redis):
     """Test retrieving messages with a limit."""
     pytest.importorskip("redis")
 
-    storage = RedisShortTermStorage(
-        host="localhost",
-        port=6379,
-        db=15
-    )
+    storage = RedisShortTermStore(host="localhost", port=6379, db=15)
 
     await storage.initialize()
 
@@ -219,7 +185,7 @@ async def test_redis_get_with_limit(skip_if_no_redis):
             ShortTermMemory(
                 role="user" if i % 2 == 0 else "assistant",
                 content=f"Message {i}",
-                timestamp=f"2024-01-01T10:{i:02d}:00"
+                timestamp=f"2024-01-01T10:{i:02d}:00",
             )
             for i in range(10)
         ]
@@ -245,31 +211,21 @@ async def test_redis_message_persistence(skip_if_no_redis):
     pytest.importorskip("redis")
 
     # First instance adds messages
-    storage1 = RedisShortTermStore(
-        host="localhost",
-        port=6379,
-        db=15
-    )
+    storage1 = RedisShortTermStore(host="localhost", port=6379, db=15)
 
     await storage1.initialize()
 
     try:
         messages = [
             ShortTermMemory(
-                role="user",
-                content="Persistent message",
-                timestamp="2024-01-01T10:00:00"
+                role="user", content="Persistent message", timestamp="2024-01-01T10:00:00"
             )
         ]
 
         await storage1.add(messages, user_id="test_user")
 
         # Second instance retrieves messages
-        storage2 = RedisShortTermStore(
-            host="localhost",
-            port=6379,
-            db=15
-        )
+        storage2 = RedisShortTermStore(host="localhost", port=6379, db=15)
 
         await storage2.initialize()
 

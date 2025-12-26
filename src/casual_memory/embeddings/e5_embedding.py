@@ -143,9 +143,7 @@ class E5Embedding:
         )
         return embedding.tolist()
 
-    async def embed_documents(
-        self, texts: List[str], batch_size: int = 32
-    ) -> List[List[float]]:
+    async def embed_documents(self, texts: List[str], batch_size: int = 32) -> List[List[float]]:
         """
         Generate embeddings for multiple documents efficiently.
 
@@ -178,9 +176,7 @@ class E5Embedding:
         )
         return embeddings.tolist()
 
-    async def embed_queries(
-        self, texts: List[str], batch_size: int = 32
-    ) -> List[List[float]]:
+    async def embed_queries(self, texts: List[str], batch_size: int = 32) -> List[List[float]]:
         """
         Generate embeddings for multiple queries efficiently.
 

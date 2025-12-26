@@ -1,33 +1,31 @@
-from casual_memory.storage import VectorMemoryStore, ConflictStore
+import logging
+from datetime import datetime
+
 from casual_memory.classifiers import MemoryClassificationPipeline
 from casual_memory.classifiers.models import SimilarMemory
-from casual_memory.models import MemoryFact, MemoryQueryFilter
-from casual_memory.execution import MemoryActionExecutor, MemoryActionResult
 from casual_memory.embeddings import TextEmbedding
-from datetime import datetime
-import logging
+from casual_memory.execution import MemoryActionExecutor, MemoryActionResult
+from casual_memory.models import MemoryFact, MemoryQueryFilter
+from casual_memory.storage import ConflictStore, VectorMemoryStore
 
 logger = logging.getLogger(__name__)
 
+
 class MemoryService:
     def __init__(
-        self, 
-        vector_store: VectorMemoryStore, 
-        conflict_store: ConflictStore, 
-        pipeline: MemoryClassificationPipeline, 
-        embedding: TextEmbedding
+        self,
+        vector_store: VectorMemoryStore,
+        conflict_store: ConflictStore,
+        pipeline: MemoryClassificationPipeline,
+        embedding: TextEmbedding,
     ):
         self.vector_store = vector_store
         self.pipeline = pipeline
         self.embedding = embedding
         self.action_executor = MemoryActionExecutor(vector_store, conflict_store)
 
-
     async def add_memory(
-        self,
-        new_memory: MemoryFact,
-        similarity_threshold: float = 0.85,
-        max_similar: int = 5
+        self, new_memory: MemoryFact, similarity_threshold: float = 0.85, max_similar: int = 5
     ) -> MemoryActionResult:
         try:
             # Get similar memories
@@ -37,13 +35,19 @@ class MemoryService:
                 user_id=new_memory.user_id,
                 threshold=similarity_threshold,
                 limit=max_similar,
-                exclude_archived=True
+                exclude_archived=True,
             )
             similar_memories = [
                 SimilarMemory(
                     memory_id=point.id,
-                    memory=MemoryFact(**point.payload.model_dump() if hasattr(point.payload, 'model_dump') else point.payload),
-                    similarity_score=score
+                    memory=MemoryFact(
+                        **(
+                            point.payload.model_dump()
+                            if hasattr(point.payload, "model_dump")
+                            else point.payload
+                        )
+                    ),
+                    similarity_score=score,
                 )
                 for point, score in similar_results
             ]
@@ -69,12 +73,11 @@ class MemoryService:
             logger.error(f"Failed to add memory: {e}")
             raise
 
-
     async def query_memory(
-        self, 
-        query: str, 
+        self,
+        query: str,
         filter: MemoryQueryFilter,
-        top_k: int = 5, 
+        top_k: int = 5,
         min_score: float = 0.75,
     ) -> list[MemoryFact]:
         query_vector = await self.embedding.embed_query(query)
@@ -83,9 +86,9 @@ class MemoryService:
             query_embedding=query_vector,
             top_k=top_k,
             min_score=min_score,
-            filters=filter.model_dump()
+            filters=filter.model_dump(),
         )
-    
+
         memories: list[MemoryFact] = []
         now = datetime.now()
 

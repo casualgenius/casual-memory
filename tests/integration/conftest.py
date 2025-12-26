@@ -1,7 +1,8 @@
 """Fixtures and helpers for integration tests."""
 
-import pytest
 import socket
+
+import pytest
 
 
 def is_service_available(host: str, port: int) -> bool:

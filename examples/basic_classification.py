@@ -6,27 +6,29 @@ similar memory pairs into MERGE, CONFLICT, or ADD outcomes.
 """
 
 import asyncio
+
+from casual_llm import ModelConfig, Provider, create_provider
+
 from casual_memory.classifiers import (
     ClassificationPipeline,
-    NLIClassifier,
     ConflictClassifier,
     DuplicateClassifier,
+    NLIClassifier,
 )
 from casual_memory.classifiers.models import ClassificationRequest, MemoryPair
-from casual_memory.intelligence import NLIPreFilter, LLMConflictVerifier, LLMDuplicateDetector
+from casual_memory.intelligence import LLMConflictVerifier, LLMDuplicateDetector, NLIPreFilter
 from casual_memory.models import MemoryFact
-from casual_llm import create_provider, ModelConfig, Provider
 
 
 async def main():
     print("=== Basic Classification Example ===\n")
 
     # Initialize LLM provider
-    llm_provider = create_provider(ModelConfig(
-        name="qwen2.5:7b-instruct",
-        provider=Provider.OLLAMA,
-        base_url="http://localhost:11434"
-    ))
+    llm_provider = create_provider(
+        ModelConfig(
+            name="qwen2.5:7b-instruct", provider=Provider.OLLAMA, base_url="http://localhost:11434"
+        )
+    )
 
     # Initialize intelligence components
     nli_filter = NLIPreFilter()
@@ -34,11 +36,13 @@ async def main():
     duplicate_detector = LLMDuplicateDetector(llm_provider, "qwen2.5:7b")
 
     # Build pipeline
-    pipeline = ClassificationPipeline(classifiers=[
-        NLIClassifier(nli_filter=nli_filter),
-        ConflictClassifier(llm_conflict_verifier=conflict_verifier),
-        DuplicateClassifier(llm_duplicate_detector=duplicate_detector),
-    ])
+    pipeline = ClassificationPipeline(
+        classifiers=[
+            NLIClassifier(nli_filter=nli_filter),
+            ConflictClassifier(llm_conflict_verifier=conflict_verifier),
+            DuplicateClassifier(llm_duplicate_detector=duplicate_detector),
+        ]
+    )
 
     # Create test memory pair (conflict case)
     request = ClassificationRequest(
@@ -49,21 +53,21 @@ async def main():
                     type="fact",
                     tags=["location"],
                     importance=0.8,
-                    source="user"
+                    source="user",
                 ),
                 new_memory=MemoryFact(
                     text="I live in Paris",
                     type="fact",
                     tags=["location"],
                     importance=0.9,
-                    source="user"
+                    source="user",
                 ),
                 similarity_score=0.88,
-                existing_memory_id="mem_001"
+                existing_memory_id="mem_001",
             )
         ],
         results=[],
-        user_id="user_123"
+        user_id="user_123",
     )
 
     # Classify

@@ -1,6 +1,7 @@
 """Test that adapters satisfy the TextEmbedding protocol."""
 
 import pytest
+
 from casual_memory.embeddings import TextEmbedding
 
 

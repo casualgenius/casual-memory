@@ -14,14 +14,14 @@ __all__ = [
 
 # Optional adapters (import only if dependencies available)
 try:
-    from casual_memory.embeddings.e5_embedding import E5Embedding
+    from casual_memory.embeddings.e5_embedding import E5Embedding  # noqa: F401
 
     __all__.append("E5Embedding")
 except ImportError:
     pass
 
 try:
-    from casual_memory.embeddings.openai_embedding import OpenAIEmbedding
+    from casual_memory.embeddings.openai_embedding import OpenAIEmbedding  # noqa: F401
 
     __all__.append("OpenAIEmbedding")
 except ImportError:

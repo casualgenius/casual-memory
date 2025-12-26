@@ -10,9 +10,10 @@ Tests the confidence-based auto-resolution logic including:
 """
 
 import pytest
-from casual_memory.models import MemoryFact
-from casual_memory.classifiers.models import SimilarMemory, SimilarityResult
+
 from casual_memory.classifiers.auto_resolution_classifier import AutoResolutionClassifier
+from casual_memory.classifiers.models import SimilarityResult, SimilarMemory
+from casual_memory.models import MemoryFact
 
 
 @pytest.fixture
@@ -78,6 +79,7 @@ def similar_memory_high_confidence():
 @pytest.fixture
 def conflict_result():
     """Create a conflict result."""
+
     def _create(similar_memory):
         return SimilarityResult(
             similar_memory=similar_memory,
@@ -86,6 +88,7 @@ def conflict_result():
             classifier_name="conflict",
             metadata={"category": "location"},
         )
+
     return _create
 
 
@@ -161,9 +164,7 @@ async def test_auto_resolve_mid_confidence_keeps_conflict(
 
 
 @pytest.mark.asyncio
-async def test_pass_through_non_conflict(
-    new_memory_high_confidence, similar_memory_low_confidence
-):
+async def test_pass_through_non_conflict(new_memory_high_confidence, similar_memory_low_confidence):
     """Test that non-conflict results pass through unchanged."""
     classifier = AutoResolutionClassifier()
 
@@ -188,9 +189,7 @@ async def test_pass_through_non_conflict(
 
 
 @pytest.mark.asyncio
-async def test_pass_through_none_result(
-    new_memory_high_confidence, similar_memory_low_confidence
-):
+async def test_pass_through_none_result(new_memory_high_confidence, similar_memory_low_confidence):
     """Test that None result passes through."""
     classifier = AutoResolutionClassifier()
 

@@ -6,12 +6,9 @@ the MemoryClassifier protocol.
 """
 
 import asyncio
+
 from casual_memory.classifiers import ClassificationPipeline
-from casual_memory.classifiers.models import (
-    ClassificationRequest,
-    ClassificationResult,
-    MemoryPair
-)
+from casual_memory.classifiers.models import ClassificationRequest, ClassificationResult
 
 
 class SimpleRuleBasedClassifier:
@@ -24,9 +21,7 @@ class SimpleRuleBasedClassifier:
     def __init__(self, similarity_threshold: float = 0.95):
         self.similarity_threshold = similarity_threshold
 
-    async def classify(
-        self, request: ClassificationRequest
-    ) -> ClassificationRequest:
+    async def classify(self, request: ClassificationRequest) -> ClassificationRequest:
         """
         Classify memory pairs using simple similarity threshold.
 
@@ -49,7 +44,7 @@ class SimpleRuleBasedClassifier:
                 classification=classification,
                 classifier_name="SimpleRuleBasedClassifier",
                 confidence=pair.similarity_score,
-                metadata={"threshold": self.similarity_threshold}
+                metadata={"threshold": self.similarity_threshold},
             )
 
             request.results.append(result)
@@ -64,9 +59,7 @@ async def main():
     custom_classifier = SimpleRuleBasedClassifier(similarity_threshold=0.95)
 
     # Build pipeline with custom classifier
-    pipeline = ClassificationPipeline(classifiers=[
-        custom_classifier
-    ])
+    _pipeline = ClassificationPipeline(classifiers=[custom_classifier])
 
     print("Pipeline created with custom classifier")
     print("Ready to classify memory pairs!\n")

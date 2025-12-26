@@ -12,8 +12,8 @@ from typing import Literal
 from casual_memory.classifiers.models import (
     CheckType,
     MemoryClassificationResult,
-    SimilarMemory,
     SimilarityResult,
+    SimilarMemory,
 )
 from casual_memory.models import MemoryFact
 
@@ -101,17 +101,13 @@ class MemoryClassificationPipeline:
             check_type: CheckType = "primary" if i == 0 else "secondary"
 
             # Run classifiers sequentially until one returns a result
-            result = await self._classify_with_pipeline(
-                new_memory, similar_mem, check_type
-            )
+            result = await self._classify_with_pipeline(new_memory, similar_mem, check_type)
 
             similarity_results.append(result)
 
             # Early stopping: Stop if we found a conflict or same
             if result.outcome in ["conflict", "same"]:
-                logger.info(
-                    f"Early stopping after {i+1} checks - found {result.outcome}"
-                )
+                logger.info(f"Early stopping after {i+1} checks - found {result.outcome}")
                 break
 
         # Derive overall outcome from similarity results
@@ -128,9 +124,7 @@ class MemoryClassificationPipeline:
             similarity_results=similarity_results,
         )
 
-    def _filter_by_strategy(
-        self, similar_memories: list[SimilarMemory]
-    ) -> list[SimilarMemory]:
+    def _filter_by_strategy(self, similar_memories: list[SimilarMemory]) -> list[SimilarMemory]:
         """
         Filter similar memories based on checking strategy.
 
@@ -196,9 +190,7 @@ class MemoryClassificationPipeline:
         # Run classifiers sequentially, passing result through chain
         result = None
         for classifier in self.classifiers:
-            result = await classifier.classify_pair(
-                new_memory, similar_memory, check_type, result
-            )
+            result = await classifier.classify_pair(new_memory, similar_memory, check_type, result)
 
         # If no classifier provided a result, return default neutral
         if result is None:
@@ -248,9 +240,7 @@ class MemoryClassificationPipeline:
         # Default: add (may have superseded or neutral memories)
         superseded_count = sum(1 for r in results if r.outcome == "superseded")
         if superseded_count > 0:
-            logger.debug(
-                f"Overall outcome: add (will supersede {superseded_count} memories)"
-            )
+            logger.debug(f"Overall outcome: add (will supersede {superseded_count} memories)")
         else:
             logger.debug("Overall outcome: add (all similarities neutral)")
 
@@ -268,7 +258,5 @@ class MemoryClassificationPipeline:
             "secondary_conflict_threshold": self.secondary_conflict_threshold,
             "max_secondary_checks": self.max_secondary_checks,
             "classifier_count": len(self.classifiers),
-            "classifiers": [
-                classifier.__class__.__name__ for classifier in self.classifiers
-            ],
+            "classifiers": [classifier.__class__.__name__ for classifier in self.classifiers],
         }

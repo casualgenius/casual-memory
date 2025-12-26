@@ -1,13 +1,14 @@
 """Tests for LLM memory extractor."""
 
-import pytest
 import json
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, Mock
-from casual_llm import UserMessage, AssistantMessage, SystemMessage
+
+import pytest
+from casual_llm import AssistantMessage, SystemMessage, UserMessage
+
 from casual_memory.extractors.llm_extractor import LLMMemoryExtracter
 from casual_memory.extractors.prompts import USER_MEMORY_PROMPT
-from casual_memory.models import MemoryFact
 
 
 class MockLLMProvider:
@@ -27,25 +28,27 @@ def mock_prompt():
 @pytest.mark.asyncio
 async def test_extract_basic_memory():
     """Test basic memory extraction with valid response."""
-    response_json = json.dumps({
-        "memories": [
-            {
-                "text": "My name is Alex",
-                "type": "fact",
-                "tags": ["name", "identity"],
-                "importance": 0.9,
-                "source": "user",
-                "valid_until": None
-            }
-        ]
-    })
+    response_json = json.dumps(
+        {
+            "memories": [
+                {
+                    "text": "My name is Alex",
+                    "type": "fact",
+                    "tags": ["name", "identity"],
+                    "importance": 0.9,
+                    "source": "user",
+                    "valid_until": None,
+                }
+            ]
+        }
+    )
 
     provider = MockLLMProvider(response_json)
     extractor = LLMMemoryExtracter(provider, USER_MEMORY_PROMPT)
 
     messages = [
         UserMessage(content="My name is Alex"),
-        AssistantMessage(content="Nice to meet you, Alex!")
+        AssistantMessage(content="Nice to meet you, Alex!"),
     ]
 
     memories = await extractor.extract(messages)
@@ -60,34 +63,36 @@ async def test_extract_basic_memory():
 @pytest.mark.asyncio
 async def test_extract_multiple_memories():
     """Test extraction of multiple memories from conversation."""
-    response_json = json.dumps({
-        "memories": [
-            {
-                "text": "I live in London",
-                "type": "fact",
-                "tags": ["location", "residence"],
-                "importance": 0.8,
-                "source": "user",
-                "valid_until": None
-            },
-            {
-                "text": "I work as a software engineer",
-                "type": "fact",
-                "tags": ["job", "career"],
-                "importance": 0.7,
-                "source": "user",
-                "valid_until": None
-            },
-            {
-                "text": "I enjoy hiking",
-                "type": "preference",
-                "tags": ["hobby", "outdoor"],
-                "importance": 0.6,
-                "source": "user",
-                "valid_until": None
-            }
-        ]
-    })
+    response_json = json.dumps(
+        {
+            "memories": [
+                {
+                    "text": "I live in London",
+                    "type": "fact",
+                    "tags": ["location", "residence"],
+                    "importance": 0.8,
+                    "source": "user",
+                    "valid_until": None,
+                },
+                {
+                    "text": "I work as a software engineer",
+                    "type": "fact",
+                    "tags": ["job", "career"],
+                    "importance": 0.7,
+                    "source": "user",
+                    "valid_until": None,
+                },
+                {
+                    "text": "I enjoy hiking",
+                    "type": "preference",
+                    "tags": ["hobby", "outdoor"],
+                    "importance": 0.6,
+                    "source": "user",
+                    "valid_until": None,
+                },
+            ]
+        }
+    )
 
     provider = MockLLMProvider(response_json)
     extractor = LLMMemoryExtracter(provider, USER_MEMORY_PROMPT)
@@ -107,34 +112,36 @@ async def test_extract_multiple_memories():
 @pytest.mark.asyncio
 async def test_extract_filters_low_importance():
     """Test that memories below importance threshold are filtered."""
-    response_json = json.dumps({
-        "memories": [
-            {
-                "text": "High importance memory",
-                "type": "fact",
-                "tags": ["test"],
-                "importance": 0.9,
-                "source": "user",
-                "valid_until": None
-            },
-            {
-                "text": "Low importance memory",
-                "type": "fact",
-                "tags": ["test"],
-                "importance": 0.3,  # Below 0.5 threshold
-                "source": "user",
-                "valid_until": None
-            },
-            {
-                "text": "Medium importance memory",
-                "type": "fact",
-                "tags": ["test"],
-                "importance": 0.5,  # Exactly at threshold
-                "source": "user",
-                "valid_until": None
-            }
-        ]
-    })
+    response_json = json.dumps(
+        {
+            "memories": [
+                {
+                    "text": "High importance memory",
+                    "type": "fact",
+                    "tags": ["test"],
+                    "importance": 0.9,
+                    "source": "user",
+                    "valid_until": None,
+                },
+                {
+                    "text": "Low importance memory",
+                    "type": "fact",
+                    "tags": ["test"],
+                    "importance": 0.3,  # Below 0.5 threshold
+                    "source": "user",
+                    "valid_until": None,
+                },
+                {
+                    "text": "Medium importance memory",
+                    "type": "fact",
+                    "tags": ["test"],
+                    "importance": 0.5,  # Exactly at threshold
+                    "source": "user",
+                    "valid_until": None,
+                },
+            ]
+        }
+    )
 
     provider = MockLLMProvider(response_json)
     extractor = LLMMemoryExtracter(provider, USER_MEMORY_PROMPT)
@@ -154,18 +161,20 @@ async def test_extract_with_temporal_memory():
     now = datetime.now()
     expires = (now + timedelta(days=1)).isoformat()
 
-    response_json = json.dumps({
-        "memories": [
-            {
-                "text": "I have a meeting tomorrow",
-                "type": "event",
-                "tags": ["meeting", "reminder"],
-                "importance": 0.8,
-                "source": "user",
-                "valid_until": expires
-            }
-        ]
-    })
+    response_json = json.dumps(
+        {
+            "memories": [
+                {
+                    "text": "I have a meeting tomorrow",
+                    "type": "event",
+                    "tags": ["meeting", "reminder"],
+                    "importance": 0.8,
+                    "source": "user",
+                    "valid_until": expires,
+                }
+            ]
+        }
+    )
 
     provider = MockLLMProvider(response_json)
     extractor = LLMMemoryExtracter(provider, USER_MEMORY_PROMPT)
@@ -222,33 +231,35 @@ async def test_extract_with_empty_conversation():
 @pytest.mark.asyncio
 async def test_extract_different_sources():
     """Test extraction with different source values."""
-    response_json = json.dumps({
-        "memories": [
-            {
-                "text": "User stated fact",
-                "type": "fact",
-                "tags": ["test"],
-                "importance": 0.7,
-                "source": "user",
-                "valid_until": None
-            },
-            {
-                "text": "Assistant observed fact",
-                "type": "fact",
-                "tags": ["test"],
-                "importance": 0.6,
-                "source": "assistant",
-                "valid_until": None
-            }
-        ]
-    })
+    response_json = json.dumps(
+        {
+            "memories": [
+                {
+                    "text": "User stated fact",
+                    "type": "fact",
+                    "tags": ["test"],
+                    "importance": 0.7,
+                    "source": "user",
+                    "valid_until": None,
+                },
+                {
+                    "text": "Assistant observed fact",
+                    "type": "fact",
+                    "tags": ["test"],
+                    "importance": 0.6,
+                    "source": "assistant",
+                    "valid_until": None,
+                },
+            ]
+        }
+    )
 
     provider = MockLLMProvider(response_json)
     extractor = LLMMemoryExtracter(provider, USER_MEMORY_PROMPT)
 
     messages = [
         UserMessage(content="I like pizza"),
-        AssistantMessage(content="I notice you seem happy today")
+        AssistantMessage(content="I notice you seem happy today"),
     ]
 
     memories = await extractor.extract(messages)
@@ -261,18 +272,20 @@ async def test_extract_different_sources():
 @pytest.mark.asyncio
 async def test_extract_preserves_tags():
     """Test that tags are properly extracted and preserved."""
-    response_json = json.dumps({
-        "memories": [
-            {
-                "text": "I am allergic to peanuts",
-                "type": "fact",
-                "tags": ["allergy", "medical", "safety"],
-                "importance": 1.0,
-                "source": "user",
-                "valid_until": None
-            }
-        ]
-    })
+    response_json = json.dumps(
+        {
+            "memories": [
+                {
+                    "text": "I am allergic to peanuts",
+                    "type": "fact",
+                    "tags": ["allergy", "medical", "safety"],
+                    "importance": 1.0,
+                    "source": "user",
+                    "valid_until": None,
+                }
+            ]
+        }
+    )
 
     provider = MockLLMProvider(response_json)
     extractor = LLMMemoryExtracter(provider, USER_MEMORY_PROMPT)
@@ -287,42 +300,44 @@ async def test_extract_preserves_tags():
 @pytest.mark.asyncio
 async def test_extract_all_memory_types():
     """Test extraction of all memory types."""
-    response_json = json.dumps({
-        "memories": [
-            {
-                "text": "My name is Alex",
-                "type": "fact",
-                "tags": ["name"],
-                "importance": 0.9,
-                "source": "user",
-                "valid_until": None
-            },
-            {
-                "text": "I enjoy hiking",
-                "type": "preference",
-                "tags": ["hobby"],
-                "importance": 0.7,
-                "source": "user",
-                "valid_until": None
-            },
-            {
-                "text": "I want to learn Spanish",
-                "type": "goal",
-                "tags": ["learning", "language"],
-                "importance": 0.8,
-                "source": "user",
-                "valid_until": None
-            },
-            {
-                "text": "I have a dentist appointment tomorrow",
-                "type": "event",
-                "tags": ["appointment", "dental"],
-                "importance": 0.9,
-                "source": "user",
-                "valid_until": None
-            }
-        ]
-    })
+    response_json = json.dumps(
+        {
+            "memories": [
+                {
+                    "text": "My name is Alex",
+                    "type": "fact",
+                    "tags": ["name"],
+                    "importance": 0.9,
+                    "source": "user",
+                    "valid_until": None,
+                },
+                {
+                    "text": "I enjoy hiking",
+                    "type": "preference",
+                    "tags": ["hobby"],
+                    "importance": 0.7,
+                    "source": "user",
+                    "valid_until": None,
+                },
+                {
+                    "text": "I want to learn Spanish",
+                    "type": "goal",
+                    "tags": ["learning", "language"],
+                    "importance": 0.8,
+                    "source": "user",
+                    "valid_until": None,
+                },
+                {
+                    "text": "I have a dentist appointment tomorrow",
+                    "type": "event",
+                    "tags": ["appointment", "dental"],
+                    "importance": 0.9,
+                    "source": "user",
+                    "valid_until": None,
+                },
+            ]
+        }
+    )
 
     provider = MockLLMProvider(response_json)
     extractor = LLMMemoryExtracter(provider, USER_MEMORY_PROMPT)
@@ -361,15 +376,17 @@ async def test_prompt_formatting():
 @pytest.mark.asyncio
 async def test_extract_with_defaults():
     """Test that optional fields use appropriate defaults."""
-    response_json = json.dumps({
-        "memories": [
-            {
-                "text": "Minimal memory",
-                "source": "user"
-                # Missing: type, tags, importance, valid_until
-            }
-        ]
-    })
+    response_json = json.dumps(
+        {
+            "memories": [
+                {
+                    "text": "Minimal memory",
+                    "source": "user",
+                    # Missing: type, tags, importance, valid_until
+                }
+            ]
+        }
+    )
 
     provider = MockLLMProvider(response_json)
     extractor = LLMMemoryExtracter(provider, USER_MEMORY_PROMPT)

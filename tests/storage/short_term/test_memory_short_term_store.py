@@ -4,10 +4,12 @@ Unit tests for in-memory short-term storage.
 Tests message storage, retrieval, and FIFO behavior.
 """
 
-import pytest
 from datetime import datetime
-from casual_memory.storage.short_term.memory import InMemoryShortTermStore
+
+import pytest
+
 from casual_memory.models import ShortTermMemory
+from casual_memory.storage.short_term.memory import InMemoryShortTermStore
 
 
 @pytest.fixture

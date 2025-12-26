@@ -13,8 +13,8 @@ from typing import Optional
 
 from casual_memory.classifiers.models import (
     CheckType,
-    SimilarMemory,
     SimilarityResult,
+    SimilarMemory,
 )
 from casual_memory.intelligence.conflict_verifier import LLMConflictVerifier
 from casual_memory.models import MemoryFact
@@ -80,17 +80,13 @@ class ConflictClassifier:
 
             if is_conflicting:
                 # Conflict detected - determine category and hint
-                category = self._categorize_conflict(
-                    similar_memory.memory.text, new_memory.text
-                )
+                category = self._categorize_conflict(similar_memory.memory.text, new_memory.text)
                 clarification_hint = self._generate_clarification_hint(
                     similar_memory.memory.text, new_memory.text, category
                 )
 
                 # Calculate average importance
-                avg_importance = (
-                    similar_memory.memory.importance + new_memory.importance
-                ) / 2
+                avg_importance = (similar_memory.memory.importance + new_memory.importance) / 2
 
                 logger.debug(
                     f"CONFLICT detected ({detection_method}, category={category}): "
@@ -139,24 +135,15 @@ class ConflictClassifier:
         text_combined = (text_a + " " + text_b).lower()
 
         # Location keywords
-        if any(
-            word in text_combined
-            for word in ["live", "reside", "located", "city", "country"]
-        ):
+        if any(word in text_combined for word in ["live", "reside", "located", "city", "country"]):
             return "location"
 
         # Job/career keywords
-        if any(
-            word in text_combined
-            for word in ["work", "job", "career", "employed", "position"]
-        ):
+        if any(word in text_combined for word in ["work", "job", "career", "employed", "position"]):
             return "job"
 
         # Preference keywords
-        if any(
-            word in text_combined
-            for word in ["like", "love", "hate", "prefer", "favorite"]
-        ):
+        if any(word in text_combined for word in ["like", "love", "hate", "prefer", "favorite"]):
             return "preference"
 
         # Temporal keywords
@@ -169,9 +156,7 @@ class ConflictClassifier:
         # Default category
         return "factual"
 
-    def _generate_clarification_hint(
-        self, text_a: str, text_b: str, category: str
-    ) -> str:
+    def _generate_clarification_hint(self, text_a: str, text_b: str, category: str) -> str:
         """
         Generate a hint for user clarification.
 

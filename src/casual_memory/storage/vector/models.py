@@ -6,8 +6,8 @@ for storing memory points with embeddings and payloads.
 """
 
 from typing import List, Optional
+
 from pydantic import BaseModel
-from datetime import datetime
 
 
 class MemoryPointPayload(BaseModel):
