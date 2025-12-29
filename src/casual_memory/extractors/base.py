@@ -4,7 +4,7 @@ Base protocol for Memory Extractors.
 
 from __future__ import annotations
 
-from typing import List, Protocol
+from typing import Protocol
 
 from casual_llm.messages import ChatMessage
 
@@ -20,7 +20,7 @@ class MemoryExtracter(Protocol):
     inheritance required.
     """
 
-    async def extract(self, messages: List[ChatMessage]) -> List[MemoryFact]:
+    async def extract(self, messages: list[ChatMessage]) -> list[MemoryFact]:
         """
         Extract memories from a list of ChatMessages.
 

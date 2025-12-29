@@ -6,7 +6,6 @@ suitable for production deployments with multiple replicas.
 """
 
 import logging
-from typing import List
 
 from casual_memory.models import ShortTermMemory
 
@@ -69,7 +68,7 @@ class RedisShortTermStore:
         """Get the Redis key for a user's messages."""
         return f"{self._key_prefix}{user_id}"
 
-    def add_messages(self, user_id: str, messages: List[ShortTermMemory]) -> int:
+    def add_messages(self, user_id: str, messages: list[ShortTermMemory]) -> int:
         """Add messages to short-term storage."""
         key = self._get_key(user_id)
         count = 0
@@ -92,15 +91,15 @@ class RedisShortTermStore:
 
         return count
 
-    def get_recent_messages(self, user_id: str, limit: int = 20) -> List[ShortTermMemory]:
+    def get_recent_messages(self, user_id: str, limit: int = 20) -> list[ShortTermMemory]:
         """Get recent messages for a user."""
         key = self._get_key(user_id)
 
         # Get last N messages
-        messages_json = self.client.lrange(key, -limit, -1)
+        messages_json_list: list[str] = self.client.lrange(key, -limit, -1)  # type: ignore[assignment]
 
         messages = []
-        for msg_json in messages_json:
+        for msg_json in messages_json_list:
             try:
                 message = ShortTermMemory.model_validate_json(msg_json)
                 messages.append(message)
@@ -117,7 +116,7 @@ class RedisShortTermStore:
         key = self._get_key(user_id)
 
         # Get count before deletion
-        count = self.client.llen(key)
+        count: int = self.client.llen(key)  # type: ignore[assignment]
 
         # Delete the key
         self.client.delete(key)
@@ -129,4 +128,5 @@ class RedisShortTermStore:
     def get_message_count(self, user_id: str) -> int:
         """Get the number of messages stored for a user."""
         key = self._get_key(user_id)
-        return self.client.llen(key)
+        count: int = self.client.llen(key)  # type: ignore[assignment]
+        return count

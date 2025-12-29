@@ -8,7 +8,7 @@ to absolute dates in memory text and calculates appropriate valid_until timestam
 import logging
 import re
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Any, Callable, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ def extract_and_normalize_date(
     absolute_date = None
 
     # Patterns to detect and normalize (in priority order)
-    patterns = [
+    patterns: list[tuple[str, Callable[[Any], datetime], Callable[[Any, datetime], str]]] = [
         # "tomorrow" or "tomorrow morning/afternoon/evening"
         (
             r"\btomorrow(?:\s+(?:morning|afternoon|evening|night))?\b",
@@ -153,7 +153,7 @@ def calculate_valid_until(
     return expiry.isoformat()
 
 
-def normalize_memory_dates(memory_data: dict, reference_date: datetime) -> dict:
+def normalize_memory_dates(memory_data: dict[str, Any], reference_date: datetime) -> dict[str, Any]:
     """
     Normalize dates in a single memory dictionary.
 

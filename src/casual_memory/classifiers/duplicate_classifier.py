@@ -9,7 +9,7 @@ Fallback: Defaults to neutral if LLM unavailable
 """
 
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 from casual_memory.classifiers.models import (
     CheckType,
@@ -168,7 +168,7 @@ class DuplicateClassifier:
                 },
             )
 
-    def get_metrics(self) -> dict:
+    def get_metrics(self) -> dict[str, Any]:
         """
         Get duplicate classifier metrics.
 

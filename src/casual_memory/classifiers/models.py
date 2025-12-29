@@ -8,7 +8,7 @@ Defines the core data models used throughout the classification pipeline:
 """
 
 from dataclasses import dataclass, field
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from casual_memory.models import MemoryFact
 
@@ -60,7 +60,7 @@ class SimilarityResult:
     outcome: SimilarityOutcome
     confidence: float
     classifier_name: str
-    metadata: dict = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass

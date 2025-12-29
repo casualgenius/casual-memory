@@ -1,6 +1,6 @@
 import logging
 import uuid
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
@@ -37,17 +37,14 @@ class QdrantMemoryStore:
         self.collection_name = collection_name
         self._init_collection()
 
-    def _init_collection(self):
+    def _init_collection(self) -> None:
         if not self.client.collection_exists(self.collection_name):
             self.client.recreate_collection(
                 collection_name=self.collection_name,
-                vectors_config={
-                    "size": vector_dimension,
-                    "distance": "Cosine",
-                },  # Adjust size as needed
+                vectors_config=VectorParams(size=vector_dimension, distance=Distance.COSINE),
             )
 
-    def clear(self):
+    def clear(self) -> None:
         """Clear ALL memories from the collection (dangerous!)"""
         self.client.recreate_collection(
             collection_name=self.collection_name,
@@ -93,7 +90,7 @@ class QdrantMemoryStore:
             logger.error(f"Failed to clear memories for user_id={user_id}: {e}")
             raise
 
-    def add(self, vector: List[float], payload: dict):
+    def add(self, vector: list[float], payload: dict[str, Any]) -> str:
         """
         Add a memory to the Qdrant collection.
 
@@ -114,14 +111,14 @@ class QdrantMemoryStore:
 
     def search(
         self,
-        query_embedding: List[float],
+        query_embedding: list[float],
         top_k: int = 5,
         min_score: float = 0.7,
         filters: Optional[Any] = None,
-    ) -> List[MemoryPoint]:
+    ) -> list[MemoryPoint]:
         qdrant_filter = None
         if filters:
-            conditions = []
+            conditions: list[FieldCondition] = []
 
             # Handle user_id filter
             if filters.user_id is not None:
@@ -139,9 +136,9 @@ class QdrantMemoryStore:
                     FieldCondition(key="importance", range=Range(gte=filters.min_importance))
                 )
 
-            qdrant_filter = Filter(must=conditions) if conditions else None
+            qdrant_filter = Filter(must=conditions) if conditions else None  # type: ignore[arg-type]
 
-        hits = self.client.search(
+        hits = self.client.search(  # type: ignore[attr-defined]
             collection_name=self.collection_name,
             query_vector=query_embedding,
             limit=top_k,
@@ -168,12 +165,12 @@ class QdrantMemoryStore:
 
     def find_similar_memories(
         self,
-        embedding: List[float],
+        embedding: list[float],
         user_id: Optional[str] = None,
         threshold: Optional[float] = None,
         limit: int = 5,
         exclude_archived: bool = True,
-    ) -> List[tuple[MemoryPoint, float]]:
+    ) -> list[tuple[MemoryPoint, float]]:
         """
         Find similar memories based on vector similarity.
 
@@ -191,7 +188,7 @@ class QdrantMemoryStore:
             threshold = 0.85  # Default similarity threshold
 
         # Build filter conditions
-        conditions = []
+        conditions: list[FieldCondition] = []
 
         if user_id:
             conditions.append(FieldCondition(key="user_id", match=MatchValue(value=user_id)))
@@ -201,10 +198,10 @@ class QdrantMemoryStore:
         # 2. We handle archived filtering in post-processing if needed
         # For now, we rely on archived field being set to False by default in MemoryPointPayload
 
-        qdrant_filter = Filter(must=conditions) if conditions else None
+        qdrant_filter = Filter(must=conditions) if conditions else None  # type: ignore[arg-type]
 
         # Perform similarity search
-        hits = self.client.search(
+        hits = self.client.search(  # type: ignore[attr-defined]
             collection_name=self.collection_name,
             query_vector=embedding,
             limit=limit,
@@ -237,7 +234,7 @@ class QdrantMemoryStore:
         )
         return results
 
-    def update_memory(self, memory_id: str, payload_updates: dict) -> bool:
+    def update_memory(self, memory_id: str, payload_updates: dict[str, Any]) -> bool:
         """
         Update specific fields in a memory's payload.
 
@@ -280,8 +277,8 @@ class QdrantMemoryStore:
                 point = result[0]
                 return MemoryPoint(
                     id=str(point.id),
-                    vector=point.vector,
-                    payload=MemoryPointPayload(**point.payload),
+                    vector=point.vector,  # type: ignore[arg-type]
+                    payload=MemoryPointPayload(**point.payload),  # type: ignore[arg-type]
                 )
             return None
         except Exception as e:

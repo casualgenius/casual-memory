@@ -68,6 +68,8 @@ dev = [
     "black>=23.0.0",
     "ruff>=0.1.0",
     "mypy>=1.0.0",
+    "types-redis>=4.0.0",
+    "sqlalchemy[mypy]>=2.0.0",
 ]
 
 [project.urls]
@@ -87,6 +89,9 @@ packages = ["src/casual_memory"]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 addopts = "-v --cov=casual_memory --cov-report=term-missing"
+markers = [
+    "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
+]
 
 [tool.black]
 line-length = 100
@@ -110,6 +115,22 @@ strict = true
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
+
+# Ignore missing imports for optional dependencies
+[[tool.mypy.overrides]]
+module = [
+    "sentence_transformers",
+    "sentence_transformers.*",
+    "qdrant_client",
+    "qdrant_client.*",
+    "dateparser",
+    "dateparser.*",
+    "redis",
+    "redis.*",
+    "transformers",
+    "transformers.*",
+]
+ignore_missing_imports = true
 
 [dependency-groups]
 dev = [

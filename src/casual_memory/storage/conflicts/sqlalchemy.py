@@ -10,7 +10,7 @@ import json
 import logging
 from contextlib import contextmanager
 from datetime import datetime
-from typing import List, Optional
+from typing import Generator, Optional
 
 from sqlalchemy import Boolean, Column, DateTime, Engine, Float, Index, Integer, String, Text
 from sqlalchemy.orm import Session, declarative_base
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 Base = declarative_base()
 
 
-class ConflictDB(Base):
+class ConflictDB(Base):  # type: ignore[misc, valid-type]
     """SQLAlchemy model for conflict storage."""
 
     __tablename__ = "conflicts"
@@ -61,24 +61,24 @@ class ConflictDB(Base):
 
     def to_memory_conflict(self) -> MemoryConflict:
         """Convert database model to MemoryConflict."""
-        metadata = json.loads(self.metadata_json) if self.metadata_json else {}
+        metadata = json.loads(self.metadata_json) if self.metadata_json else {}  # type: ignore[arg-type]
 
         return MemoryConflict(
-            id=self.id,
-            user_id=self.user_id,
-            memory_a_id=self.memory_a_id,
-            memory_b_id=self.memory_b_id,
-            category=self.category,
-            is_singleton_category=self.is_singleton_category,
-            similarity_score=self.similarity_score,
-            status=self.status,
-            avg_importance=self.avg_importance,
-            clarification_hint=self.clarification_hint,
-            resolution_type=self.resolution_type,
-            winning_memory_id=self.winning_memory_id,
-            resolution_attempts=self.resolution_attempts,
-            created_at=self.created_at,
-            resolved_at=self.resolved_at,
+            id=self.id,  # type: ignore[arg-type]
+            user_id=self.user_id,  # type: ignore[arg-type]
+            memory_a_id=self.memory_a_id,  # type: ignore[arg-type]
+            memory_b_id=self.memory_b_id,  # type: ignore[arg-type]
+            category=self.category,  # type: ignore[arg-type]
+            is_singleton_category=self.is_singleton_category,  # type: ignore[arg-type]
+            similarity_score=self.similarity_score,  # type: ignore[arg-type]
+            status=self.status,  # type: ignore[arg-type]
+            avg_importance=self.avg_importance,  # type: ignore[arg-type]
+            clarification_hint=self.clarification_hint,  # type: ignore[arg-type]
+            resolution_type=self.resolution_type,  # type: ignore[arg-type]
+            winning_memory_id=self.winning_memory_id,  # type: ignore[arg-type]
+            resolution_attempts=self.resolution_attempts,  # type: ignore[arg-type]
+            created_at=self.created_at,  # type: ignore[arg-type]
+            resolved_at=self.resolved_at,  # type: ignore[arg-type]
             metadata=metadata,
         )
 
@@ -137,7 +137,7 @@ class SQLAlchemyConflictStore:
         logger.info(f"SQLAlchemyConflictStore initialized (engine={engine.url})")
 
     @contextmanager
-    def _session(self):
+    def _session(self) -> Generator[Session, None, None]:
         """Context manager for database sessions with automatic commit/rollback."""
         session = Session(self.engine)
         try:
@@ -150,7 +150,7 @@ class SQLAlchemyConflictStore:
         finally:
             session.close()
 
-    def create_tables(self):
+    def create_tables(self) -> None:
         """Create database tables if they don't exist."""
         Base.metadata.create_all(self.engine)
         logger.info("Database tables created/verified")
@@ -180,7 +180,7 @@ class SQLAlchemyConflictStore:
 
     def get_pending_conflicts(
         self, user_id: str, limit: Optional[int] = None
-    ) -> List[MemoryConflict]:
+    ) -> list[MemoryConflict]:
         """Get all pending conflicts for a user."""
         with self._session() as session:
             query = (
@@ -212,13 +212,13 @@ class SQLAlchemyConflictStore:
                 winning_memory_id = db_conflict.memory_b_id
 
             # Update conflict
-            db_conflict.status = "resolved"
-            db_conflict.resolved_at = datetime.now()
-            db_conflict.resolution_type = resolution.resolution_type
-            db_conflict.winning_memory_id = winning_memory_id
+            db_conflict.status = "resolved"  # type: ignore[assignment]
+            db_conflict.resolved_at = datetime.now()  # type: ignore[assignment]
+            db_conflict.resolution_type = resolution.resolution_type  # type: ignore[assignment]
+            db_conflict.winning_memory_id = winning_memory_id  # type: ignore[assignment]
 
             # Update metadata
-            metadata = json.loads(db_conflict.metadata_json) if db_conflict.metadata_json else {}
+            metadata = json.loads(db_conflict.metadata_json) if db_conflict.metadata_json else {}  # type: ignore[arg-type]
             metadata.update(
                 {
                     "resolution_decision": resolution.decision,
@@ -227,7 +227,7 @@ class SQLAlchemyConflictStore:
                     "resolved_at": datetime.now().isoformat(),
                 }
             )
-            db_conflict.metadata_json = json.dumps(metadata)
+            db_conflict.metadata_json = json.dumps(metadata)  # type: ignore[assignment]
 
             logger.info(
                 f"Resolved conflict {conflict_id}: {resolution.decision} "
@@ -255,8 +255,8 @@ class SQLAlchemyConflictStore:
                 logger.warning(f"Cannot escalate conflict {conflict_id}: not found")
                 return False
 
-            db_conflict.status = "escalated"
-            db_conflict.resolution_attempts += 1
+            db_conflict.status = "escalated"  # type: ignore[assignment]
+            db_conflict.resolution_attempts += 1  # type: ignore[assignment]
 
             logger.info(
                 f"Escalated conflict {conflict_id} " f"(attempts={db_conflict.resolution_attempts})"

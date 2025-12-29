@@ -1,7 +1,7 @@
 """E5 embedding adapter for casual-memory."""
 
 import logging
-from typing import List, Optional
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +74,10 @@ class E5Embedding:
             cache_folder=cache_folder,
             trust_remote_code=trust_remote_code,
         )
-        self._dimension = self._model.get_sentence_embedding_dimension()
+        dimension = self._model.get_sentence_embedding_dimension()
+        if dimension is None:
+            raise ValueError(f"Could not determine embedding dimension for model {model_name}")
+        self._dimension: int = dimension
         logger.info(f"Model loaded: {model_name} ({self._dimension} dimensions)")
 
     @property
@@ -87,7 +90,7 @@ class E5Embedding:
         """Identifier of the loaded model."""
         return self._model_name
 
-    async def embed_document(self, text: str) -> List[float]:
+    async def embed_document(self, text: str) -> list[float]:
         """
         Generate embedding for a document to be stored.
 
@@ -115,7 +118,7 @@ class E5Embedding:
         )
         return embedding.tolist()
 
-    async def embed_query(self, text: str) -> List[float]:
+    async def embed_query(self, text: str) -> list[float]:
         """
         Generate embedding for a search query.
 
@@ -143,7 +146,7 @@ class E5Embedding:
         )
         return embedding.tolist()
 
-    async def embed_documents(self, texts: List[str], batch_size: int = 32) -> List[List[float]]:
+    async def embed_documents(self, texts: list[str], batch_size: int = 32) -> list[list[float]]:
         """
         Generate embeddings for multiple documents efficiently.
 
@@ -174,9 +177,10 @@ class E5Embedding:
             show_progress_bar=self._show_progress,
             batch_size=batch_size,
         )
-        return embeddings.tolist()
+        result: list[list[float]] = embeddings.tolist()
+        return result
 
-    async def embed_queries(self, texts: List[str], batch_size: int = 32) -> List[List[float]]:
+    async def embed_queries(self, texts: list[str], batch_size: int = 32) -> list[list[float]]:
         """
         Generate embeddings for multiple queries efficiently.
 
@@ -207,4 +211,5 @@ class E5Embedding:
             show_progress_bar=self._show_progress,
             batch_size=batch_size,
         )
-        return embeddings.tolist()
+        result: list[list[float]] = embeddings.tolist()
+        return result
