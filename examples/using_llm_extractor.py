@@ -3,6 +3,9 @@ Example: Using LLMMemoryExtracter with custom prompts
 
 This example demonstrates how to use the LLMMemoryExtracter with different
 system prompts for extracting user memories vs. assistant-provided information.
+
+The LLMMemoryExtracter uses JSON schema (via Pydantic models) to ensure the LLM
+returns properly structured memory data, providing better type safety and validation.
 """
 
 import asyncio
