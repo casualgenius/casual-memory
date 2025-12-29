@@ -5,8 +5,6 @@ This module defines the response models used by the LLM memory extractor.
 These models are used to generate JSON schemas for structured LLM outputs.
 """
 
-from typing import List
-
 from pydantic import BaseModel, Field
 
 from casual_memory.models import MemoryFact
@@ -19,7 +17,7 @@ class MemoryExtractionResponse(BaseModel):
     when extracting memories from conversations.
     """
 
-    memories: List[MemoryFact] = Field(
+    memories: list[MemoryFact] = Field(
         default_factory=list,
         description=(
             "List of extracted memories from the conversation. "

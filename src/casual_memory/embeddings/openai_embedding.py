@@ -2,7 +2,7 @@
 
 import logging
 import os
-from typing import List, Optional
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +97,7 @@ class OpenAIEmbedding:
         """Identifier of the OpenAI model."""
         return self._model
 
-    def _embed_single(self, text: str) -> List[float]:
+    def _embed_single(self, text: str) -> list[float]:
         """Internal method to embed a single text."""
         if self._dimensions is not None:
             response = self._client.embeddings.create(
@@ -106,10 +106,10 @@ class OpenAIEmbedding:
         else:
             response = self._client.embeddings.create(model=self._model, input=text)
 
-        embedding: List[float] = response.data[0].embedding
+        embedding: list[float] = response.data[0].embedding
         return embedding
 
-    async def embed_document(self, text: str) -> List[float]:
+    async def embed_document(self, text: str) -> list[float]:
         """
         Generate embedding for a document to be stored.
 
@@ -131,7 +131,7 @@ class OpenAIEmbedding:
 
         return self._embed_single(text)
 
-    async def embed_query(self, text: str) -> List[float]:
+    async def embed_query(self, text: str) -> list[float]:
         """
         Generate embedding for a search query.
 
@@ -153,7 +153,7 @@ class OpenAIEmbedding:
 
         return self._embed_single(text)
 
-    async def embed_documents(self, texts: List[str], batch_size: int = 32) -> List[List[float]]:
+    async def embed_documents(self, texts: list[str], batch_size: int = 32) -> list[list[float]]:
         """
         Generate embeddings for multiple documents efficiently.
 
@@ -186,10 +186,10 @@ class OpenAIEmbedding:
             response = self._client.embeddings.create(model=self._model, input=texts)
 
         # Ensure correct ordering (API preserves order)
-        embeddings: List[List[float]] = [item.embedding for item in response.data]
+        embeddings: list[list[float]] = [item.embedding for item in response.data]
         return embeddings
 
-    async def embed_queries(self, texts: List[str], batch_size: int = 32) -> List[List[float]]:
+    async def embed_queries(self, texts: list[str], batch_size: int = 32) -> list[list[float]]:
         """
         Generate embeddings for multiple queries efficiently.
 
@@ -222,5 +222,5 @@ class OpenAIEmbedding:
             response = self._client.embeddings.create(model=self._model, input=texts)
 
         # Ensure correct ordering (API preserves order)
-        embeddings: List[List[float]] = [item.embedding for item in response.data]
+        embeddings: list[list[float]] = [item.embedding for item in response.data]
         return embeddings

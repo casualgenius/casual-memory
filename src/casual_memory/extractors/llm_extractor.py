@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from typing import List, Sequence
+from typing import Sequence
 
 from casual_llm import ChatMessage, LLMProvider, SystemMessage, UserMessage
 from pydantic import ValidationError
@@ -18,7 +18,7 @@ class LLMMemoryExtracter:
         self.prompt = prompt
         self.llm_provider = llm_provider
 
-    async def extract(self, messages: List[ChatMessage]) -> List[MemoryFact]:
+    async def extract(self, messages: list[ChatMessage]) -> list[MemoryFact]:
         from casual_memory.utils.date_normalizer import normalize_memory_dates
 
         now = datetime.now()
@@ -61,7 +61,7 @@ class LLMMemoryExtracter:
             raise
 
         # Normalize dates and filter by importance
-        filtered_memories: List[MemoryFact] = []
+        filtered_memories: list[MemoryFact] = []
         for memory in memories:
             # Normalize dates in the memory
             memory_dict = memory.model_dump()

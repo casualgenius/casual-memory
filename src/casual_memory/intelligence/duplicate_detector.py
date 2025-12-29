@@ -6,7 +6,7 @@ or distinct facts that should both be stored.
 """
 
 import logging
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 from casual_llm import AssistantMessage, LLMProvider, SystemMessage, UserMessage
 
@@ -70,7 +70,7 @@ class LLMDuplicateDetector:
         """
         self.llm_call_count += 1
         try:
-            messages: List[SystemMessage | UserMessage] = [
+            messages: list[SystemMessage | UserMessage] = [
                 SystemMessage(content=self.system_prompt),
                 UserMessage(content=prompt),
             ]
