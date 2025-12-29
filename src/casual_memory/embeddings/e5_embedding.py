@@ -74,7 +74,10 @@ class E5Embedding:
             cache_folder=cache_folder,
             trust_remote_code=trust_remote_code,
         )
-        self._dimension = self._model.get_sentence_embedding_dimension()
+        dimension = self._model.get_sentence_embedding_dimension()
+        if dimension is None:
+            raise ValueError(f"Could not determine embedding dimension for model {model_name}")
+        self._dimension: int = dimension
         logger.info(f"Model loaded: {model_name} ({self._dimension} dimensions)")
 
     @property
@@ -174,7 +177,8 @@ class E5Embedding:
             show_progress_bar=self._show_progress,
             batch_size=batch_size,
         )
-        return embeddings.tolist()
+        result: List[List[float]] = embeddings.tolist()
+        return result
 
     async def embed_queries(self, texts: List[str], batch_size: int = 32) -> List[List[float]]:
         """
@@ -207,4 +211,5 @@ class E5Embedding:
             show_progress_bar=self._show_progress,
             batch_size=batch_size,
         )
-        return embeddings.tolist()
+        result: List[List[float]] = embeddings.tolist()
+        return result

@@ -11,7 +11,7 @@ Accuracy: 92.38% on SNLI, 90.04% on MNLI
 """
 
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 from casual_memory.classifiers.models import (
     CheckType,
@@ -165,7 +165,7 @@ class NLIClassifier:
             # On error, pass to next classifier
             return None
 
-    def get_metrics(self) -> dict:
+    def get_metrics(self) -> dict[str, Any]:
         """
         Get NLI classifier metrics.
 

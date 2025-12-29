@@ -23,13 +23,13 @@ class InMemoryVectorStore:
     Data is lost on restart.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Store memory points by ID
         self._memories: Dict[str, Dict[str, Any]] = {}  # id -> {vector, payload}
 
         logger.info("InMemoryVectorStore initialized")
 
-    def add(self, vector: List[float], payload: dict) -> str:
+    def add(self, vector: List[float], payload: dict[str, Any]) -> str:
         """Add a memory to the store."""
         memory_id = str(uuid.uuid4())
 
@@ -46,16 +46,16 @@ class InMemoryVectorStore:
         if len(vec1) != len(vec2):
             raise ValueError("Vectors must have the same length")
 
-        dot_product = sum(a * b for a, b in zip(vec1, vec2))
-        magnitude1 = sum(a * a for a in vec1) ** 0.5
-        magnitude2 = sum(b * b for b in vec2) ** 0.5
+        dot_product: float = sum(a * b for a, b in zip(vec1, vec2))
+        magnitude1: float = sum(a * a for a in vec1) ** 0.5
+        magnitude2: float = sum(b * b for b in vec2) ** 0.5
 
         if magnitude1 == 0 or magnitude2 == 0:
             return 0.0
 
-        return dot_product / (magnitude1 * magnitude2)
+        return float(dot_product / (magnitude1 * magnitude2))
 
-    def _matches_filters(self, payload: dict, filters: Optional[Any]) -> bool:
+    def _matches_filters(self, payload: dict[str, Any], filters: Optional[Any]) -> bool:
         """Check if a payload matches the given filters."""
         if filters is None:
             return True
@@ -174,7 +174,7 @@ class InMemoryVectorStore:
 
         return results
 
-    def update_memory(self, memory_id: str, payload_updates: dict) -> bool:
+    def update_memory(self, memory_id: str, payload_updates: dict[str, Any]) -> bool:
         """Update specific fields in a memory's payload."""
         if memory_id not in self._memories:
             logger.error(f"Memory {memory_id} not found")
@@ -241,7 +241,7 @@ class InMemoryVectorStore:
 
         return count
 
-    def clear(self):
+    def clear(self) -> None:
         """Clear ALL memories from the store."""
         count = len(self._memories)
         self._memories.clear()

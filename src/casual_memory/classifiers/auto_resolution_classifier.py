@@ -8,7 +8,7 @@ This classifier examines existing conflict outcomes and can override them.
 """
 
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 from casual_memory.classifiers.models import (
     CheckType,
@@ -178,7 +178,7 @@ class AutoResolutionClassifier:
             )
             return existing_result
 
-    def get_metrics(self) -> dict:
+    def get_metrics(self) -> dict[str, Any]:
         """
         Get auto-resolution classifier metrics.
 

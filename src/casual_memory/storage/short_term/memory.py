@@ -31,7 +31,7 @@ class InMemoryShortTermStore:
             max_messages: Maximum number of messages to store per user (default: 20)
         """
         # Store messages by user_id
-        self._messages: Dict[str, deque] = {}
+        self._messages: Dict[str, deque[ShortTermMemory]] = {}
         self._max_messages = max_messages
 
         logger.info(f"InMemoryShortTermStore initialized (max_messages={max_messages})")

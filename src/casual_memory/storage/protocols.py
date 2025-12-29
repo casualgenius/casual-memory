@@ -20,7 +20,7 @@ class VectorMemoryStore(Protocol):
     but could also be implemented with other vector stores or in-memory for testing.
     """
 
-    def add(self, vector: List[float], payload: dict) -> str:
+    def add(self, vector: List[float], payload: dict[str, Any]) -> str:
         """
         Add a memory to the store.
 
@@ -77,7 +77,7 @@ class VectorMemoryStore(Protocol):
         """
         ...
 
-    def update_memory(self, memory_id: str, payload_updates: dict) -> bool:
+    def update_memory(self, memory_id: str, payload_updates: dict[str, Any]) -> bool:
         """
         Update specific fields in a memory's payload.
 

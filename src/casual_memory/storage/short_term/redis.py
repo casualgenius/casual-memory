@@ -97,10 +97,10 @@ class RedisShortTermStore:
         key = self._get_key(user_id)
 
         # Get last N messages
-        messages_json = self.client.lrange(key, -limit, -1)
+        messages_json_list: list[str] = self.client.lrange(key, -limit, -1)  # type: ignore[assignment]
 
         messages = []
-        for msg_json in messages_json:
+        for msg_json in messages_json_list:
             try:
                 message = ShortTermMemory.model_validate_json(msg_json)
                 messages.append(message)
@@ -117,7 +117,7 @@ class RedisShortTermStore:
         key = self._get_key(user_id)
 
         # Get count before deletion
-        count = self.client.llen(key)
+        count: int = self.client.llen(key)  # type: ignore[assignment]
 
         # Delete the key
         self.client.delete(key)
@@ -129,4 +129,5 @@ class RedisShortTermStore:
     def get_message_count(self, user_id: str) -> int:
         """Get the number of messages stored for a user."""
         key = self._get_key(user_id)
-        return self.client.llen(key)
+        count: int = self.client.llen(key)  # type: ignore[assignment]
+        return count

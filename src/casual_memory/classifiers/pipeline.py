@@ -7,7 +7,7 @@ outcomes for each similar memory.
 """
 
 import logging
-from typing import Literal
+from typing import Any, Literal
 
 from casual_memory.classifiers.models import (
     CheckType,
@@ -37,7 +37,7 @@ class MemoryClassificationPipeline:
 
     def __init__(
         self,
-        classifiers: list,
+        classifiers: list[Any],
         strategy: Literal["single", "tiered", "all"] = "tiered",
         secondary_conflict_threshold: float = 0.90,
         max_secondary_checks: int = 3,
@@ -246,7 +246,7 @@ class MemoryClassificationPipeline:
 
         return "add"
 
-    def get_metrics(self) -> dict:
+    def get_metrics(self) -> dict[str, Any]:
         """
         Get metrics from the pipeline.
 

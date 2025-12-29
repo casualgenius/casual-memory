@@ -99,12 +99,15 @@ class OpenAIEmbedding:
 
     def _embed_single(self, text: str) -> List[float]:
         """Internal method to embed a single text."""
-        kwargs = {"model": self._model, "input": text}
         if self._dimensions is not None:
-            kwargs["dimensions"] = self._dimensions
+            response = self._client.embeddings.create(
+                model=self._model, input=text, dimensions=self._dimensions
+            )
+        else:
+            response = self._client.embeddings.create(model=self._model, input=text)
 
-        response = self._client.embeddings.create(**kwargs)
-        return response.data[0].embedding
+        embedding: List[float] = response.data[0].embedding
+        return embedding
 
     async def embed_document(self, text: str) -> List[float]:
         """
@@ -175,14 +178,16 @@ class OpenAIEmbedding:
         if any(not text or not text.strip() for text in texts):
             raise ValueError("Cannot embed empty texts in batch")
 
-        kwargs = {"model": self._model, "input": texts}
         if self._dimensions is not None:
-            kwargs["dimensions"] = self._dimensions
-
-        response = self._client.embeddings.create(**kwargs)
+            response = self._client.embeddings.create(
+                model=self._model, input=texts, dimensions=self._dimensions
+            )
+        else:
+            response = self._client.embeddings.create(model=self._model, input=texts)
 
         # Ensure correct ordering (API preserves order)
-        return [item.embedding for item in response.data]
+        embeddings: List[List[float]] = [item.embedding for item in response.data]
+        return embeddings
 
     async def embed_queries(self, texts: List[str], batch_size: int = 32) -> List[List[float]]:
         """
@@ -209,11 +214,13 @@ class OpenAIEmbedding:
         if any(not text or not text.strip() for text in texts):
             raise ValueError("Cannot embed empty texts in batch")
 
-        kwargs = {"model": self._model, "input": texts}
         if self._dimensions is not None:
-            kwargs["dimensions"] = self._dimensions
-
-        response = self._client.embeddings.create(**kwargs)
+            response = self._client.embeddings.create(
+                model=self._model, input=texts, dimensions=self._dimensions
+            )
+        else:
+            response = self._client.embeddings.create(model=self._model, input=texts)
 
         # Ensure correct ordering (API preserves order)
-        return [item.embedding for item in response.data]
+        embeddings: List[List[float]] = [item.embedding for item in response.data]
+        return embeddings

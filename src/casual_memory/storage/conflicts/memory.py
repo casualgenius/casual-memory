@@ -22,7 +22,7 @@ class InMemoryConflictStore:
     Stores conflicts in dictionaries for fast lookup. Data is lost on restart.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Store conflicts by conflict ID
         self._conflicts: Dict[str, MemoryConflict] = {}
 

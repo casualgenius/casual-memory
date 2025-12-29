@@ -9,7 +9,7 @@ Accuracy: 96.2% (with qwen3-next-80b)
 """
 
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 from casual_memory.classifiers.models import (
     CheckType,
@@ -86,7 +86,9 @@ class ConflictClassifier:
                 )
 
                 # Calculate average importance
-                avg_importance = (similar_memory.memory.importance + new_memory.importance) / 2
+                avg_importance = (
+                    (similar_memory.memory.importance or 0.5) + (new_memory.importance or 0.5)
+                ) / 2
 
                 logger.debug(
                     f"CONFLICT detected ({detection_method}, category={category}): "
@@ -180,7 +182,7 @@ class ConflictClassifier:
             category, "Which of these statements is more accurate or current?"
         )
 
-    def get_metrics(self) -> dict:
+    def get_metrics(self) -> dict[str, Any]:
         """
         Get conflict classifier metrics.
 

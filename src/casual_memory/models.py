@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import List, Literal, Optional
+from typing import Any, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -158,7 +158,7 @@ class MemoryConflict(BaseModel):
     clarification_hint: str = Field(
         ..., description="Suggested question to ask user for clarification"
     )
-    metadata: dict = Field(
+    metadata: dict[str, Any] = Field(
         default_factory=dict, description="Additional metadata for conflict tracking"
     )
 

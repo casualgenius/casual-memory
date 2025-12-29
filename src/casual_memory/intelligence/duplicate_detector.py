@@ -6,9 +6,9 @@ or distinct facts that should both be stored.
 """
 
 import logging
-from typing import Optional
+from typing import Any, List, Optional
 
-from casual_llm import LLMProvider, SystemMessage, UserMessage
+from casual_llm import AssistantMessage, LLMProvider, SystemMessage, UserMessage
 
 from casual_memory.intelligence.prompts import DUPLICATE_DETECTION_SYSTEM_PROMPT
 from casual_memory.models import MemoryFact
@@ -55,7 +55,7 @@ class LLMDuplicateDetector:
             f"custom_prompt={system_prompt is not None}"
         )
 
-    async def _call_llm(self, prompt: str):
+    async def _call_llm(self, prompt: str) -> AssistantMessage:
         """
         Call the LLM for duplicate detection.
 
@@ -70,9 +70,12 @@ class LLMDuplicateDetector:
         """
         self.llm_call_count += 1
         try:
-            messages = [SystemMessage(content=self.system_prompt), UserMessage(content=prompt)]
-            response = await self.llm_provider.chat(
-                messages,
+            messages: List[SystemMessage | UserMessage] = [
+                SystemMessage(content=self.system_prompt),
+                UserMessage(content=prompt),
+            ]
+            response: AssistantMessage = await self.llm_provider.chat(
+                messages,  # type: ignore[arg-type]
                 response_format="text",
                 temperature=0.1,
                 max_tokens=10,  # We only need SAME or DISTINCT
@@ -102,7 +105,8 @@ class LLMDuplicateDetector:
 
         try:
             llm_response = await self._call_llm(user_prompt)
-            response_upper = llm_response.content.upper()
+            content = llm_response.content or ""
+            response_upper = content.upper()
             is_same = "SAME" in response_upper
 
             logger.debug(
@@ -132,14 +136,14 @@ class LLMDuplicateDetector:
 
             return is_duplicate
 
-    def get_metrics(self) -> dict:
+    def get_metrics(self) -> dict[str, Any]:
         """
         Get metrics about duplicate detection.
 
         Returns:
             Dictionary with call counts and success rates
         """
-        metrics = {
+        metrics: dict[str, Any] = {
             "duplicate_detector_llm_call_count": self.llm_call_count,
             "duplicate_detector_llm_success_count": self.llm_success_count,
             "duplicate_detector_llm_failure_count": self.llm_failure_count,
@@ -147,7 +151,7 @@ class LLMDuplicateDetector:
         }
 
         if self.llm_call_count > 0:
-            success_rate = (self.llm_success_count / self.llm_call_count) * 100
+            success_rate: float = (self.llm_success_count / self.llm_call_count) * 100
             metrics["duplicate_detector_llm_success_rate_percent"] = round(success_rate, 2)
 
         return metrics
