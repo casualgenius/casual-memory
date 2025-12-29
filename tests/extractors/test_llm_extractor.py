@@ -190,29 +190,29 @@ async def test_extract_with_temporal_memory():
 
 @pytest.mark.asyncio
 async def test_extract_handles_invalid_json():
-    """Test that invalid JSON responses are handled gracefully."""
+    """Test that invalid JSON responses raise ValueError."""
     provider = MockLLMProvider("This is not valid JSON")
     extractor = LLMMemoryExtracter(provider, USER_MEMORY_PROMPT)
 
     messages = [UserMessage(content="Test message")]
-    memories = await extractor.extract(messages)
 
-    # Should return empty list on JSON parse error
-    assert len(memories) == 0
+    # Should raise ValueError on JSON parse error
+    with pytest.raises(ValueError, match="LLM response did not match expected schema"):
+        await extractor.extract(messages)
 
 
 @pytest.mark.asyncio
 async def test_extract_handles_llm_exception():
-    """Test that LLM exceptions are handled gracefully."""
+    """Test that LLM exceptions are propagated."""
     provider = Mock()
     provider.chat = AsyncMock(side_effect=Exception("LLM failed"))
     extractor = LLMMemoryExtracter(provider, USER_MEMORY_PROMPT)
 
     messages = [UserMessage(content="Test message")]
-    memories = await extractor.extract(messages)
 
-    # Should return empty list on exception
-    assert len(memories) == 0
+    # Should propagate the exception
+    with pytest.raises(Exception, match="LLM failed"):
+        await extractor.extract(messages)
 
 
 @pytest.mark.asyncio
@@ -381,8 +381,10 @@ async def test_extract_with_defaults():
             "memories": [
                 {
                     "text": "Minimal memory",
+                    "type": "fact",  # Required field
+                    "tags": [],  # Required field
                     "source": "user",
-                    # Missing: type, tags, importance, valid_until
+                    # Optional: importance (defaults to 0.5), valid_until (defaults to None)
                 }
             ]
         }
@@ -396,7 +398,7 @@ async def test_extract_with_defaults():
 
     assert len(memories) == 1
     assert memories[0].text == "Minimal memory"
-    assert memories[0].type == "fact"  # Default type
-    assert memories[0].tags == []  # Default tags
+    assert memories[0].type == "fact"
+    assert memories[0].tags == []
     assert memories[0].importance == 0.5  # Default importance
     assert memories[0].valid_until is None

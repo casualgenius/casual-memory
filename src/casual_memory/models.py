@@ -6,13 +6,59 @@ from pydantic import BaseModel, Field
 
 
 class MemoryFact(BaseModel):
-    # Existing fields (unchanged)
-    text: str
-    type: Literal["fact", "preference", "event", "goal", "weather"]
-    tags: List[str]
-    importance: Optional[float] = 0.5
-    source: Optional[Literal["assistant", "tool", "user"]] = None
-    valid_until: Optional[str | None] = None
+    # Core extraction fields (used by LLM)
+    text: str = Field(
+        ...,
+        description=(
+            "Concise, self-contained memory statement. "
+            "For user memories: Use first person (e.g., 'My name is Alex'). "
+            "Must be understandable without conversation context."
+        ),
+    )
+    type: Literal["fact", "preference", "event", "goal", "weather"] = Field(
+        ...,
+        description=(
+            "Memory category: "
+            "'fact' (verifiable information like name, location, job, allergies), "
+            "'preference' (subjective likes/dislikes or opinions), "
+            "'event' (specific occurrences with dates like appointments, trips), "
+            "'goal' (intentions or tasks to accomplish like reminders, learning objectives), "
+            "'weather' (weather forecasts or conditions)"
+        ),
+    )
+    tags: List[str] = Field(
+        ...,
+        description="Relevant lowercase keywords for categorization (e.g., ['allergy', 'health'])",
+    )
+    importance: Optional[float] = Field(
+        default=0.5,
+        ge=0.0,
+        le=1.0,
+        description=(
+            "Importance score between 0.0 and 1.0. "
+            "Medical/safety info (allergies) = 1.0, "
+            "Personal facts (name, job) = 0.7-0.9, "
+            "General preferences = 0.5-0.6"
+        ),
+    )
+    source: Optional[Literal["assistant", "tool", "user"]] = Field(
+        default=None,
+        description=(
+            "Origin of the memory: "
+            "'user' (from user messages), "
+            "'assistant' (from assistant responses), "
+            "'tool' (from tool outputs)"
+        ),
+    )
+    valid_until: Optional[str | None] = Field(
+        default=None,
+        description=(
+            "ISO8601 timestamp when memory expires. "
+            "Use for temporary information (weather forecasts, reminders, appointments). "
+            "null = permanent memory. "
+            "Leave as null - the system will calculate expiry times for temporal memories."
+        ),
+    )
 
     # NEW fields for memory intelligence
     user_id: Optional[str] = Field(
