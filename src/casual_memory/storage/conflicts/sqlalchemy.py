@@ -10,7 +10,7 @@ import json
 import logging
 from contextlib import contextmanager
 from datetime import datetime
-from typing import Generator, List, Optional
+from typing import Generator, Optional
 
 from sqlalchemy import Boolean, Column, DateTime, Engine, Float, Index, Integer, String, Text
 from sqlalchemy.orm import Session, declarative_base
@@ -180,7 +180,7 @@ class SQLAlchemyConflictStore:
 
     def get_pending_conflicts(
         self, user_id: str, limit: Optional[int] = None
-    ) -> List[MemoryConflict]:
+    ) -> list[MemoryConflict]:
         """Get all pending conflicts for a user."""
         with self._session() as session:
             query = (

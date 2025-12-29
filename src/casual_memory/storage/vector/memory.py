@@ -8,7 +8,7 @@ suitable for testing and development. For production, use Qdrant implementation.
 import logging
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from casual_memory.storage.vector.models import MemoryPoint, MemoryPointPayload
 
@@ -25,11 +25,11 @@ class InMemoryVectorStore:
 
     def __init__(self) -> None:
         # Store memory points by ID
-        self._memories: Dict[str, Dict[str, Any]] = {}  # id -> {vector, payload}
+        self._memories: dict[str, dict[str, Any]] = {}  # id -> {vector, payload}
 
         logger.info("InMemoryVectorStore initialized")
 
-    def add(self, vector: List[float], payload: dict[str, Any]) -> str:
+    def add(self, vector: list[float], payload: dict[str, Any]) -> str:
         """Add a memory to the store."""
         memory_id = str(uuid.uuid4())
 
@@ -41,7 +41,7 @@ class InMemoryVectorStore:
         logger.debug(f"Inserted memory {memory_id}: '{payload.get('text', '')[:50]}...'")
         return memory_id
 
-    def _cosine_similarity(self, vec1: List[float], vec2: List[float]) -> float:
+    def _cosine_similarity(self, vec1: list[float], vec2: list[float]) -> float:
         """Calculate cosine similarity between two vectors."""
         if len(vec1) != len(vec2):
             raise ValueError("Vectors must have the same length")
@@ -87,11 +87,11 @@ class InMemoryVectorStore:
 
     def search(
         self,
-        query_embedding: List[float],
+        query_embedding: list[float],
         top_k: int = 5,
         min_score: float = 0.7,
         filters: Optional[Any] = None,
-    ) -> List[MemoryPoint]:
+    ) -> list[MemoryPoint]:
         """Search for memories by vector similarity."""
         results = []
 
@@ -129,12 +129,12 @@ class InMemoryVectorStore:
 
     def find_similar_memories(
         self,
-        embedding: List[float],
+        embedding: list[float],
         user_id: Optional[str] = None,
         threshold: Optional[float] = None,
         limit: int = 5,
         exclude_archived: bool = True,
-    ) -> List[tuple[Any, float]]:
+    ) -> list[tuple[Any, float]]:
         """Find similar memories based on vector similarity."""
         if threshold is None:
             threshold = 0.85

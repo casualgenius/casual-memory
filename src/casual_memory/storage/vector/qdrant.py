@@ -1,6 +1,6 @@
 import logging
 import uuid
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
@@ -90,7 +90,7 @@ class QdrantMemoryStore:
             logger.error(f"Failed to clear memories for user_id={user_id}: {e}")
             raise
 
-    def add(self, vector: List[float], payload: dict[str, Any]) -> str:
+    def add(self, vector: list[float], payload: dict[str, Any]) -> str:
         """
         Add a memory to the Qdrant collection.
 
@@ -111,14 +111,14 @@ class QdrantMemoryStore:
 
     def search(
         self,
-        query_embedding: List[float],
+        query_embedding: list[float],
         top_k: int = 5,
         min_score: float = 0.7,
         filters: Optional[Any] = None,
-    ) -> List[MemoryPoint]:
+    ) -> list[MemoryPoint]:
         qdrant_filter = None
         if filters:
-            conditions: List[FieldCondition] = []
+            conditions: list[FieldCondition] = []
 
             # Handle user_id filter
             if filters.user_id is not None:
@@ -165,12 +165,12 @@ class QdrantMemoryStore:
 
     def find_similar_memories(
         self,
-        embedding: List[float],
+        embedding: list[float],
         user_id: Optional[str] = None,
         threshold: Optional[float] = None,
         limit: int = 5,
         exclude_archived: bool = True,
-    ) -> List[tuple[MemoryPoint, float]]:
+    ) -> list[tuple[MemoryPoint, float]]:
         """
         Find similar memories based on vector similarity.
 
@@ -188,7 +188,7 @@ class QdrantMemoryStore:
             threshold = 0.85  # Default similarity threshold
 
         # Build filter conditions
-        conditions: List[FieldCondition] = []
+        conditions: list[FieldCondition] = []
 
         if user_id:
             conditions.append(FieldCondition(key="user_id", match=MatchValue(value=user_id)))

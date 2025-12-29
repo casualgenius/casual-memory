@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import Any, List, Literal, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -26,7 +26,7 @@ class MemoryFact(BaseModel):
             "'weather' (weather forecasts or conditions)"
         ),
     )
-    tags: List[str] = Field(
+    tags: list[str] = Field(
         ...,
         description="Relevant lowercase keywords for categorization (e.g., ['allergy', 'health'])",
     )
@@ -89,14 +89,14 @@ class MemoryBlock(BaseModel):
     type: Literal["mcp/context/v1"]
     domain: Literal["memory"]
     name: str
-    content: List[MemoryFact]
+    content: list[MemoryFact]
 
 
 class MemoryPointPayload(BaseModel):
     # Existing fields (unchanged)
     text: str
     type: Literal["fact", "preference", "event", "goal", "weather"]
-    tags: List[str]
+    tags: list[str]
     importance: Optional[float] = 0.5  # Default if not included
     session_id: str | None
     source: str | None
@@ -116,7 +116,7 @@ class MemoryPointPayload(BaseModel):
 
 class MemoryPoint(BaseModel):
     id: str
-    vector: List[float]
+    vector: list[float]
     payload: MemoryPointPayload
 
 
@@ -190,6 +190,6 @@ class ShortTermMemory(BaseModel):
 
 
 class MemoryQueryFilter(BaseModel):
-    type: Optional[List[str] | None] = None
+    type: Optional[list[str] | None] = None
     min_importance: Optional[float | None] = None
     user_id: Optional[str | None] = None

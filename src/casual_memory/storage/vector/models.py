@@ -5,7 +5,7 @@ Defines the data structures used by vector storage implementations
 for storing memory points with embeddings and payloads.
 """
 
-from typing import List, Optional
+from typing import Optional
 
 from pydantic import BaseModel
 
@@ -18,7 +18,7 @@ class MemoryPointPayload(BaseModel):
     """
 
     text: str
-    tags: List[str] = []
+    tags: list[str] = []
     importance: float = 0.5
     type: str = "fact"
     source: Optional[str] = None
@@ -45,5 +45,5 @@ class MemoryPoint(BaseModel):
     """
 
     id: str
-    vector: List[float]
+    vector: list[float]
     payload: MemoryPointPayload

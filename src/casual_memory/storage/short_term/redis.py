@@ -6,7 +6,6 @@ suitable for production deployments with multiple replicas.
 """
 
 import logging
-from typing import List
 
 from casual_memory.models import ShortTermMemory
 
@@ -69,7 +68,7 @@ class RedisShortTermStore:
         """Get the Redis key for a user's messages."""
         return f"{self._key_prefix}{user_id}"
 
-    def add_messages(self, user_id: str, messages: List[ShortTermMemory]) -> int:
+    def add_messages(self, user_id: str, messages: list[ShortTermMemory]) -> int:
         """Add messages to short-term storage."""
         key = self._get_key(user_id)
         count = 0
@@ -92,7 +91,7 @@ class RedisShortTermStore:
 
         return count
 
-    def get_recent_messages(self, user_id: str, limit: int = 20) -> List[ShortTermMemory]:
+    def get_recent_messages(self, user_id: str, limit: int = 20) -> list[ShortTermMemory]:
         """Get recent messages for a user."""
         key = self._get_key(user_id)
 
