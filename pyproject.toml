@@ -129,6 +129,8 @@ module = [
     "redis.*",
     "transformers",
     "transformers.*",
+    "numpy",
+    "numpy.*",
 ]
 ignore_missing_imports = true
 

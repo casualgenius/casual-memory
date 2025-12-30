@@ -116,7 +116,8 @@ class E5Embedding:
             normalize_embeddings=self._normalize,
             show_progress_bar=self._show_progress,
         )
-        return embedding.tolist()
+        result: list[float] = embedding.tolist()
+        return result
 
     async def embed_query(self, text: str) -> list[float]:
         """
@@ -144,7 +145,8 @@ class E5Embedding:
             normalize_embeddings=self._normalize,
             show_progress_bar=self._show_progress,
         )
-        return embedding.tolist()
+        result: list[float] = embedding.tolist()
+        return result
 
     async def embed_documents(self, texts: list[str], batch_size: int = 32) -> list[list[float]]:
         """
