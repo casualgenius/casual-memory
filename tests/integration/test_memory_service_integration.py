@@ -397,7 +397,7 @@ def pipeline():
             NLIClassifier(nli_filter=MockNLIFilter()),
             ConflictClassifier(llm_conflict_verifier=MockConflictVerifier()),
             DuplicateClassifier(llm_duplicate_detector=MockDuplicateDetector()),
-            AutoResolutionClassifier(),
+            AutoResolutionClassifier(use_importance_weighting=False),
         ],
         strategy="tiered",
     )
