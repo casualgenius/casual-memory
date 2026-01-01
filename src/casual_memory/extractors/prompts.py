@@ -20,10 +20,17 @@ You will be given a conversation as a list of JSON messages. Today is {today_nat
 - BAD: "but I can't stand crowded places." (fragment starting with "but")
 - GOOD: "I can't stand crowded places."
 
-**Atomic Facts**: Split compound statements into separate memories.
-- "I'm allergic to peanuts and shellfish" → TWO memories (one for peanuts, one for shellfish)
-- "I work as a software engineer at Google" → Multiple memories (job title + employer)
-- Medical/safety information (allergies) must be split for precise matching
+**Atomic Facts**: Extract compound statements as separate memories for precise conflict detection.
+
+**When to split**:
+- Multiple independent facts → Separate memories
+- "I'm allergic to peanuts and shellfish" → TWO memories (one allergen per memory)
+- "I work as a software engineer at Google" → TWO memories (job title + employer)
+- "I work at Google in London" → THREE memories (job at Google + work location London + residence London if implied)
+- Medical/safety info MUST be split - critical for precise matching
+
+**Why split**: Atomic facts enable precise conflict detection. If user later says "I work at Microsoft",
+the system can detect conflict with "I work at Google" without false-matching unrelated facts.
 
 **State Changes**: Extract BOTH current state and the change event.
 - "I used to smoke but quit 5 years ago" → TWO memories:
@@ -42,6 +49,26 @@ You will be given a conversation as a list of JSON messages. Today is {today_nat
 **No Redundancy**: Don't extract duplicate or minor variations in the same turn.
 
 **Skip Filler**: Don't extract conversational filler ("Okay", "That's great!", "Got it").
+
+### Field Requirements
+
+**Required for ALL memories**:
+- `importance`: CRITICAL - Assign appropriate importance scores based on the guide below. DO NOT default everything to 0.5!
+
+**IMPORTANCE SCORING - FOLLOW THIS GUIDE EXACTLY**:
+- **Medical/safety info** (allergies, conditions): **MUST be 1.0** - Life-critical information
+- **Personal facts** (name, birthday, job): **MUST be 0.9** - Core identity information
+- **Location/contact info**: **MUST be 0.8** - Important but not critical
+- **Preferences/opinions**: **0.6-0.8** - User preferences and likes/dislikes
+- **Goals/reminders**: **0.7-0.8** - Things user wants to remember to do
+- **Events**: **0.7-0.8** - Past or future events
+- **NEVER use 0.5** unless the information is truly trivial or low-importance
+
+**CRITICAL**: Look at each memory and assign the correct importance score from the guide above. Allergies are 1.0, names are 0.9, locations are 0.8. Do not assign 0.5 to important information!
+
+**Optional fields**:
+- `valid_until`: Leave as null for permanent memories (facts, preferences).
+  System will calculate expiry for temporal memories (goals, events with dates).
 
 ### Examples
 
@@ -78,6 +105,53 @@ You will be given a conversation as a list of JSON messages. Today is {today_nat
 → Extract ONE memory:
   - "I need to call my mom next Tuesday." (type: goal, tags: [reminder, call, mom], importance: 0.7)
 
+### Complete JSON Example
+
+For reference, here's the full JSON structure for a complex extraction demonstrating atomic splitting and proper field population:
+
+**Input**: "I'm allergic to peanuts and I work at Google in London. Remind me to call the doctor tomorrow."
+
+**Output**:
+```json
+{{
+  "memories": [
+    {{
+      "text": "I am allergic to peanuts.",
+      "type": "fact",
+      "tags": ["allergy", "peanuts", "health"],
+      "importance": 1.0,
+      "valid_until": null
+    }},
+    {{
+      "text": "I work at Google.",
+      "type": "fact",
+      "tags": ["employer", "google", "job"],
+      "importance": 0.9,
+      "valid_until": null
+    }},
+    {{
+      "text": "I work in London.",
+      "type": "fact",
+      "tags": ["location", "work", "london"],
+      "importance": 0.8,
+      "valid_until": null
+    }},
+    {{
+      "text": "I need to call the doctor tomorrow.",
+      "type": "goal",
+      "tags": ["reminder", "doctor", "call"],
+      "importance": 0.8,
+      "valid_until": null
+    }}
+  ]
+}}
+```
+
+**Note**: This example demonstrates:
+- Atomic splitting: Peanuts allergy separate, employer and work location as separate facts
+- Proper field population: All memories have appropriate importance scores
+- Importance scoring: Medical info (1.0), employer (0.9), location (0.8), reminder (0.8)
+
 Extract only significant information. Return empty list if nothing worth remembering.
 """
 
@@ -96,8 +170,6 @@ You will be given a conversation as a list of JSON messages. Today is {today_nat
 **Key Test**: Ask "Is this specific to THIS user or could it apply to anyone?" If it applies to anyone, DON'T extract it.
 
 **High Importance Only**: For assistant memories, use importance 0.9-1.0. If not important enough for 0.9+, don't extract it.
-
-**Source**: Always set source to "assistant".
 
 **Expiry Times** (valid_until):
 - Weather forecasts: End of forecast day (e.g., "2025-11-14T23:59:59")

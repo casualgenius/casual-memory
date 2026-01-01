@@ -135,7 +135,8 @@ async def test_execute_add_with_superseding(action_executor, mock_vector_store):
         type="fact",
         tags=[],
         user_id="user_123",
-        confidence=0.9,  # Higher confidence
+        confidence=0.9,  # Higher confidence,
+        importance=0.8,
     )
 
     # The old, less detailed memory that will be superseded
@@ -144,7 +145,8 @@ async def test_execute_add_with_superseding(action_executor, mock_vector_store):
         type="fact",
         tags=[],
         user_id="user_123",
-        confidence=0.6,  # Lower confidence
+        confidence=0.6,  # Lower confidence,
+        importance=0.8,
     )
 
     similar_memory = SimilarMemory(
@@ -211,6 +213,7 @@ async def test_execute_add_with_multiple_superseding(action_executor, mock_vecto
         type="fact",
         tags=[],
         user_id="user_123",
+        importance=0.8,
     )
 
     # Create 3 similarity results, each marking an old memory as superseded
@@ -222,7 +225,7 @@ async def test_execute_add_with_multiple_superseding(action_executor, mock_vecto
                 similar_memory=SimilarMemory(
                     memory_id=f"old_mem_{i}",
                     memory=MemoryFact(
-                        text=f"Old fact {i}", type="fact", tags=[], user_id="user_123"
+                        text=f"Old fact {i}", type="fact", tags=[], user_id="user_123", importance=0.8
                     ),
                     similarity_score=0.9,
                 ),
@@ -270,6 +273,7 @@ async def test_execute_skip(action_executor, mock_vector_store):
         type="fact",
         tags=[],
         user_id="user_123",
+        importance=0.8,
     )
 
     # The existing memory that was already stored
@@ -279,7 +283,8 @@ async def test_execute_skip(action_executor, mock_vector_store):
         tags=[],
         user_id="user_123",
         confidence=0.7,
-        mention_count=2,  # Already mentioned twice before
+        mention_count=2,  # Already mentioned twice before,
+        importance=0.8,
     )
 
     similar_memory = SimilarMemory(
@@ -351,6 +356,7 @@ async def test_execute_conflict_single(action_executor, mock_conflict_store):
         tags=[],
         user_id="user_123",
         confidence=0.8,
+        importance=0.8,
     )
 
     # Existing memory that contradicts the new one
@@ -359,7 +365,8 @@ async def test_execute_conflict_single(action_executor, mock_conflict_store):
         type="fact",
         tags=[],
         user_id="user_123",
-        confidence=0.8,  # Same confidence - unclear which is right
+        confidence=0.8,  # Same confidence - unclear which is right,
+        importance=0.8,
     )
 
     similar_memory = SimilarMemory(
@@ -444,6 +451,7 @@ async def test_execute_conflict_multiple(action_executor, mock_conflict_store):
         type="fact",
         tags=[],
         user_id="user_123",
+        importance=0.8,
     )
 
     # Classification shows conflicts with 2 different memories
@@ -455,7 +463,7 @@ async def test_execute_conflict_multiple(action_executor, mock_conflict_store):
                 similar_memory=SimilarMemory(
                     memory_id=f"conflict_mem_{i}",
                     memory=MemoryFact(
-                        text=f"Old fact {i}", type="fact", tags=[], user_id="user_123"
+                        text=f"Old fact {i}", type="fact", tags=[], user_id="user_123", importance=0.8
                     ),
                     similarity_score=0.9,
                 ),
@@ -504,6 +512,7 @@ async def test_execute_unknown_outcome_raises_error(action_executor):
         type="fact",
         tags=[],
         user_id="user_123",
+        importance=0.8,
     )
 
     classification_result = MemoryClassificationResult(
@@ -603,7 +612,8 @@ async def test_payload_defaults_for_optional_fields(action_executor, mock_vector
         type="fact",
         tags=[],
         user_id="user_123",
-        # All optional fields left as None/default (not specified)
+        # All optional fields left as None/default (not specified),
+        importance=0.8,
     )
 
     classification_result = MemoryClassificationResult(

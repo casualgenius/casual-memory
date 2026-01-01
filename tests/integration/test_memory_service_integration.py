@@ -729,16 +729,18 @@ async def test_complex_scenario_multiple_memories(memory_service, vector_store, 
 
     # 1. Add initial facts
     await memory_service.add_memory(
-        MemoryFact(text="I live in London", type="fact", tags=[], user_id=user_id, confidence=0.8)
+        MemoryFact(text="I live in London", type="fact", tags=[], user_id=user_id, confidence=0.8, importance=0.8)
     )
     await memory_service.add_memory(
         MemoryFact(
-            text="I work as a teacher", type="fact", tags=[], user_id=user_id, confidence=0.7
+            text="I work as a teacher", type="fact", tags=[], user_id=user_id, confidence=0.7,
+            importance=0.8,
         )
     )
     await memory_service.add_memory(
         MemoryFact(
-            text="I like coffee", type="preference", tags=[], user_id=user_id, confidence=0.6
+            text="I like coffee", type="preference", tags=[], user_id=user_id, confidence=0.6,
+            importance=0.8,
         )
     )
 
@@ -750,6 +752,7 @@ async def test_complex_scenario_multiple_memories(memory_service, vector_store, 
             tags=[],
             user_id=user_id,
             confidence=0.9,
+            importance=0.8,
         )
     )
     assert result.action == "added"
@@ -758,14 +761,15 @@ async def test_complex_scenario_multiple_memories(memory_service, vector_store, 
     # 3. Add duplicate (should update)
     result = await memory_service.add_memory(
         MemoryFact(
-            text="I like coffee", type="preference", tags=[], user_id=user_id, confidence=0.7
+            text="I like coffee", type="preference", tags=[], user_id=user_id, confidence=0.7,
+            importance=0.8,
         )
     )
     assert result.action == "updated"
 
     # 4. Add conflict (should create conflict record)
     result = await memory_service.add_memory(
-        MemoryFact(text="I live in Paris", type="fact", tags=[], user_id=user_id, confidence=0.8)
+        MemoryFact(text="I live in Paris", type="fact", tags=[], user_id=user_id, confidence=0.8, importance=0.8)
     )
     assert result.action == "conflict"
     assert len(result.conflict_ids) > 0

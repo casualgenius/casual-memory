@@ -48,6 +48,10 @@ class LLMMemoryExtracter:
             content = response.content
             if content is None:
                 raise ValueError("LLM response content is None")
+
+            # DEBUG: Log raw LLM response to check if importance field is included
+            logger.debug(f"Raw LLM response: {content[:500]}...")  # First 500 chars
+
             extraction_response = MemoryExtractionResponse.model_validate_json(content)
             memories = extraction_response.memories
 
@@ -60,18 +64,21 @@ class LLMMemoryExtracter:
             logger.error(f"Memory extraction failed: {e}")
             raise
 
-        # Normalize dates and filter by importance
+        # Convert extraction results to full MemoryFact instances
+        # MemoryFactExtraction -> normalize dates -> MemoryFact with system fields
         filtered_memories: list[MemoryFact] = []
-        for memory in memories:
-            # Normalize dates in the memory
-            memory_dict = memory.model_dump()
+        for memory_extraction in memories:
+            # Convert extraction model to dict and normalize dates
+            memory_dict = memory_extraction.model_dump()
             normalized_dict = normalize_memory_dates(memory_dict, now)
 
-            # Reconstruct MemoryFact with normalized dates
+            # Convert to full MemoryFact (adds system-managed fields with defaults)
+            # System fields (user_id, confidence, mention_count, etc.) will be set
+            # to their defaults and can be updated by the calling code
             normalized_memory = MemoryFact(**normalized_dict)
 
             # Filter by importance threshold
-            if normalized_memory.importance and normalized_memory.importance >= 0.5:
+            if normalized_memory.importance >= 0.5:
                 filtered_memories.append(normalized_memory)
 
         logger.info(f"Extracted {len(filtered_memories)} memories (filtered from {len(memories)})")
