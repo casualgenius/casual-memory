@@ -14,6 +14,7 @@ class MemoryFactExtraction(BaseModel):
     2. Smaller JSON schema: No system-managed fields in the schema
     3. Explicit contract: Clear about what LLM provides vs system manages
     """
+
     text: str = Field(
         ...,
         description=(
@@ -215,8 +216,8 @@ class MemoryConflict(BaseModel):
     winning_memory_id: Optional[str] = Field(
         default=None, description="ID of memory that was kept after resolution"
     )
-    clarification_hint: str = Field(
-        ..., description="Suggested question to ask user for clarification"
+    clarification_hint: Optional[str] = Field(
+        default=None, description="Suggested question to ask user for clarification"
     )
     metadata: dict[str, Any] = Field(
         default_factory=dict, description="Additional metadata for conflict tracking"

@@ -225,7 +225,11 @@ async def test_execute_add_with_multiple_superseding(action_executor, mock_vecto
                 similar_memory=SimilarMemory(
                     memory_id=f"old_mem_{i}",
                     memory=MemoryFact(
-                        text=f"Old fact {i}", type="fact", tags=[], user_id="user_123", importance=0.8
+                        text=f"Old fact {i}",
+                        type="fact",
+                        tags=[],
+                        user_id="user_123",
+                        importance=0.8,
                     ),
                     similarity_score=0.9,
                 ),
@@ -463,7 +467,11 @@ async def test_execute_conflict_multiple(action_executor, mock_conflict_store):
                 similar_memory=SimilarMemory(
                     memory_id=f"conflict_mem_{i}",
                     memory=MemoryFact(
-                        text=f"Old fact {i}", type="fact", tags=[], user_id="user_123", importance=0.8
+                        text=f"Old fact {i}",
+                        type="fact",
+                        tags=[],
+                        user_id="user_123",
+                        importance=0.8,
                     ),
                     similarity_score=0.9,
                 ),

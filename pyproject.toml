@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [
-    { name = "Alex Stansfield", email = "alex.stansfield@gmail.com" }
+    { name = "Alex Stansfield", email = "alex@casualgenius.com" }
 ]
 keywords = ["memory", "llm", "ai", "semantic-memory", "conflict-detection", "chatbot"]
 classifiers = [
@@ -73,10 +73,10 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/casual-memory"
-Documentation = "https://github.com/yourusername/casual-memory#readme"
-Repository = "https://github.com/yourusername/casual-memory"
-Issues = "https://github.com/yourusername/casual-memory/issues"
+Homepage = "https://github.com/casualgenius/casual-memory"
+Documentation = "https://github.com/casualgenius/casual-memory#readme"
+Repository = "https://github.com/casualgenius/casual-memory"
+Issues = "https://github.com/casualgenius/casual-memory/issues"
 
 [build-system]
 requires = ["hatchling"]

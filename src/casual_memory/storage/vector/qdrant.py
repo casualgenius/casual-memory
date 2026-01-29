@@ -121,19 +121,19 @@ class QdrantMemoryStore:
             conditions: list[FieldCondition] = []
 
             # Handle user_id filter
-            if filters['user_id'] is not None:
+            if filters["user_id"] is not None:
                 conditions.append(
-                    FieldCondition(key="user_id", match=MatchValue(value=filters['user_id']))
+                    FieldCondition(key="user_id", match=MatchValue(value=filters["user_id"]))
                 )
 
             # Handle type filter (list of types)
-            if filters['type'] is not None:
-                conditions.append(FieldCondition(key="type", match=MatchAny(any=filters['type'])))
+            if filters["type"] is not None:
+                conditions.append(FieldCondition(key="type", match=MatchAny(any=filters["type"])))
 
             # Handle min_importance filter
-            if filters['min_importance'] is not None:
+            if filters["min_importance"] is not None:
                 conditions.append(
-                    FieldCondition(key="importance", range=Range(gte=filters['min_importance']))
+                    FieldCondition(key="importance", range=Range(gte=filters["min_importance"]))
                 )
 
             qdrant_filter = Filter(must=conditions) if conditions else None  # type: ignore[arg-type]

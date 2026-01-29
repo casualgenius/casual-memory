@@ -64,7 +64,9 @@ class AutoResolutionClassifier:
             use_importance_weighting: Whether to adjust thresholds based on importance (default: True)
         """
         self.name = "auto_resolution"
-        self.base_supersede_threshold = base_supersede_threshold or CONFLICT_CONFIDENCE_RATIO_SUPERSEDE
+        self.base_supersede_threshold = (
+            base_supersede_threshold or CONFLICT_CONFIDENCE_RATIO_SUPERSEDE
+        )
         self.base_keep_threshold = base_keep_threshold or CONFLICT_CONFIDENCE_RATIO_KEEP
         self.use_importance_weighting = use_importance_weighting
 
@@ -101,7 +103,7 @@ class AutoResolutionClassifier:
         # Exponential scaling: 2^normalized
         # At 0.6: 2^0 = 1.0
         # At 1.0: 2^2 = 4.0 (but we'll cap it at 2.0 for usability)
-        factor = 2 ** normalized
+        factor = 2**normalized
 
         # Cap at 2.0 to avoid overly strict thresholds
         return min(factor, 2.0)
