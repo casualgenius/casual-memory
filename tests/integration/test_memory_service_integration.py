@@ -31,7 +31,6 @@ from casual_memory.storage.vector.memory import InMemoryVectorStore
 
 
 class MockEmbedding:
-
     """Mock embedding service that returns deterministic embeddings.
 
     Uses a semantic-aware approach with:
@@ -63,10 +62,50 @@ class MockEmbedding:
 
     # Stop words to ignore (common function words that don't carry semantic meaning)
     STOP_WORDS = {
-        "i", "a", "an", "the", "in", "at", "to", "do", "does", "who", "what", "where",
-        "is", "am", "are", "my", "as", "of", "for", "on", "with", "by", "from", "and",
-        "or", "but", "it", "that", "this", "was", "be", "been", "being", "have", "has",
-        "had", "will", "would", "could", "should", "may", "might", "can", "very",
+        "i",
+        "a",
+        "an",
+        "the",
+        "in",
+        "at",
+        "to",
+        "do",
+        "does",
+        "who",
+        "what",
+        "where",
+        "is",
+        "am",
+        "are",
+        "my",
+        "as",
+        "of",
+        "for",
+        "on",
+        "with",
+        "by",
+        "from",
+        "and",
+        "or",
+        "but",
+        "it",
+        "that",
+        "this",
+        "was",
+        "be",
+        "been",
+        "being",
+        "have",
+        "has",
+        "had",
+        "will",
+        "would",
+        "could",
+        "should",
+        "may",
+        "might",
+        "can",
+        "very",
     }
 
     # Semantic categories - words in same category get similar embeddings
