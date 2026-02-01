@@ -1,6 +1,7 @@
 """Integration tests for Redis short-term memory storage backend."""
 
 import pytest
+from casual_llm.messages import AssistantMessage, UserMessage
 
 from casual_memory.models import ShortTermMemory
 from casual_memory.storage.short_term.redis import RedisShortTermStore
@@ -21,15 +22,16 @@ async def test_redis_add_and_get_messages(skip_if_no_redis):
         # Create test messages
         messages = [
             ShortTermMemory(
-                role="user", content="Hello, how are you?", timestamp="2024-01-01T10:00:00"
+                message=UserMessage(content="Hello, how are you?"),
+                timestamp="2024-01-01T10:00:00",
             ),
             ShortTermMemory(
-                role="assistant",
-                content="I'm doing well, thank you!",
+                message=AssistantMessage(content="I'm doing well, thank you!"),
                 timestamp="2024-01-01T10:00:05",
             ),
             ShortTermMemory(
-                role="user", content="What's the weather like?", timestamp="2024-01-01T10:00:10"
+                message=UserMessage(content="What's the weather like?"),
+                timestamp="2024-01-01T10:00:10",
             ),
         ]
 
@@ -40,9 +42,9 @@ async def test_redis_add_and_get_messages(skip_if_no_redis):
         retrieved = await storage.get(user_id="test_user", limit=10)
 
         assert len(retrieved) == 3
-        assert retrieved[0].content == "Hello, how are you?"
-        assert retrieved[1].role == "assistant"
-        assert retrieved[2].content == "What's the weather like?"
+        assert retrieved[0].message.content == "Hello, how are you?"
+        assert retrieved[1].message.role == "assistant"
+        assert retrieved[2].message.content == "What's the weather like?"
 
     finally:
         # Cleanup
@@ -68,8 +70,11 @@ async def test_redis_message_limit(skip_if_no_redis):
         # Add 10 messages
         messages = [
             ShortTermMemory(
-                role="user" if i % 2 == 0 else "assistant",
-                content=f"Message {i}",
+                message=(
+                    UserMessage(content=f"Message {i}")
+                    if i % 2 == 0
+                    else AssistantMessage(content=f"Message {i}")
+                ),
                 timestamp=f"2024-01-01T10:{i:02d}:00",
             )
             for i in range(10)
@@ -82,7 +87,7 @@ async def test_redis_message_limit(skip_if_no_redis):
 
         assert len(retrieved) <= 5
         # Should be the most recent messages (5-9)
-        assert any("Message 9" in m.content for m in retrieved)
+        assert any("Message 9" in m.message.content for m in retrieved)
 
     finally:
         try:
@@ -104,7 +109,9 @@ async def test_redis_clear_messages(skip_if_no_redis):
     try:
         # Add messages
         messages = [
-            ShortTermMemory(role="user", content="Test message", timestamp="2024-01-01T10:00:00")
+            ShortTermMemory(
+                message=UserMessage(content="Test message"), timestamp="2024-01-01T10:00:00"
+            )
         ]
 
         await storage.add(messages, user_id="test_user")
@@ -140,13 +147,17 @@ async def test_redis_user_isolation(skip_if_no_redis):
     try:
         # Add messages for user1
         messages_user1 = [
-            ShortTermMemory(role="user", content="User 1 message", timestamp="2024-01-01T10:00:00")
+            ShortTermMemory(
+                message=UserMessage(content="User 1 message"), timestamp="2024-01-01T10:00:00"
+            )
         ]
         await storage.add(messages_user1, user_id="user_1")
 
         # Add messages for user2
         messages_user2 = [
-            ShortTermMemory(role="user", content="User 2 message", timestamp="2024-01-01T10:00:00")
+            ShortTermMemory(
+                message=UserMessage(content="User 2 message"), timestamp="2024-01-01T10:00:00"
+            )
         ]
         await storage.add(messages_user2, user_id="user_2")
 
@@ -156,10 +167,10 @@ async def test_redis_user_isolation(skip_if_no_redis):
 
         # Each user should only see their own messages
         assert len(user1_messages) == 1
-        assert user1_messages[0].content == "User 1 message"
+        assert user1_messages[0].message.content == "User 1 message"
 
         assert len(user2_messages) == 1
-        assert user2_messages[0].content == "User 2 message"
+        assert user2_messages[0].message.content == "User 2 message"
 
     finally:
         try:
@@ -183,8 +194,11 @@ async def test_redis_get_with_limit(skip_if_no_redis):
         # Add 10 messages
         messages = [
             ShortTermMemory(
-                role="user" if i % 2 == 0 else "assistant",
-                content=f"Message {i}",
+                message=(
+                    UserMessage(content=f"Message {i}")
+                    if i % 2 == 0
+                    else AssistantMessage(content=f"Message {i}")
+                ),
                 timestamp=f"2024-01-01T10:{i:02d}:00",
             )
             for i in range(10)
@@ -218,7 +232,8 @@ async def test_redis_message_persistence(skip_if_no_redis):
     try:
         messages = [
             ShortTermMemory(
-                role="user", content="Persistent message", timestamp="2024-01-01T10:00:00"
+                message=UserMessage(content="Persistent message"),
+                timestamp="2024-01-01T10:00:00",
             )
         ]
 
@@ -232,7 +247,7 @@ async def test_redis_message_persistence(skip_if_no_redis):
         retrieved = await storage2.get(user_id="test_user")
 
         assert len(retrieved) == 1
-        assert retrieved[0].content == "Persistent message"
+        assert retrieved[0].message.content == "Persistent message"
 
     finally:
         try:

@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Literal, Optional
 
+from casual_llm.messages import ChatMessage
 from pydantic import BaseModel, Field
 
 
@@ -243,10 +244,35 @@ class ConflictResolution(BaseModel):
 
 
 class ShortTermMemory(BaseModel):
-    """Model for short-term conversation memory (last N messages)"""
+    """Model for short-term conversation memory (last N messages).
 
-    content: str
-    role: Literal["user", "assistant"]
+    Wraps ChatMessage from casual-llm with a timestamp for storage.
+    Supports all message types:
+    - UserMessage: User messages (supports text and multimodal content)
+    - AssistantMessage: Assistant responses (content and/or tool_calls)
+    - ToolResultMessage: Tool/function call results
+    - SystemMessage: System prompts (typically not stored, but supported)
+
+    Example:
+        from casual_llm.messages import UserMessage, AssistantMessage
+
+        # User message
+        ShortTermMemory(
+            message=UserMessage(content="Hello!"),
+            timestamp="2024-01-01T10:00:00"
+        )
+
+        # Assistant message with tool call
+        ShortTermMemory(
+            message=AssistantMessage(
+                content=None,
+                tool_calls=[AssistantToolCall(...)]
+            ),
+            timestamp="2024-01-01T10:00:05"
+        )
+    """
+
+    message: ChatMessage
     timestamp: str
 
 
