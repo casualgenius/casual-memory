@@ -1,9 +1,14 @@
 import uuid
 from datetime import datetime
-from typing import Any, Literal, Optional
+from typing import Annotated, Any, Literal, Optional
 
-from casual_llm.messages import ChatMessage
-from pydantic import BaseModel, Field
+from casual_llm.messages import (
+    AssistantMessage,
+    SystemMessage,
+    ToolResultMessage,
+    UserMessage,
+)
+from pydantic import BaseModel, Discriminator, Field, Tag
 
 
 class MemoryFactExtraction(BaseModel):
@@ -272,7 +277,13 @@ class ShortTermMemory(BaseModel):
         )
     """
 
-    message: ChatMessage
+    message: Annotated[
+        Annotated[UserMessage, Tag("user")]
+        | Annotated[AssistantMessage, Tag("assistant")]
+        | Annotated[ToolResultMessage, Tag("tool")]
+        | Annotated[SystemMessage, Tag("system")],
+        Discriminator("role"),
+    ]
     timestamp: str
 
 
