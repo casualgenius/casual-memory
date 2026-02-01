@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [
-    { name = "Alex Stansfield", email = "alex.stansfield@gmail.com" }
+    { name = "Alex Stansfield", email = "alex@casualgenius.com" }
 ]
 keywords = ["memory", "llm", "ai", "semantic-memory", "conflict-detection", "chatbot"]
 classifiers = [
@@ -22,7 +22,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "casual-llm[openai]>=0.3.0",
+    "casual-llm[openai]>=0.4.3",
     "pydantic>=2.0.0",
     "typing-extensions>=4.0.0",
 ]
@@ -30,7 +30,6 @@ dependencies = [
 [project.optional-dependencies]
 transformers = [
     "sentence-transformers>=2.0.0",
-    "torch>=2.0.0",
 ]
 qdrant = [
     "qdrant-client>=1.7.0",
@@ -45,21 +44,8 @@ postgres = [
 redis = [
     "redis>=5.0.0",
 ]
-dates = [
-    "dateparser>=1.1.0",
-]
-embeddings-openai = [
-    "openai>=1.0.0",
-]
-embeddings-transformers = [
-    "sentence-transformers>=2.0.0",
-    "torch>=2.0.0",
-]
-embeddings-all = [
-    "casual-memory[embeddings-openai,embeddings-transformers]",
-]
 all = [
-    "casual-memory[transformers,qdrant,sqlalchemy,postgres,redis,dates,embeddings-all]",
+    "casual-memory[transformers,qdrant,sqlalchemy,postgres,redis]",
 ]
 dev = [
     "pytest>=7.0.0",
@@ -73,10 +59,10 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/casual-memory"
-Documentation = "https://github.com/yourusername/casual-memory#readme"
-Repository = "https://github.com/yourusername/casual-memory"
-Issues = "https://github.com/yourusername/casual-memory/issues"
+Homepage = "https://github.com/casualgenius/casual-memory"
+Documentation = "https://github.com/casualgenius/casual-memory#readme"
+Repository = "https://github.com/casualgenius/casual-memory"
+Issues = "https://github.com/casualgenius/casual-memory/issues"
 
 [build-system]
 requires = ["hatchling"]
@@ -123,8 +109,6 @@ module = [
     "sentence_transformers.*",
     "qdrant_client",
     "qdrant_client.*",
-    "dateparser",
-    "dateparser.*",
     "redis",
     "redis.*",
     "transformers",

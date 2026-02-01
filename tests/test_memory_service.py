@@ -75,6 +75,7 @@ async def test_add_memory_added_outcome(memory_service, mock_vector_store, mock_
         type="fact",
         tags=[],
         user_id="user_123",
+        importance=0.8,
     )
 
     # Mock no similar memories found
@@ -110,6 +111,7 @@ async def test_add_memory_updated_outcome(memory_service, mock_vector_store, moc
         type="fact",
         tags=[],
         user_id="user_123",
+        importance=0.8,
     )
 
     # Mock similar memory found
@@ -170,6 +172,7 @@ async def test_add_memory_conflict_outcome(
         type="fact",
         tags=[],
         user_id="user_123",
+        importance=0.8,
     )
 
     # Mock conflicting memory
@@ -232,6 +235,7 @@ async def test_add_memory_with_superseding(memory_service, mock_vector_store, mo
         type="fact",
         tags=[],
         user_id="user_123",
+        importance=0.8,
     )
 
     # Mock similar memory that will be superseded
@@ -293,6 +297,7 @@ async def test_add_memory_custom_thresholds(memory_service, mock_vector_store, m
         type="fact",
         tags=[],
         user_id="user_123",
+        importance=0.8,
     )
 
     mock_vector_store.find_similar_memories.return_value = []
@@ -326,6 +331,7 @@ async def test_add_memory_error_handling(memory_service, mock_embedding):
         type="fact",
         tags=[],
         user_id="user_123",
+        importance=0.8,
     )
 
     # Mock embedding failure

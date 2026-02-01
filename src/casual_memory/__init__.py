@@ -17,6 +17,7 @@ from casual_memory.models import (
     MemoryBlock,
     MemoryConflict,
     MemoryFact,
+    MemoryFactExtraction,
     MemoryQueryFilter,
     ShortTermMemory,
 )
@@ -25,6 +26,7 @@ __all__ = [
     "__version__",
     # Models
     "MemoryFact",
+    "MemoryFactExtraction",
     "MemoryBlock",
     "MemoryConflict",
     "ConflictResolution",

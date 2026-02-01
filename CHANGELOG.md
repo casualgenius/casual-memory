@@ -127,7 +127,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `qdrant` - qdrant-client for vector storage
   - `postgres` - sqlalchemy, asyncpg for conflict storage
   - `redis` - redis-py for short-term storage
-  - `dates` - dateparser for temporal normalization
   - `all` - All optional dependencies
 
 ### Development Tools

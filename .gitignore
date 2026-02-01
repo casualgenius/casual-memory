@@ -50,3 +50,5 @@ Thumbs.db
 # Logs
 *.log
 .env
+
+scripts/*/results/*

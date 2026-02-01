@@ -46,7 +46,7 @@ pip install casual-memory
 # With NLI support (sentence-transformers)
 pip install casual-memory[transformers]
 
-# With Qdrant adapter
+# With Qdrant vector store
 pip install casual-memory[qdrant]
 
 # With PostgreSQL conflict store
@@ -55,11 +55,18 @@ pip install casual-memory[postgres]
 # With Redis short-term store
 pip install casual-memory[redis]
 
-# With date normalization
-pip install casual-memory[dates]
-
 # Full installation (all extras)
 pip install casual-memory[all]
+```
+
+### CPU-only installation (no CUDA)
+By default, PyTorch includes CUDA which is a large download. For CPU-only machines:
+```bash
+# Install CPU-only PyTorch first
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+# Then install casual-memory with transformers
+pip install casual-memory[transformers]
 ```
 
 ### For development

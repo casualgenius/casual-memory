@@ -1,8 +1,72 @@
 import uuid
 from datetime import datetime
-from typing import Any, Literal, Optional
+from typing import Annotated, Any, Literal, Optional
 
-from pydantic import BaseModel, Field
+from casual_llm.messages import (
+    AssistantMessage,
+    SystemMessage,
+    ToolResultMessage,
+    UserMessage,
+)
+from pydantic import BaseModel, Discriminator, Field, Tag
+
+
+class MemoryFactExtraction(BaseModel):
+    """
+    Model for LLM memory extraction - contains ONLY fields the LLM should populate.
+
+    This is used as the response format for LLM extraction to ensure:
+    1. Clean separation: LLM only sees/populates extraction fields
+    2. Smaller JSON schema: No system-managed fields in the schema
+    3. Explicit contract: Clear about what LLM provides vs system manages
+    """
+
+    text: str = Field(
+        ...,
+        description=(
+            "Concise, self-contained memory statement. "
+            "For user memories: Use first person (e.g., 'My name is Alex'). "
+            "Must be understandable without conversation context."
+        ),
+    )
+    type: Literal["fact", "preference", "event", "goal", "weather"] = Field(
+        ...,
+        description=(
+            "Memory category: "
+            "'fact' (verifiable information like name, location, job, allergies), "
+            "'preference' (subjective likes/dislikes or opinions), "
+            "'event' (specific occurrences with dates like appointments, trips), "
+            "'goal' (intentions or tasks to accomplish like reminders, learning objectives), "
+            "'weather' (weather forecasts or conditions)"
+        ),
+    )
+    tags: list[str] = Field(
+        ...,
+        description="Relevant lowercase keywords for categorization (e.g., ['allergy', 'health'])",
+    )
+    importance: float = Field(
+        ...,  # REQUIRED: Force LLM to provide importance score (no default)
+        ge=0.0,
+        le=1.0,
+        description=(
+            "Importance score between 0.0 and 1.0. REQUIRED FIELD. "
+            "Medical/safety info (allergies) = 1.0, "
+            "Personal facts (name, job, birthday) = 0.9, "
+            "Location/contact info = 0.8, "
+            "Preferences/opinions = 0.6-0.8, "
+            "Goals/reminders = 0.7-0.8, "
+            "Events = 0.7-0.8"
+        ),
+    )
+    valid_until: Optional[str | None] = Field(
+        default=None,
+        description=(
+            "ISO8601 timestamp when memory expires. "
+            "Use for temporary information (weather forecasts, reminders, appointments). "
+            "null = permanent memory. "
+            "Leave as null - the system will calculate expiry times for temporal memories."
+        ),
+    )
 
 
 class MemoryFact(BaseModel):
@@ -30,15 +94,18 @@ class MemoryFact(BaseModel):
         ...,
         description="Relevant lowercase keywords for categorization (e.g., ['allergy', 'health'])",
     )
-    importance: Optional[float] = Field(
-        default=0.5,
+    importance: float = Field(
+        ...,  # REQUIRED: Force LLM to provide importance score (no default)
         ge=0.0,
         le=1.0,
         description=(
-            "Importance score between 0.0 and 1.0. "
+            "Importance score between 0.0 and 1.0. REQUIRED FIELD. "
             "Medical/safety info (allergies) = 1.0, "
-            "Personal facts (name, job) = 0.7-0.9, "
-            "General preferences = 0.5-0.6"
+            "Personal facts (name, job, birthday) = 0.9, "
+            "Location/contact info = 0.8, "
+            "Preferences/opinions = 0.6-0.8, "
+            "Goals/reminders = 0.7-0.8, "
+            "Events = 0.7-0.8"
         ),
     )
     source: Optional[Literal["assistant", "tool", "user"]] = Field(
@@ -155,8 +222,8 @@ class MemoryConflict(BaseModel):
     winning_memory_id: Optional[str] = Field(
         default=None, description="ID of memory that was kept after resolution"
     )
-    clarification_hint: str = Field(
-        ..., description="Suggested question to ask user for clarification"
+    clarification_hint: Optional[str] = Field(
+        default=None, description="Suggested question to ask user for clarification"
     )
     metadata: dict[str, Any] = Field(
         default_factory=dict, description="Additional metadata for conflict tracking"
@@ -182,10 +249,41 @@ class ConflictResolution(BaseModel):
 
 
 class ShortTermMemory(BaseModel):
-    """Model for short-term conversation memory (last N messages)"""
+    """Model for short-term conversation memory (last N messages).
 
-    content: str
-    role: Literal["user", "assistant"]
+    Wraps ChatMessage from casual-llm with a timestamp for storage.
+    Supports all message types:
+    - UserMessage: User messages (supports text and multimodal content)
+    - AssistantMessage: Assistant responses (content and/or tool_calls)
+    - ToolResultMessage: Tool/function call results
+    - SystemMessage: System prompts (typically not stored, but supported)
+
+    Example:
+        from casual_llm.messages import UserMessage, AssistantMessage
+
+        # User message
+        ShortTermMemory(
+            message=UserMessage(content="Hello!"),
+            timestamp="2024-01-01T10:00:00"
+        )
+
+        # Assistant message with tool call
+        ShortTermMemory(
+            message=AssistantMessage(
+                content=None,
+                tool_calls=[AssistantToolCall(...)]
+            ),
+            timestamp="2024-01-01T10:00:05"
+        )
+    """
+
+    message: Annotated[
+        Annotated[UserMessage, Tag("user")]
+        | Annotated[AssistantMessage, Tag("assistant")]
+        | Annotated[ToolResultMessage, Tag("tool")]
+        | Annotated[SystemMessage, Tag("system")],
+        Discriminator("role"),
+    ]
     timestamp: str
 
 

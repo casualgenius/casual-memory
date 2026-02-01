@@ -293,13 +293,18 @@ When implementing storage backends:
 - **pydantic**: Data validation and serialization
 
 ### Optional Dependencies
-- **sentence-transformers** + **torch**: NLI classifier (90%+ accuracy, 50-200ms)
+- **sentence-transformers**: NLI classifier and E5 embeddings (90%+ accuracy, 50-200ms)
 - **qdrant-client**: Production vector database
 - **sqlalchemy** + **psycopg2-binary**: Database conflict stores
 - **redis**: Production short-term memory store
-- **dateparser**: Temporal memory date normalization
 
 Install extras: `uv sync --extra transformers` or `uv sync --all-extras`
+
+**CPU-only installation**: By default, PyTorch (pulled in by sentence-transformers) includes CUDA. For CPU-only:
+```bash
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+pip install casual-memory[transformers]
+```
 
 ## Common Patterns
 
@@ -659,7 +664,7 @@ auto_resolver = AutoResolutionClassifier(
 ### Troubleshooting
 
 **Problem: NLI classifier not working**
-- Check if `sentence-transformers` and `torch` are installed: `uv sync --extra transformers`
+- Check if `sentence-transformers` is installed: `uv sync --extra transformers`
 - Verify model downloads: First run downloads `cross-encoder/nli-deberta-v3-base` (~400MB)
 - Check GPU availability: NLI is faster on GPU but works on CPU
 

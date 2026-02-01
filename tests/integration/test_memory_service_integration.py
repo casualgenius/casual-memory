@@ -31,11 +31,97 @@ from casual_memory.storage.vector.memory import InMemoryVectorStore
 
 
 class MockEmbedding:
-    """Mock embedding service that returns deterministic embeddings."""
+    """Mock embedding service that returns deterministic embeddings.
+
+    Uses a semantic-aware approach with:
+    - Word stemming (live/lives/living -> liv)
+    - Semantic categories (locations, jobs, preferences)
+    - Stop word filtering
+    """
+
+    # Simple stemming rules (word -> stem)
+    STEMS = {
+        "live": "liv",
+        "lives": "liv",
+        "living": "liv",
+        "lived": "liv",
+        "work": "work",
+        "works": "work",
+        "working": "work",
+        "worked": "work",
+        "like": "like",
+        "likes": "like",
+        "liked": "like",
+        "prefer": "prefer",
+        "prefers": "prefer",
+        "preferred": "prefer",
+        "hate": "hate",
+        "hates": "hate",
+        "hated": "hate",
+    }
+
+    # Stop words to ignore (common function words that don't carry semantic meaning)
+    STOP_WORDS = {
+        "i",
+        "a",
+        "an",
+        "the",
+        "in",
+        "at",
+        "to",
+        "do",
+        "does",
+        "who",
+        "what",
+        "where",
+        "is",
+        "am",
+        "are",
+        "my",
+        "as",
+        "of",
+        "for",
+        "on",
+        "with",
+        "by",
+        "from",
+        "and",
+        "or",
+        "but",
+        "it",
+        "that",
+        "this",
+        "was",
+        "be",
+        "been",
+        "being",
+        "have",
+        "has",
+        "had",
+        "will",
+        "would",
+        "could",
+        "should",
+        "may",
+        "might",
+        "can",
+        "very",
+    }
+
+    # Semantic categories - words in same category get similar embeddings
+    CATEGORIES = {
+        "location": ["paris", "london", "berlin", "tokyo", "liv"],
+        "job": ["teacher", "doctor", "engineer", "developer", "work"],
+        "preference": ["like", "prefer", "hate", "coffee", "pizza", "tea"],
+    }
 
     def __init__(self):
-        # Simple hash-based embeddings for testing
-        self.cache = {}
+        self.cache: dict[str, list[float]] = {}
+        # Build reverse lookup: word -> category
+        self._word_to_category: dict[str, str] = {}
+        for category, words in self.CATEGORIES.items():
+            for word in words:
+                self._word_to_category[word] = category
 
     async def embed_query(self, text: str) -> list[float]:
         """Generate embedding for query."""
@@ -45,39 +131,72 @@ class MockEmbedding:
         """Generate embedding for document."""
         return self._generate_embedding(text)
 
+    def _stem(self, word: str) -> str:
+        """Simple stemming."""
+        return self.STEMS.get(word, word)
+
+    def _deterministic_hash(self, word: str) -> int:
+        """Generate a deterministic hash for a word."""
+        h = 0
+        for char in word:
+            h = (h * 31 + ord(char)) & 0xFFFFFFFF
+        return h
+
     def _generate_embedding(self, text: str) -> list[float]:
-        """Generate deterministic embedding based on text content."""
+        """Generate deterministic embedding based on text content.
+
+        Uses category-based embeddings where all words in a category
+        contribute to the same fixed vector for that category. This ensures
+        high similarity for semantically related texts (e.g., all location
+        queries have high similarity with location statements).
+        """
         if text in self.cache:
             return self.cache[text]
 
-        # Simple hash-based embedding (128-dim for testing)
-        # Uses keyword weighting to boost similarity for semantic queries
-        words = text.lower().split()
+        # 128-dim embedding split into:
+        # - dims 0-31: location category (all 1s when present)
+        # - dims 32-63: job category (all 1s when present)
+        # - dims 64-95: preference category (all 1s when present)
+        # - dims 96-127: other words (hash-based for uniqueness)
         embedding = [0.0] * 128
 
-        # Boost important keywords (locations, jobs, preferences)
-        important_keywords = {
-            "live",
-            "work",
-            "like",
-            "prefer",
-            "paris",
-            "london",
-            "teacher",
-            "doctor",
-            "engineer",
-            "coffee",
-            "pizza",
-        }
+        words = text.lower().split()
+        # Filter stop words and stem
+        processed_words = []
+        for word in words:
+            # Remove punctuation
+            word = word.strip(".,?!;:'\"")
+            if word and word not in self.STOP_WORDS:
+                processed_words.append(self._stem(word))
 
-        for i, word in enumerate(words):
-            hash_val = hash(word)
-            # Boost weight for important keywords
-            weight = 2.0 if word in important_keywords else 1.0
-            position_weight = 1.0 / (i + 1)
+        # Track which categories are present
+        categories_present: set[str] = set()
+        other_words: list[str] = []
 
-            for j in range(128):
-                embedding[j] += ((hash_val >> j) & 1) * weight * position_weight
+        for word in processed_words:
+            category = self._word_to_category.get(word)
+            if category:
+                categories_present.add(category)
+            else:
+                other_words.append(word)
+
+        # Add category contributions (fixed vectors for high similarity within category)
+        if "location" in categories_present:
+            for j in range(32):
+                embedding[j] = 1.0
+        if "job" in categories_present:
+            for j in range(32, 64):
+                embedding[j] = 1.0
+        if "preference" in categories_present:
+            for j in range(64, 96):
+                embedding[j] = 1.0
+
+        # Add unique contributions for "other" words
+        # Use small weight (0.1) so category signal dominates
+        for word in other_words:
+            hash_val = self._deterministic_hash(word)
+            for j in range(32):
+                embedding[96 + j] += ((hash_val >> j) & 1) * 0.1
 
         # Normalize
         magnitude = sum(x * x for x in embedding) ** 0.5
@@ -269,20 +388,22 @@ class MockDuplicateDetector:
     - Exact duplicates (same fact stated again)
     - Refinements (one memory is more detailed version of the other)
     - Distinct facts (different information, even if related)
+
+    Note: The real LLMDuplicateDetector.is_duplicate_or_refinement() returns just a bool,
+    not a tuple. The DuplicateClassifier then uses text length to determine if it's
+    a supersede (refinement) vs same (duplicate).
     """
 
     def __init__(self):
         self.llm_call_count = 0
 
-    async def is_duplicate_or_refinement(self, memory_a, memory_b, similarity_score):
+    async def is_duplicate_or_refinement(self, memory_a, memory_b, similarity_score) -> bool:
         """
         Check if memories are duplicates or refinements.
 
         Returns:
-            tuple: (is_same_or_refinement, decision) where decision is:
-                - "same": Exact duplicate
-                - "refinement": One is more detailed version of the other
-                - "distinct": Different facts (return False)
+            bool: True if memories are duplicates/refinements (same fact),
+                  False if they are distinct facts.
         """
         self.llm_call_count += 1
 
@@ -291,24 +412,14 @@ class MockDuplicateDetector:
 
         # Exact duplicates
         if a_text == b_text:
-            return True, "same"
+            return True
 
         # Refinement: one text contains the other AND adds meaningful detail
         if a_text in b_text:
-            # b_text is more detailed
-            added_words = b_text.replace(a_text, "").strip().split()
-            if len(added_words) >= 2:  # Meaningful addition
-                return True, "refinement"
-            else:
-                return True, "same"  # Just minor variation
+            return True
 
         if b_text in a_text:
-            # a_text is more detailed
-            added_words = a_text.replace(b_text, "").strip().split()
-            if len(added_words) >= 2:  # Meaningful addition
-                return True, "refinement"
-            else:
-                return True, "same"  # Just minor variation
+            return True
 
         # Check for paraphrases (high word overlap, similar structure)
         a_words = set(a_text.split())
@@ -317,7 +428,7 @@ class MockDuplicateDetector:
 
         if overlap > 0.8:
             # Very high overlap = likely same fact, slightly reworded
-            return True, "same"
+            return True
 
         # Check if they're talking about the same specific topic with different details
         # Example: "I work as an engineer" vs "I work as a senior engineer at Google"
@@ -331,24 +442,28 @@ class MockDuplicateDetector:
 
         for pattern_a, pattern_b in topic_patterns:
             if pattern_a in a_text and pattern_b in b_text:
-                # Same topic, check if it's the same object (skip articles)
-                a_words = a_text.split(pattern_a)[-1].strip().split()
-                b_words = b_text.split(pattern_b)[-1].strip().split()
-                articles = {"a", "an", "the"}
-                a_obj = next((w.rstrip(".,;") for w in a_words if w not in articles), "")
-                b_obj = next((w.rstrip(".,;") for w in b_words if w not in articles), "")
+                # Same topic, get the full phrase after the pattern
+                a_phrase = a_text.split(pattern_a)[-1].strip()
+                b_phrase = b_text.split(pattern_b)[-1].strip()
 
-                if a_obj and b_obj and (a_obj == b_obj or a_obj in b_obj or b_obj in a_obj):
-                    # Same core fact, check for refinement
-                    if len(b_text) > len(a_text) + 10:  # Significant detail added
-                        return True, "refinement"
-                    elif len(a_text) > len(b_text) + 10:
-                        return True, "refinement"
-                    else:
-                        return True, "same"
+                # Remove trailing location markers for comparison
+                for marker in [" at ", " in ", ",", "."]:
+                    if marker in a_phrase:
+                        a_phrase = a_phrase.split(marker)[0].strip()
+                    if marker in b_phrase:
+                        b_phrase = b_phrase.split(marker)[0].strip()
+
+                # Check if one phrase contains key words from the other
+                # This handles "an engineer" matching "a senior software engineer"
+                a_words = {w.rstrip(".,;") for w in a_phrase.split() if w not in {"a", "an", "the"}}
+                b_words = {w.rstrip(".,;") for w in b_phrase.split() if w not in {"a", "an", "the"}}
+
+                # If there's word overlap (e.g., "engineer" in both), consider it same topic
+                if a_words & b_words:
+                    return True
 
         # Not a duplicate or refinement - distinct facts
-        return False, "distinct"
+        return False
 
     def get_metrics(self):
         return {"duplicate_detector_llm_call_count": self.llm_call_count}
@@ -397,7 +512,7 @@ def pipeline():
             NLIClassifier(nli_filter=MockNLIFilter()),
             ConflictClassifier(llm_conflict_verifier=MockConflictVerifier()),
             DuplicateClassifier(llm_duplicate_detector=MockDuplicateDetector()),
-            AutoResolutionClassifier(),
+            AutoResolutionClassifier(use_importance_weighting=False),
         ],
         strategy="tiered",
     )
@@ -729,16 +844,33 @@ async def test_complex_scenario_multiple_memories(memory_service, vector_store, 
 
     # 1. Add initial facts
     await memory_service.add_memory(
-        MemoryFact(text="I live in London", type="fact", tags=[], user_id=user_id, confidence=0.8)
-    )
-    await memory_service.add_memory(
         MemoryFact(
-            text="I work as a teacher", type="fact", tags=[], user_id=user_id, confidence=0.7
+            text="I live in London",
+            type="fact",
+            tags=[],
+            user_id=user_id,
+            confidence=0.8,
+            importance=0.8,
         )
     )
     await memory_service.add_memory(
         MemoryFact(
-            text="I like coffee", type="preference", tags=[], user_id=user_id, confidence=0.6
+            text="I work as a teacher",
+            type="fact",
+            tags=[],
+            user_id=user_id,
+            confidence=0.7,
+            importance=0.8,
+        )
+    )
+    await memory_service.add_memory(
+        MemoryFact(
+            text="I like coffee",
+            type="preference",
+            tags=[],
+            user_id=user_id,
+            confidence=0.6,
+            importance=0.8,
         )
     )
 
@@ -750,6 +882,7 @@ async def test_complex_scenario_multiple_memories(memory_service, vector_store, 
             tags=[],
             user_id=user_id,
             confidence=0.9,
+            importance=0.8,
         )
     )
     assert result.action == "added"
@@ -758,14 +891,26 @@ async def test_complex_scenario_multiple_memories(memory_service, vector_store, 
     # 3. Add duplicate (should update)
     result = await memory_service.add_memory(
         MemoryFact(
-            text="I like coffee", type="preference", tags=[], user_id=user_id, confidence=0.7
+            text="I like coffee",
+            type="preference",
+            tags=[],
+            user_id=user_id,
+            confidence=0.7,
+            importance=0.8,
         )
     )
     assert result.action == "updated"
 
     # 4. Add conflict (should create conflict record)
     result = await memory_service.add_memory(
-        MemoryFact(text="I live in Paris", type="fact", tags=[], user_id=user_id, confidence=0.8)
+        MemoryFact(
+            text="I live in Paris",
+            type="fact",
+            tags=[],
+            user_id=user_id,
+            confidence=0.8,
+            importance=0.8,
+        )
     )
     assert result.action == "conflict"
     assert len(result.conflict_ids) > 0

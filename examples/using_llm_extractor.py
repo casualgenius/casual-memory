@@ -126,15 +126,13 @@ Only extract location information. Return {{"memories": []}} if none found.
     print("\n" + "=" * 80)
     print("Key Takeaways")
     print("=" * 80)
-    print(
-        """
+    print("""
 1. LLMMemoryExtracter is flexible - use different prompts for different contexts
 2. USER_MEMORY_PROMPT: For extracting facts, preferences, goals from user messages
 3. ASSISTANT_MEMORY_PROMPT: For extracting tool results, recommendations, calculations
 4. Create custom prompts for specialized extraction needs
 5. The prompt receives {today_natural} and {isonow} placeholders for date context
-    """
-    )
+    """)
 
 
 if __name__ == "__main__":

@@ -36,7 +36,6 @@ async def test_extract_basic_memory():
                     "type": "fact",
                     "tags": ["name", "identity"],
                     "importance": 0.9,
-                    "source": "user",
                     "valid_until": None,
                 }
             ]
@@ -57,7 +56,8 @@ async def test_extract_basic_memory():
     assert memories[0].text == "My name is Alex"
     assert memories[0].type == "fact"
     assert memories[0].importance == 0.9
-    assert memories[0].source == "user"
+    # source is system-managed, defaults to None (set by calling code)
+    assert memories[0].source is None
 
 
 @pytest.mark.asyncio
@@ -71,7 +71,6 @@ async def test_extract_multiple_memories():
                     "type": "fact",
                     "tags": ["location", "residence"],
                     "importance": 0.8,
-                    "source": "user",
                     "valid_until": None,
                 },
                 {
@@ -79,7 +78,6 @@ async def test_extract_multiple_memories():
                     "type": "fact",
                     "tags": ["job", "career"],
                     "importance": 0.7,
-                    "source": "user",
                     "valid_until": None,
                 },
                 {
@@ -87,7 +85,6 @@ async def test_extract_multiple_memories():
                     "type": "preference",
                     "tags": ["hobby", "outdoor"],
                     "importance": 0.6,
-                    "source": "user",
                     "valid_until": None,
                 },
             ]
@@ -120,7 +117,6 @@ async def test_extract_filters_low_importance():
                     "type": "fact",
                     "tags": ["test"],
                     "importance": 0.9,
-                    "source": "user",
                     "valid_until": None,
                 },
                 {
@@ -128,7 +124,6 @@ async def test_extract_filters_low_importance():
                     "type": "fact",
                     "tags": ["test"],
                     "importance": 0.3,  # Below 0.5 threshold
-                    "source": "user",
                     "valid_until": None,
                 },
                 {
@@ -136,7 +131,6 @@ async def test_extract_filters_low_importance():
                     "type": "fact",
                     "tags": ["test"],
                     "importance": 0.5,  # Exactly at threshold
-                    "source": "user",
                     "valid_until": None,
                 },
             ]
@@ -230,7 +224,7 @@ async def test_extract_with_empty_conversation():
 
 @pytest.mark.asyncio
 async def test_extract_different_sources():
-    """Test extraction with different source values."""
+    """Test that source field is system-managed, not extracted by LLM."""
     response_json = json.dumps(
         {
             "memories": [
@@ -239,7 +233,6 @@ async def test_extract_different_sources():
                     "type": "fact",
                     "tags": ["test"],
                     "importance": 0.7,
-                    "source": "user",
                     "valid_until": None,
                 },
                 {
@@ -247,7 +240,6 @@ async def test_extract_different_sources():
                     "type": "fact",
                     "tags": ["test"],
                     "importance": 0.6,
-                    "source": "assistant",
                     "valid_until": None,
                 },
             ]
@@ -265,8 +257,10 @@ async def test_extract_different_sources():
     memories = await extractor.extract(messages)
 
     assert len(memories) == 2
-    assert memories[0].source == "user"
-    assert memories[1].source == "assistant"
+    # Source is system-managed, not extracted by LLM (defaults to None)
+    # Calling code should set this based on message role
+    assert memories[0].source is None
+    assert memories[1].source is None
 
 
 @pytest.mark.asyncio
@@ -280,7 +274,6 @@ async def test_extract_preserves_tags():
                     "type": "fact",
                     "tags": ["allergy", "medical", "safety"],
                     "importance": 1.0,
-                    "source": "user",
                     "valid_until": None,
                 }
             ]
@@ -308,7 +301,6 @@ async def test_extract_all_memory_types():
                     "type": "fact",
                     "tags": ["name"],
                     "importance": 0.9,
-                    "source": "user",
                     "valid_until": None,
                 },
                 {
@@ -316,7 +308,6 @@ async def test_extract_all_memory_types():
                     "type": "preference",
                     "tags": ["hobby"],
                     "importance": 0.7,
-                    "source": "user",
                     "valid_until": None,
                 },
                 {
@@ -324,7 +315,6 @@ async def test_extract_all_memory_types():
                     "type": "goal",
                     "tags": ["learning", "language"],
                     "importance": 0.8,
-                    "source": "user",
                     "valid_until": None,
                 },
                 {
@@ -332,7 +322,6 @@ async def test_extract_all_memory_types():
                     "type": "event",
                     "tags": ["appointment", "dental"],
                     "importance": 0.9,
-                    "source": "user",
                     "valid_until": None,
                 },
             ]
@@ -375,16 +364,17 @@ async def test_prompt_formatting():
 
 @pytest.mark.asyncio
 async def test_extract_with_defaults():
-    """Test that optional fields use appropriate defaults."""
+    """Test that optional fields use appropriate defaults and required fields are enforced."""
+    # Test with valid extraction including all required fields
     response_json = json.dumps(
         {
             "memories": [
                 {
                     "text": "Minimal memory",
-                    "type": "fact",  # Required field
-                    "tags": [],  # Required field
-                    "source": "user",
-                    # Optional: importance (defaults to 0.5), valid_until (defaults to None)
+                    "type": "fact",  # Required
+                    "tags": [],  # Required
+                    "importance": 0.7,  # Required (no longer optional!)
+                    # Optional: valid_until defaults to None
                 }
             ]
         }
@@ -400,5 +390,6 @@ async def test_extract_with_defaults():
     assert memories[0].text == "Minimal memory"
     assert memories[0].type == "fact"
     assert memories[0].tags == []
-    assert memories[0].importance == 0.5  # Default importance
-    assert memories[0].valid_until is None
+    assert memories[0].importance == 0.7  # LLM must provide this
+    assert memories[0].valid_until is None  # Optional, defaults to None
+    assert memories[0].source is None  # System-managed, not extracted

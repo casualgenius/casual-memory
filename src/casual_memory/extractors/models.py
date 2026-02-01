@@ -7,7 +7,7 @@ These models are used to generate JSON schemas for structured LLM outputs.
 
 from pydantic import BaseModel, Field
 
-from casual_memory.models import MemoryFact
+from casual_memory.models import MemoryFactExtraction
 
 
 class MemoryExtractionResponse(BaseModel):
@@ -15,9 +15,13 @@ class MemoryExtractionResponse(BaseModel):
 
     This model defines the JSON schema that the LLM must follow
     when extracting memories from conversations.
+
+    Uses MemoryFactExtraction (not MemoryFact) to ensure the LLM only
+    sees and populates extraction fields, not system-managed fields like
+    confidence, mention_count, etc.
     """
 
-    memories: list[MemoryFact] = Field(
+    memories: list[MemoryFactExtraction] = Field(
         default_factory=list,
         description=(
             "List of extracted memories from the conversation. "
