@@ -84,13 +84,15 @@ uv sync --all-extras
 
 ```python
 from casual_memory.classifiers import (
-    ClassificationPipeline,
+    MemoryClassificationPipeline,
     NLIClassifier,
     ConflictClassifier,
     DuplicateClassifier,
     AutoResolutionClassifier,
+    SimilarMemory,
 )
 from casual_memory.intelligence import NLIPreFilter, LLMConflictVerifier, LLMDuplicateDetector
+from casual_memory import MemoryFact
 from casual_llm import create_provider, ModelConfig, Provider
 
 # Initialize components
@@ -105,58 +107,72 @@ conflict_verifier = LLMConflictVerifier(llm_provider, "qwen2.5:7b-instruct")
 duplicate_detector = LLMDuplicateDetector(llm_provider, "qwen2.5:7b-instruct")
 
 # Build pipeline
-pipeline = ClassificationPipeline(classifiers=[
-    NLIClassifier(nli_filter=nli_filter),
-    ConflictClassifier(llm_conflict_verifier=conflict_verifier),
-    DuplicateClassifier(llm_duplicate_detector=duplicate_detector),
-    AutoResolutionClassifier(supersede_threshold=1.3, keep_threshold=0.7),
-])
-
-# Classify memory pairs
-from casual_memory.classifiers.models import ClassificationRequest, MemoryPair
-from casual_memory import MemoryFact
-
-request = ClassificationRequest(
-    pairs=[
-        MemoryPair(
-            existing_memory=MemoryFact(text="I live in London", type="fact", ...),
-            new_memory=MemoryFact(text="I live in Paris", type="fact", ...),
-            similarity_score=0.91,
-            existing_memory_id="mem_123"
-        )
+pipeline = MemoryClassificationPipeline(
+    classifiers=[
+        NLIClassifier(nli_filter=nli_filter),
+        ConflictClassifier(llm_conflict_verifier=conflict_verifier),
+        DuplicateClassifier(llm_duplicate_detector=duplicate_detector),
+        AutoResolutionClassifier(supersede_threshold=1.3, keep_threshold=0.7),
     ],
-    results=[],
-    user_id="user123"
+    strategy="tiered",  # "single", "tiered", or "all"
 )
 
-result = await pipeline.classify(request)
+# Create new memory and similar memories from vector search
+new_memory = MemoryFact(
+    text="I live in Paris",
+    type="fact",
+    tags=["location"],
+    importance=0.9,
+    confidence=0.8,
+    user_id="user_123",
+)
 
-# Check classifications
-for classification_result in result.results:
-    print(f"Classification: {classification_result.classification}")
-    print(f"Classifier: {classification_result.classifier_name}")
-    if classification_result.classification == "CONFLICT":
-        conflict = classification_result.metadata["conflict"]
-        print(f"Category: {conflict.category}")
-        print(f"Hint: {conflict.clarification_hint}")
+similar_memories = [
+    SimilarMemory(
+        memory_id="mem_001",
+        memory=MemoryFact(
+            text="I live in London",
+            type="fact",
+            tags=["location"],
+            importance=0.8,
+            confidence=0.6,
+            user_id="user_123",
+        ),
+        similarity_score=0.91,
+    )
+]
+
+# Classify the new memory against similar memories
+result = await pipeline.classify(new_memory, similar_memories)
+
+# Check overall outcome: "add", "skip", or "conflict"
+print(f"Overall outcome: {result.overall_outcome}")
+
+# Check individual similarity results
+for sim_result in result.similarity_results:
+    print(f"Similar memory: {sim_result.similar_memory.memory.text}")
+    print(f"Outcome: {sim_result.outcome}")  # "conflict", "superseded", "same", "neutral"
+    print(f"Classifier: {sim_result.classifier_name}")
+    if sim_result.outcome == "conflict":
+        print(f"Category: {sim_result.metadata.get('category')}")
 ```
 
 ### Memory Extraction
 
 ```python
-from casual_memory.extractors import UserMemoryExtractor, AssistantMemoryExtractor
+from casual_memory.extractors import LLMMemoryExtracter
 from casual_llm import UserMessage, AssistantMessage
 
-# Extract memories from conversation
-user_extractor = UserMemoryExtractor(llm_provider)
-assistant_extractor = AssistantMemoryExtractor(llm_provider)
+# Create extractors for user and assistant memories
+user_extractor = LLMMemoryExtracter(llm_provider=llm_provider, source="user")
+assistant_extractor = LLMMemoryExtracter(llm_provider=llm_provider, source="assistant")
 
 messages = [
     UserMessage(content="My name is Alex and I live in Bangkok"),
     AssistantMessage(content="Nice to meet you, Alex!"),
 ]
 
-# Extract user memories
+# Extract user-stated memories
 user_memories = await user_extractor.extract(messages)
 # [MemoryFact(text="My name is Alex", type="fact", importance=0.9, ...),
 #  MemoryFact(text="I live in Bangkok", type="fact", importance=0.8, ...)]
@@ -168,28 +184,36 @@ assistant_memories = await assistant_extractor.extract(messages)
 ### Custom Storage Backend
 
 ```python
-from casual_memory.storage import VectorStore
-from typing import List, Optional, Tuple
+from typing import Any, Optional
 
 class MyVectorStore:
-    """Custom vector store implementation"""
+    """Custom vector store implementing VectorMemoryStore protocol"""
 
-    async def add(self, vector: List[float], payload: dict) -> str:
+    def add(self, embedding: list[float], payload: dict) -> str:
+        """Add memory to store, return memory ID."""
         # Your implementation
         return "memory_id"
 
-    async def search(
+    def search(
         self,
-        query_vector: List[float],
+        query_embedding: list[float],
         top_k: int = 5,
-        filters: Optional[dict] = None,
-        exclude_archived: bool = True,
-        user_id: Optional[str] = None
-    ) -> List[Tuple[MemoryPoint, float]]:
+        min_score: float = 0.7,
+        filters: Optional[Any] = None,
+    ) -> list[Any]:
+        """Search for similar memories."""
         # Your implementation
         return []
 
-    # Implement other protocol methods...
+    def update_memory(self, memory_id: str, updates: dict) -> bool:
+        """Update memory metadata (mention_count, last_seen, etc.)."""
+        # Your implementation
+        return True
+
+    def archive_memory(self, memory_id: str, superseded_by: Optional[str] = None) -> bool:
+        """Soft-delete memory."""
+        # Your implementation
+        return True
 ```
 
 ---
@@ -199,39 +223,45 @@ class MyVectorStore:
 ### Classification Pipeline Flow
 
 ```
-Input: Memory Pairs (similar memories to classify)
+Input: New Memory + Similar Memories (from vector search)
   ↓
 1. NLI Classifier (~50-200ms)
-  ├─ High entailment (≥0.85) → MERGE
-  ├─ High neutral (≥0.5) → ADD
+  ├─ High entailment (≥0.85) → same (duplicate)
+  ├─ High neutral (≥0.5) → neutral (distinct)
   └─ Uncertain → Pass to next classifier
   ↓
 2. Conflict Classifier (~500-2000ms)
-  ├─ LLM detects contradiction → CONFLICT
+  ├─ LLM detects contradiction → conflict
   └─ No conflict → Pass to next classifier
   ↓
 3. Duplicate Classifier (~500-2000ms)
-  ├─ Same fact/refinement → MERGE
-  └─ Distinct facts → ADD
+  ├─ Same fact → same
+  ├─ Refinement (more detail) → superseded
+  └─ Distinct facts → neutral
   ↓
 4. Auto-Resolution Classifier
-  ├─ Analyze CONFLICT results
-  ├─ High new confidence (ratio ≥1.3) → MERGE (keep_new)
-  ├─ High old confidence (ratio ≤0.7) → MERGE (keep_old)
-  └─ Similar confidence → Keep as CONFLICT
+  ├─ Analyze conflict results
+  ├─ High new confidence (ratio ≥1.3) → superseded (keep_new)
+  ├─ High old confidence (ratio ≤0.7) → same (keep_old)
+  └─ Similar confidence → Keep as conflict
   ↓
-5. Default Handler
-  └─ Unclassified pairs → ADD (conservative)
-  ↓
-Output: Classified Results (MERGE/CONFLICT/ADD)
+Output: MemoryClassificationResult
+  ├─ overall_outcome: "add" | "skip" | "conflict"
+  └─ similarity_results: Individual outcomes for each similar memory
 ```
 
 ### Key Concepts
 
-**Classification Outcomes:**
-- `MERGE` - Memories should be merged (duplicate, refinement, or auto-resolved conflict)
-- `CONFLICT` - Contradictory memories requiring manual resolution
-- `ADD` - Distinct memories that should both be stored
+**Similarity Outcomes** (for each similar memory):
+- `conflict` - Contradictory memories requiring user resolution
+- `superseded` - Similar memory should be archived (new one is better)
+- `same` - Duplicate memory (update existing metadata)
+- `neutral` - Distinct facts that can coexist
+
+**Memory Outcomes** (overall action):
+- `add` - Insert new memory to vector store
+- `skip` - Update existing memory (increment mention_count)
+- `conflict` - Create conflict record for user resolution
 
 **Confidence Scoring:**
 - Based on mention frequency (1 mention = 0.5, 5+ mentions = 0.95)
@@ -249,8 +279,6 @@ Output: Classified Results (MERGE/CONFLICT/ADD)
 ## 📚 Documentation
 
 - [Architecture Guide](docs/ARCHITECTURE.md) - System design and concepts
-- [Migration Guide](docs/MIGRATION.md) - Migrate from existing code
-- [API Reference](docs/API.md) - Complete API documentation
 - [Examples](examples/) - Working example code
 
 ---

@@ -9,7 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Planned
 - PyPI package publishing
-- Service migration examples
 - Additional storage backend adapters (Pinecone, Weaviate)
 - Streaming support for LLM responses
 - Batch processing for memory classification
@@ -78,17 +77,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### Models
 - `MemoryFact` - Core memory representation with metadata
+- `MemoryFactExtraction` - Extraction model for LLM parsing
 - `MemoryConflict` - Conflict metadata with categorization
 - `ConflictResolution` - Resolution decisions and actions
 - `ShortTermMemory` - Conversation history messages
-- `ClassificationRequest` - Pipeline input/output model
-- `ClassificationResult` - Classification outcomes with metadata
-- `MemoryPair` - Similar memory pair for classification
+- `SimilarMemory` - Similar memory for classification
+- `SimilarityResult` - Classification outcome for a memory pair
+- `MemoryClassificationResult` - Overall classification result
 
 ### Documentation
 - Comprehensive README.md with installation, quickstart, benchmarks
 - ARCHITECTURE.md with system design and performance analysis
-- MIGRATION.md with step-by-step migration guide from memory services
 - 5 working examples:
   - basic_classification.py - Pipeline usage
   - custom_classifier.py - Custom classifier implementation
@@ -141,21 +140,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **0.1.0** (2025-01-XX) - Initial release with classification pipeline, intelligence layer, storage abstraction
 - **Unreleased** - Future enhancements planned
-
----
-
-## Migration Notes
-
-### From memory-agent-service / memory-store-service
-
-See [MIGRATION.md](docs/MIGRATION.md) for complete migration guide.
-
-**Key Changes:**
-- `provider.generate()` → `provider.chat()` (returns AssistantMessage)
-- `MemoryExtractor(provider)` → `LLMMemoryExtractor(llm_provider=provider, source="user")`
-- `ConflictDetector` → `LLMConflictVerifier`
-- Environment config → ModelConfig objects
-- Base URLs: Use `http://localhost:11434` (providers append paths)
 
 ---
 

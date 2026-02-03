@@ -9,7 +9,7 @@ import asyncio
 
 from casual_llm import AssistantMessage, ModelConfig, Provider, UserMessage, create_provider
 
-from casual_memory.extractors import LLMMemoryExtractor
+from casual_memory.extractors import LLMMemoryExtracter
 
 
 async def main():
@@ -26,8 +26,8 @@ async def main():
     )
 
     # Create extractors for user and assistant memories
-    user_extractor = LLMMemoryExtractor(llm_provider=llm_provider, source="user")
-    assistant_extractor = LLMMemoryExtractor(llm_provider=llm_provider, source="assistant")
+    user_extractor = LLMMemoryExtracter(llm_provider=llm_provider, source="user")
+    assistant_extractor = LLMMemoryExtracter(llm_provider=llm_provider, source="assistant")
 
     # Sample conversation
     messages = [
