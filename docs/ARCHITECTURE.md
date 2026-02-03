@@ -70,21 +70,30 @@ The classification pipeline is the heart of casual-memory. It chains multiple cl
 - Composable (add/remove classifiers)
 - Protocol-based (no inheritance required)
 
-**Design Pattern:**
-```python
-@runtime_checkable
-class MemoryClassifier(Protocol):
-    """Protocol for memory classifiers."""
+**Classifier Interface:**
 
-    async def classify(
-        self,
-        new_memory: MemoryFact,
-        similar_memories: list[SimilarMemory],
-        results: Optional[list[SimilarityResult]] = None,
-    ) -> list[SimilarityResult]:
-        """Classify new memory against similar memories."""
-        ...
+Individual classifiers implement `classify_pair()` for comparing one memory pair:
+
+```python
+async def classify_pair(
+    self,
+    new_memory: MemoryFact,
+    similar_memory: SimilarMemory,
+    check_type: CheckType = "primary",  # "primary" or "secondary"
+    existing_result: Optional[SimilarityResult] = None,
+) -> Optional[SimilarityResult]:
+    """
+    Classify a single memory pair.
+
+    Returns:
+        - SimilarityResult if classifier is confident
+        - None to pass to next classifier
+        - existing_result to pass through unchanged
+    """
+    ...
 ```
+
+The pipeline calls `classify_pair()` for each classifier in sequence, passing results through the chain.
 
 ### 2. Classification Outcomes
 
