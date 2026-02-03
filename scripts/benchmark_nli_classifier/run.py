@@ -167,8 +167,6 @@ async def run_benchmark(
             if result is None:
                 # Classifier passed - uncertain case
                 actual_outcome = "pass"
-                # Get raw scores for display
-                nli_scores = {"contradiction": 0.0, "entailment": 0.0, "neutral": 0.0}
                 # Need to call NLI filter directly to get scores when classifier passes
                 label, scores = classifier.nli_filter.predict(
                     premise=test_case.existing_memory, hypothesis=test_case.new_memory

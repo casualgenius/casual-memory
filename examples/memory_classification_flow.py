@@ -171,8 +171,8 @@ async def example_2_auto_resolution():
         classifiers=[
             ConflictClassifier(llm_conflict_verifier=MockLLMConflictVerifier()),
             AutoResolutionClassifier(
-                supersede_threshold=1.3,  # New confidence / old confidence >= 1.3 → supersede
-                keep_threshold=0.7,  # New confidence / old confidence <= 0.7 → keep old
+                base_supersede_threshold=1.3,  # New confidence / old confidence >= 1.3 → supersede
+                base_keep_threshold=0.7,  # New confidence / old confidence <= 0.7 → keep old
             ),
         ],
         strategy="single",  # Only check highest-scoring memory

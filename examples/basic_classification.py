@@ -42,7 +42,7 @@ async def main():
             NLIClassifier(nli_filter=nli_filter),
             ConflictClassifier(llm_conflict_verifier=conflict_verifier),
             DuplicateClassifier(llm_duplicate_detector=duplicate_detector),
-            AutoResolutionClassifier(supersede_threshold=1.3, keep_threshold=0.7),
+            AutoResolutionClassifier(base_supersede_threshold=1.3, base_keep_threshold=0.7),
         ],
         strategy="tiered",  # Check primary memory fully, then secondary conflicts only
     )
