@@ -3,7 +3,7 @@ Models for memory action execution results.
 """
 
 from dataclasses import dataclass, field
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 
 @dataclass
@@ -46,4 +46,4 @@ class MemoryActionResult:
     memory_id: Optional[str] = None
     conflict_ids: list[str] = field(default_factory=list)
     superseded_ids: list[str] = field(default_factory=list)
-    metadata: dict = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)

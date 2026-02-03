@@ -8,10 +8,9 @@ Defines the core data models used throughout the classification pipeline:
 """
 
 from dataclasses import dataclass, field
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from casual_memory.models import MemoryFact
-
 
 # Type aliases for memory-centric classification
 SimilarityOutcome = Literal["conflict", "superseded", "same", "neutral"]
@@ -61,7 +60,7 @@ class SimilarityResult:
     outcome: SimilarityOutcome
     confidence: float
     classifier_name: str
-    metadata: dict = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -89,18 +88,14 @@ class MemoryClassificationResult:
     def conflicts_with(self) -> list[str]:
         """IDs of memories this conflicts with (for conflict records)."""
         return [
-            r.similar_memory.memory_id
-            for r in self.similarity_results
-            if r.outcome == "conflict"
+            r.similar_memory.memory_id for r in self.similarity_results if r.outcome == "conflict"
         ]
 
     @property
     def supersedes(self) -> list[str]:
         """IDs of memories to archive (when overall_outcome = "add")."""
         return [
-            r.similar_memory.memory_id
-            for r in self.similarity_results
-            if r.outcome == "superseded"
+            r.similar_memory.memory_id for r in self.similarity_results if r.outcome == "superseded"
         ]
 
     @property

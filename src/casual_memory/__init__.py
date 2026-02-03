@@ -11,24 +11,26 @@ Core components:
 
 __version__ = "0.1.0"
 
+from casual_memory.memory_service import MemoryService
 from casual_memory.models import (
-    MemoryFact,
+    ConflictResolution,
     MemoryBlock,
     MemoryConflict,
-    ConflictResolution,
+    MemoryFact,
+    MemoryFactExtraction,
+    MemoryQueryFilter,
     ShortTermMemory,
-    MemoryQueryFilter
 )
-from casual_memory.memory_service import MemoryService
 
 __all__ = [
     "__version__",
     # Models
     "MemoryFact",
+    "MemoryFactExtraction",
     "MemoryBlock",
     "MemoryConflict",
     "ConflictResolution",
     "ShortTermMemory",
     "MemoryQueryFilter",
-    "MemoryService"
+    "MemoryService",
 ]

@@ -1,7 +1,9 @@
 """Tests for LLM-based conflict verification."""
 
+from unittest.mock import AsyncMock, Mock
+
 import pytest
-from unittest.mock import Mock, AsyncMock
+
 from casual_memory.intelligence.conflict_verifier import LLMConflictVerifier
 from casual_memory.models import MemoryFact
 
@@ -19,9 +21,7 @@ async def test_conflict_verifier_initialization():
     """Test conflict verifier initialization."""
     provider = MockLLMProvider("NO")
     verifier = LLMConflictVerifier(
-        llm_provider=provider,
-        model_name="test-model",
-        enable_fallback=True
+        llm_provider=provider, model_name="test-model", enable_fallback=True
     )
 
     assert verifier.model_name == "test-model"
@@ -38,18 +38,8 @@ async def test_conflict_detection_yes():
     provider = MockLLMProvider("YES")
     verifier = LLMConflictVerifier(provider, "test-model")
 
-    memory_a = MemoryFact(
-        text="I live in London",
-        type="fact",
-        tags=["location"],
-        importance=0.9
-    )
-    memory_b = MemoryFact(
-        text="I live in Paris",
-        type="fact",
-        tags=["location"],
-        importance=0.9
-    )
+    memory_a = MemoryFact(text="I live in London", type="fact", tags=["location"], importance=0.9)
+    memory_b = MemoryFact(text="I live in Paris", type="fact", tags=["location"], importance=0.9)
 
     is_conflict, method = await verifier.verify_conflict(memory_a, memory_b, 0.85)
 
@@ -65,17 +55,12 @@ async def test_conflict_detection_no():
     provider = MockLLMProvider("NO")
     verifier = LLMConflictVerifier(provider, "test-model")
 
-    memory_a = MemoryFact(
-        text="I work as an engineer",
-        type="fact",
-        tags=["job"],
-        importance=0.8
-    )
+    memory_a = MemoryFact(text="I work as an engineer", type="fact", tags=["job"], importance=0.8)
     memory_b = MemoryFact(
         text="I work as a senior software engineer at Google",
         type="fact",
         tags=["job"],
-        importance=0.9
+        importance=0.9,
     )
 
     is_conflict, method = await verifier.verify_conflict(memory_a, memory_b, 0.80)
@@ -115,18 +100,8 @@ async def test_conflict_fallback_when_llm_fails():
     verifier = LLMConflictVerifier(provider, "test-model", enable_fallback=True)
 
     # High similarity + location keywords = conflict via heuristic
-    memory_a = MemoryFact(
-        text="I live in London",
-        type="fact",
-        tags=["location"],
-        importance=0.9
-    )
-    memory_b = MemoryFact(
-        text="I live in Paris",
-        type="fact",
-        tags=["location"],
-        importance=0.9
-    )
+    memory_a = MemoryFact(text="I live in London", type="fact", tags=["location"], importance=0.9)
+    memory_b = MemoryFact(text="I live in Paris", type="fact", tags=["location"], importance=0.9)
 
     is_conflict, method = await verifier.verify_conflict(memory_a, memory_b, 0.93)
 
@@ -260,11 +235,7 @@ async def test_conflict_custom_prompt():
     """Test using a custom system prompt."""
     custom_prompt = "Custom prompt for conflict detection"
     provider = MockLLMProvider("YES")
-    verifier = LLMConflictVerifier(
-        provider,
-        "test-model",
-        system_prompt=custom_prompt
-    )
+    verifier = LLMConflictVerifier(provider, "test-model", system_prompt=custom_prompt)
 
     assert verifier.system_prompt == custom_prompt
 
@@ -287,16 +258,16 @@ async def test_multiple_conflict_checks():
     memory_pairs = [
         (
             MemoryFact(text="I live in London", type="fact", tags=[], importance=0.8),
-            MemoryFact(text="I live in Paris", type="fact", tags=[], importance=0.8)
+            MemoryFact(text="I live in Paris", type="fact", tags=[], importance=0.8),
         ),
         (
             MemoryFact(text="I work as a teacher", type="fact", tags=[], importance=0.7),
-            MemoryFact(text="I work as a doctor", type="fact", tags=[], importance=0.7)
+            MemoryFact(text="I work as a doctor", type="fact", tags=[], importance=0.7),
         ),
         (
             MemoryFact(text="I like coffee", type="preference", tags=[], importance=0.6),
-            MemoryFact(text="I hate coffee", type="preference", tags=[], importance=0.6)
-        )
+            MemoryFact(text="I hate coffee", type="preference", tags=[], importance=0.6),
+        ),
     ]
 
     for memory_a, memory_b in memory_pairs:

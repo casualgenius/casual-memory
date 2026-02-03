@@ -1,7 +1,8 @@
 """Tests for OpenAI embedding adapter."""
 
-import pytest
 import os
+
+import pytest
 
 
 @pytest.fixture

@@ -9,12 +9,12 @@ Fallback: Defaults to neutral if LLM unavailable
 """
 
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 from casual_memory.classifiers.models import (
     CheckType,
-    SimilarMemory,
     SimilarityResult,
+    SimilarMemory,
 )
 from casual_memory.intelligence.duplicate_detector import LLMDuplicateDetector
 from casual_memory.models import MemoryFact
@@ -168,7 +168,7 @@ class DuplicateClassifier:
                 },
             )
 
-    def get_metrics(self) -> dict:
+    def get_metrics(self) -> dict[str, Any]:
         """
         Get duplicate classifier metrics.
 

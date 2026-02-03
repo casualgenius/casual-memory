@@ -7,9 +7,10 @@ use PostgreSQL or SQLite implementations instead.
 """
 
 import logging
-from typing import List, Optional, Dict
 from datetime import datetime
-from casual_memory.models import MemoryConflict, ConflictResolution
+from typing import Optional
+
+from casual_memory.models import ConflictResolution, MemoryConflict
 
 logger = logging.getLogger(__name__)
 
@@ -21,12 +22,12 @@ class InMemoryConflictStore:
     Stores conflicts in dictionaries for fast lookup. Data is lost on restart.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Store conflicts by conflict ID
-        self._conflicts: Dict[str, MemoryConflict] = {}
+        self._conflicts: dict[str, MemoryConflict] = {}
 
         # Index by user_id for fast lookup
-        self._user_conflicts: Dict[str, List[str]] = {}  # user_id -> [conflict_ids]
+        self._user_conflicts: dict[str, list[str]] = {}  # user_id -> [conflict_ids]
 
         logger.info("InMemoryConflictStore initialized")
 
@@ -55,7 +56,7 @@ class InMemoryConflictStore:
 
     def get_pending_conflicts(
         self, user_id: str, limit: Optional[int] = None
-    ) -> List[MemoryConflict]:
+    ) -> list[MemoryConflict]:
         """Get all pending conflicts for a user."""
         if user_id not in self._user_conflicts:
             return []

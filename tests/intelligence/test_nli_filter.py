@@ -1,8 +1,9 @@
 """Tests for NLI pre-filter."""
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
+
 import numpy as np
+import pytest
 
 
 @pytest.fixture
@@ -24,9 +25,7 @@ async def test_nli_filter_initialization():
 
     # Create filter - should NOT load model yet
     filter = NLIPreFilter(
-        model_name="cross-encoder/nli-deberta-v3-base",
-        device="cpu",
-        enable_caching=True
+        model_name="cross-encoder/nli-deberta-v3-base", device="cpu", enable_caching=True
     )
 
     assert filter.model_name == "cross-encoder/nli-deberta-v3-base"

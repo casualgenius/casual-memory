@@ -1,69 +1,86 @@
-from datetime import datetime, timedelta
-from typing import List
-import json
-from casual_memory.models import MemoryFact
-from casual_llm import ChatMessage, SystemMessage, UserMessage, LLMProvider
 import logging
+from datetime import datetime
+from typing import Sequence
+
+from casual_llm import ChatMessage, LLMProvider, SystemMessage, UserMessage
+from pydantic import ValidationError
+
+from casual_memory.extractors.models import MemoryExtractionResponse
+from casual_memory.models import MemoryFact
 
 logger = logging.getLogger(__name__)
 
 
 class LLMMemoryExtracter:
-    """Extracts memories from messages in conversations."""
+    """Extracts memories from messages in conversations using JSON schema."""
 
     def __init__(self, llm_provider: LLMProvider, prompt: str):
         self.prompt = prompt
         self.llm_provider = llm_provider
 
-    async def extract(self, messages: List[ChatMessage]) -> List[MemoryFact]:
+    async def extract(self, messages: list[ChatMessage]) -> list[MemoryFact]:
         from casual_memory.utils.date_normalizer import normalize_memory_dates
 
-        memories: List[MemoryFact] = []
         now = datetime.now()
 
-        # Simplified prompt - no date calculation needed
+        # Format prompt with current date/time
         system_prompt = self.prompt.format(
-            today_natural = now.strftime("%A, %B %d, %Y"),
-            isonow = now.isoformat()
+            today_natural=now.strftime("%A, %B %d, %Y"), isonow=now.isoformat()
         )
 
         prompt = "\n".join([message.model_dump_json() for message in messages])
 
         # Build LLM messages using casual-llm format
-        llm_messages = [
+        llm_messages: Sequence[SystemMessage | UserMessage] = [
             SystemMessage(content=system_prompt),
             UserMessage(content=prompt),
         ]
 
         try:
-            logger.debug(f"Extracting memories")
-            response = await self.llm_provider.chat(messages=llm_messages, response_format="json", temperature=0.2)
-            response_data = json.loads(response.content)
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse memory extraction JSON: {e}")
-            return memories
+            logger.debug("Extracting memories with JSON schema")
+            response = await self.llm_provider.chat(
+                messages=llm_messages,  # type: ignore[arg-type]
+                response_format=MemoryExtractionResponse,  # Pass Pydantic model
+                temperature=0.2,
+            )
+
+            # Parse JSON response to Pydantic model
+            content = response.content
+            if content is None:
+                raise ValueError("LLM response content is None")
+
+            # DEBUG: Log raw LLM response to check if importance field is included
+            logger.debug(f"Raw LLM response: {content[:500]}...")  # First 500 chars
+
+            extraction_response = MemoryExtractionResponse.model_validate_json(content)
+            memories = extraction_response.memories
+
+            logger.debug(f"LLM returned {len(memories)} memories")
+
+        except ValidationError as e:
+            logger.error(f"Failed to validate memory extraction response: {e}")
+            raise ValueError(f"LLM response did not match expected schema: {e}") from e
         except Exception as e:
-            logger.error(f"Memory LLM Failed: {e}")
-            return memories
+            logger.error(f"Memory extraction failed: {e}")
+            raise
 
-        for result in response_data["memories"]:
-            # Normalize dates in the memory before creating MemoryFact
-            result = normalize_memory_dates(result, now)
+        # Convert extraction results to full MemoryFact instances
+        # MemoryFactExtraction -> normalize dates -> MemoryFact with system fields
+        filtered_memories: list[MemoryFact] = []
+        for memory_extraction in memories:
+            # Convert extraction model to dict and normalize dates
+            memory_dict = memory_extraction.model_dump()
+            normalized_dict = normalize_memory_dates(memory_dict, now)
 
-            # Filter using raw importance BEFORE weighting
-            # Weighting should be applied later during retrieval/ranking if needed
-            raw_importance = result.get("importance", 0.5)
-            if raw_importance >= 0.5:
-                memory = MemoryFact(
-                    text=result["text"],
-                    type=result.get("type", "fact"),
-                    tags=result.get("tags", []),
-                    importance=raw_importance,  # Store raw importance
-                    source=result["source"],
-                    valid_until=result.get("valid_until", None)
-                )
-                memories.append(memory)
+            # Convert to full MemoryFact (adds system-managed fields with defaults)
+            # System fields (user_id, confidence, mention_count, etc.) will be set
+            # to their defaults and can be updated by the calling code
+            normalized_memory = MemoryFact(**normalized_dict)
 
-        logger.info(f"Extracted {len(memories)} user memories")
+            # Filter by importance threshold
+            if normalized_memory.importance >= 0.5:
+                filtered_memories.append(normalized_memory)
 
-        return memories
+        logger.info(f"Extracted {len(filtered_memories)} memories (filtered from {len(memories)})")
+
+        return filtered_memories

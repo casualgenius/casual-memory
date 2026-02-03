@@ -5,18 +5,17 @@ Tests the service layer with mocked dependencies to verify
 correct orchestration of components.
 """
 
-import pytest
-from unittest.mock import Mock, AsyncMock, patch
-from datetime import datetime
+from unittest.mock import AsyncMock, Mock
 
+import pytest
+
+from casual_memory.classifiers.models import (
+    MemoryClassificationResult,
+    SimilarityResult,
+    SimilarMemory,
+)
 from casual_memory.memory_service import MemoryService
 from casual_memory.models import MemoryFact, MemoryQueryFilter
-from casual_memory.classifiers.models import (
-    SimilarMemory,
-    SimilarityResult,
-    MemoryClassificationResult,
-)
-from casual_memory.execution.models import MemoryActionResult
 
 
 @pytest.fixture
@@ -76,6 +75,7 @@ async def test_add_memory_added_outcome(memory_service, mock_vector_store, mock_
         type="fact",
         tags=[],
         user_id="user_123",
+        importance=0.8,
     )
 
     # Mock no similar memories found
@@ -111,6 +111,7 @@ async def test_add_memory_updated_outcome(memory_service, mock_vector_store, moc
         type="fact",
         tags=[],
         user_id="user_123",
+        importance=0.8,
     )
 
     # Mock similar memory found
@@ -126,9 +127,7 @@ async def test_add_memory_updated_outcome(memory_service, mock_vector_store, moc
         "mention_count": 1,
     }
 
-    mock_vector_store.find_similar_memories.return_value = [
-        (similar_point, 0.95)
-    ]
+    mock_vector_store.find_similar_memories.return_value = [(similar_point, 0.95)]
 
     # Mock classification result: skip (duplicate)
     similar_memory = SimilarMemory(
@@ -164,13 +163,16 @@ async def test_add_memory_updated_outcome(memory_service, mock_vector_store, moc
 
 
 @pytest.mark.asyncio
-async def test_add_memory_conflict_outcome(memory_service, mock_vector_store, mock_pipeline, mock_conflict_store):
+async def test_add_memory_conflict_outcome(
+    memory_service, mock_vector_store, mock_pipeline, mock_conflict_store
+):
     """Test adding a conflicting memory."""
     new_memory = MemoryFact(
         text="I live in London",
         type="fact",
         tags=[],
         user_id="user_123",
+        importance=0.8,
     )
 
     # Mock conflicting memory
@@ -186,9 +188,7 @@ async def test_add_memory_conflict_outcome(memory_service, mock_vector_store, mo
         "mention_count": 3,
     }
 
-    mock_vector_store.find_similar_memories.return_value = [
-        (similar_point, 0.92)
-    ]
+    mock_vector_store.find_similar_memories.return_value = [(similar_point, 0.92)]
 
     # Mock classification result: conflict
     similar_memory = SimilarMemory(
@@ -235,6 +235,7 @@ async def test_add_memory_with_superseding(memory_service, mock_vector_store, mo
         type="fact",
         tags=[],
         user_id="user_123",
+        importance=0.8,
     )
 
     # Mock similar memory that will be superseded
@@ -250,9 +251,7 @@ async def test_add_memory_with_superseding(memory_service, mock_vector_store, mo
         "mention_count": 1,
     }
 
-    mock_vector_store.find_similar_memories.return_value = [
-        (similar_point, 0.94)
-    ]
+    mock_vector_store.find_similar_memories.return_value = [(similar_point, 0.94)]
 
     # Mock classification result: add with superseding
     similar_memory = SimilarMemory(
@@ -298,6 +297,7 @@ async def test_add_memory_custom_thresholds(memory_service, mock_vector_store, m
         type="fact",
         tags=[],
         user_id="user_123",
+        importance=0.8,
     )
 
     mock_vector_store.find_similar_memories.return_value = []
@@ -331,6 +331,7 @@ async def test_add_memory_error_handling(memory_service, mock_embedding):
         type="fact",
         tags=[],
         user_id="user_123",
+        importance=0.8,
     )
 
     # Mock embedding failure

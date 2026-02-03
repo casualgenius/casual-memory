@@ -7,11 +7,11 @@ different database backends (SQLite, PostgreSQL, etc.).
 
 import pytest
 from sqlalchemy import create_engine
+
+from casual_memory.models import ConflictResolution, MemoryConflict
 from casual_memory.storage.conflicts.sqlalchemy import (
     SQLAlchemyConflictStore,
-    Base,
 )
-from casual_memory.models import MemoryConflict, ConflictResolution
 
 
 @pytest.fixture

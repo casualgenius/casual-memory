@@ -3,12 +3,17 @@ Example: Using LLMMemoryExtracter with custom prompts
 
 This example demonstrates how to use the LLMMemoryExtracter with different
 system prompts for extracting user memories vs. assistant-provided information.
+
+The LLMMemoryExtracter uses JSON schema (via Pydantic models) to ensure the LLM
+returns properly structured memory data, providing better type safety and validation.
 """
 
 import asyncio
-from casual_llm import create_provider, ModelConfig, Provider, UserMessage, AssistantMessage
+
+from casual_llm import AssistantMessage, ModelConfig, Provider, UserMessage, create_provider
+
 from casual_memory.extractors import LLMMemoryExtracter
-from casual_memory.extractors.prompts import USER_MEMORY_PROMPT, ASSISTANT_MEMORY_PROMPT
+from casual_memory.extractors.prompts import ASSISTANT_MEMORY_PROMPT, USER_MEMORY_PROMPT
 
 
 async def main():
@@ -24,17 +29,18 @@ async def main():
     print("=" * 80)
 
     # Create extractor with user memory prompt
-    user_extractor = LLMMemoryExtracter(
-        llm_provider=llm_provider,
-        prompt=USER_MEMORY_PROMPT
-    )
+    user_extractor = LLMMemoryExtracter(llm_provider=llm_provider, prompt=USER_MEMORY_PROMPT)
 
     # Example conversation with user memories
     user_conversation = [
         UserMessage(content="My name is Alex and I live in London."),
         AssistantMessage(content="Nice to meet you, Alex! I'll remember that."),
-        UserMessage(content="I'm allergic to peanuts and I have a doctor's appointment tomorrow at 2pm."),
-        AssistantMessage(content="Important to note about the allergy. I've noted your appointment as well."),
+        UserMessage(
+            content="I'm allergic to peanuts and I have a doctor's appointment tomorrow at 2pm."
+        ),
+        AssistantMessage(
+            content="Important to note about the allergy. I've noted your appointment as well."
+        ),
     ]
 
     # Extract user memories
@@ -54,16 +60,19 @@ async def main():
 
     # Create extractor with assistant memory prompt
     assistant_extractor = LLMMemoryExtracter(
-        llm_provider=llm_provider,
-        prompt=ASSISTANT_MEMORY_PROMPT
+        llm_provider=llm_provider, prompt=ASSISTANT_MEMORY_PROMPT
     )
 
     # Example conversation with assistant-provided information
     assistant_conversation = [
         UserMessage(content="What's the weather like tomorrow?"),
-        AssistantMessage(content="Tomorrow will be partly cloudy with a high of 15°C and a low of 8°C. There's a 20% chance of rain in the afternoon."),
+        AssistantMessage(
+            content="Tomorrow will be partly cloudy with a high of 15°C and a low of 8°C. There's a 20% chance of rain in the afternoon."
+        ),
         UserMessage(content="Can you recommend a good Italian restaurant nearby?"),
-        AssistantMessage(content="Based on your location in London, I recommend Padella in Borough Market. They're known for excellent fresh pasta and the prices are reasonable."),
+        AssistantMessage(
+            content="Based on your location in London, I recommend Padella in Borough Market. They're known for excellent fresh pasta and the prices are reasonable."
+        ),
     ]
 
     # Extract assistant memories
@@ -99,10 +108,7 @@ Today is {today_natural} (ISO: {isonow}).
 Only extract location information. Return {{"memories": []}} if none found.
 """
 
-    location_extractor = LLMMemoryExtracter(
-        llm_provider=llm_provider,
-        prompt=custom_prompt
-    )
+    location_extractor = LLMMemoryExtracter(llm_provider=llm_provider, prompt=custom_prompt)
 
     location_conversation = [
         UserMessage(content="I'm traveling to Paris next week and then to Tokyo in December."),

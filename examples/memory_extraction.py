@@ -6,28 +6,37 @@ LLM-based extraction.
 """
 
 import asyncio
-from casual_memory.extractors import LLMMemoryExtractor
-from casual_llm import create_provider, ModelConfig, Provider, UserMessage, AssistantMessage
+
+from casual_llm import AssistantMessage, ModelConfig, Provider, UserMessage, create_provider
+
+from casual_memory.extractors import LLMMemoryExtracter
+from casual_memory.extractors.prompts import ASSISTANT_MEMORY_PROMPT, USER_MEMORY_PROMPT
 
 
 async def main():
     print("=== Memory Extraction Example ===\n")
 
     # Initialize LLM provider
-    llm_provider = create_provider(ModelConfig(
-        name="qwen2.5:7b-instruct",
-        provider=Provider.OLLAMA,
-        base_url="http://localhost:11434",
-        temperature=0.2  # Low temperature for consistent extraction
-    ))
+    llm_provider = create_provider(
+        ModelConfig(
+            name="qwen2.5:7b-instruct",
+            provider=Provider.OLLAMA,
+            base_url="http://localhost:11434",
+            temperature=0.2,  # Low temperature for consistent extraction
+        )
+    )
 
     # Create extractors for user and assistant memories
-    user_extractor = LLMMemoryExtractor(llm_provider=llm_provider, source="user")
-    assistant_extractor = LLMMemoryExtractor(llm_provider=llm_provider, source="assistant")
+    user_extractor = LLMMemoryExtracter(llm_provider=llm_provider, prompt=USER_MEMORY_PROMPT)
+    assistant_extractor = LLMMemoryExtracter(
+        llm_provider=llm_provider, prompt=ASSISTANT_MEMORY_PROMPT
+    )
 
     # Sample conversation
     messages = [
-        UserMessage(content="My name is Alex and I live in Bangkok. I work as a software engineer."),
+        UserMessage(
+            content="My name is Alex and I live in Bangkok. I work as a software engineer."
+        ),
         AssistantMessage(content="Nice to meet you, Alex! Bangkok is a great city."),
         UserMessage(content="I really enjoy hiking and photography in my free time."),
         AssistantMessage(content="Those are wonderful hobbies!"),

@@ -9,11 +9,13 @@ Tests the LLM-based conflict detection logic including:
 - Error handling
 """
 
+from unittest.mock import AsyncMock, Mock
+
 import pytest
-from unittest.mock import Mock, AsyncMock
-from casual_memory.models import MemoryFact
-from casual_memory.classifiers.models import SimilarMemory, SimilarityResult
+
 from casual_memory.classifiers.conflict_classifier import ConflictClassifier
+from casual_memory.classifiers.models import SimilarityResult, SimilarMemory
+from casual_memory.models import MemoryFact
 
 
 @pytest.fixture
@@ -256,9 +258,7 @@ async def test_conflict_classifier_categorization():
         similarity_score=0.91,
     )
 
-    result = await classifier.classify_pair(
-        new_location, similar_location, "primary", None
-    )
+    result = await classifier.classify_pair(new_location, similar_location, "primary", None)
     assert result.metadata["category"] == "location"
 
     # Job conflict

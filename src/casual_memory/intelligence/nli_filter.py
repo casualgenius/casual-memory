@@ -11,9 +11,9 @@ Architecture: Cross-encoder processes both sentences jointly, optimized
 for pairwise sentence comparison tasks like contradiction detection.
 """
 
-import logging
-from typing import Literal, Optional
 import importlib.util
+import logging
+from typing import Any, Literal, Optional, cast
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +55,7 @@ class NLIPreFilter:
             f"caching={enable_caching}"
         )
 
-    def _load_model(self):
+    def _load_model(self) -> None:
         """Lazy-load the cross-encoder model on first use."""
         if self._model is not None:
             return
@@ -64,10 +64,11 @@ class NLIPreFilter:
             from sentence_transformers import CrossEncoder
 
             logger.info(f"Loading NLI model: {self.model_name}")
-            self._model = CrossEncoder(self.model_name, device=self.device)
+            model = CrossEncoder(self.model_name, device=self.device)
+            self._model = model
             logger.info(
                 f"NLI model loaded successfully on device: "
-                f"{self._model.device if hasattr(self._model, 'device') else 'unknown'}"
+                f"{model.device if hasattr(model, 'device') else 'unknown'}"
             )
 
         except ImportError as e:
@@ -102,6 +103,7 @@ class NLIPreFilter:
         """
         # Lazy-load model on first use
         self._load_model()
+        assert self._model is not None, "Model should be loaded after _load_model()"
 
         # Check cache if enabled
         if self.enable_caching:
@@ -161,13 +163,17 @@ class NLIPreFilter:
         """Get cached prediction result."""
         # Simple dict-based cache (could be upgraded to LRU cache)
         if not hasattr(self, "_cache"):
-            self._cache = {}
+            cache: dict[tuple[str, str], tuple[NLILabel, list[float]]] = {}
+            self._cache = cache
         return self._cache.get(cache_key)
 
-    def _cache_prediction(self, cache_key: tuple[str, str], result: tuple[NLILabel, list[float]]):
+    def _cache_prediction(
+        self, cache_key: tuple[str, str], result: tuple[NLILabel, list[float]]
+    ) -> None:
         """Cache prediction result."""
         if not hasattr(self, "_cache"):
-            self._cache = {}
+            cache: dict[tuple[str, str], tuple[NLILabel, list[float]]] = {}
+            self._cache = cache
 
         # Limit cache size to prevent memory issues
         if len(self._cache) >= 1000:
@@ -177,7 +183,7 @@ class NLIPreFilter:
 
         self._cache[cache_key] = result
 
-    def get_metrics(self) -> dict:
+    def get_metrics(self) -> dict[str, Any]:
         """
         Get NLI filter usage metrics.
 
@@ -192,8 +198,9 @@ class NLIPreFilter:
         }
 
         if self._prediction_count > 0:
-            cache_hit_rate = (self._cache_hits / (self._prediction_count + self._cache_hits)) * 100
-            metrics["nli_cache_hit_rate_percent"] = round(cache_hit_rate, 2)
+            total_hits = self._prediction_count + self._cache_hits
+            cache_hit_rate = (self._cache_hits / total_hits) * 100
+            metrics["nli_cache_hit_rate_percent"] = cast(int, round(cache_hit_rate, 2))
 
         return metrics
 

@@ -1,7 +1,9 @@
 """Tests for LLM-based duplicate detection."""
 
+from unittest.mock import AsyncMock, Mock
+
 import pytest
-from unittest.mock import Mock, AsyncMock
+
 from casual_memory.intelligence.duplicate_detector import LLMDuplicateDetector
 from casual_memory.models import MemoryFact
 
@@ -18,10 +20,7 @@ class MockLLMProvider:
 async def test_duplicate_detector_initialization():
     """Test duplicate detector initialization."""
     provider = MockLLMProvider("DISTINCT")
-    detector = LLMDuplicateDetector(
-        llm_provider=provider,
-        model_name="test-model"
-    )
+    detector = LLMDuplicateDetector(llm_provider=provider, model_name="test-model")
 
     assert detector.model_name == "test-model"
     assert detector.llm_call_count == 0
@@ -37,18 +36,8 @@ async def test_duplicate_detection_same():
     detector = LLMDuplicateDetector(provider, "test-model")
 
     # Exact duplicate
-    memory_a = MemoryFact(
-        text="I live in London",
-        type="fact",
-        tags=["location"],
-        importance=0.9
-    )
-    memory_b = MemoryFact(
-        text="I live in London",
-        type="fact",
-        tags=["location"],
-        importance=0.9
-    )
+    memory_a = MemoryFact(text="I live in London", type="fact", tags=["location"], importance=0.9)
+    memory_b = MemoryFact(text="I live in London", type="fact", tags=["location"], importance=0.9)
 
     is_duplicate = await detector.is_duplicate_or_refinement(memory_a, memory_b, 0.99)
 
@@ -64,17 +53,9 @@ async def test_duplicate_detection_refinement():
     detector = LLMDuplicateDetector(provider, "test-model")
 
     # Location refinement (general → specific)
-    memory_a = MemoryFact(
-        text="I live in London",
-        type="fact",
-        tags=["location"],
-        importance=0.8
-    )
+    memory_a = MemoryFact(text="I live in London", type="fact", tags=["location"], importance=0.8)
     memory_b = MemoryFact(
-        text="I live in Central London",
-        type="fact",
-        tags=["location"],
-        importance=0.9
+        text="I live in Central London", type="fact", tags=["location"], importance=0.9
     )
 
     is_duplicate = await detector.is_duplicate_or_refinement(memory_a, memory_b, 0.92)
@@ -90,17 +71,12 @@ async def test_duplicate_detection_job_refinement():
     detector = LLMDuplicateDetector(provider, "test-model")
 
     # Job refinement (general → specific)
-    memory_a = MemoryFact(
-        text="I work as an engineer",
-        type="fact",
-        tags=["job"],
-        importance=0.7
-    )
+    memory_a = MemoryFact(text="I work as an engineer", type="fact", tags=["job"], importance=0.7)
     memory_b = MemoryFact(
         text="I work as a senior software engineer at Google",
         type="fact",
         tags=["job"],
-        importance=0.9
+        importance=0.9,
     )
 
     is_duplicate = await detector.is_duplicate_or_refinement(memory_a, memory_b, 0.85)
@@ -115,17 +91,9 @@ async def test_duplicate_detection_distinct():
     detector = LLMDuplicateDetector(provider, "test-model")
 
     # Different facts (residence vs work location)
-    memory_a = MemoryFact(
-        text="I live in Bangkok",
-        type="fact",
-        tags=["location"],
-        importance=0.8
-    )
+    memory_a = MemoryFact(text="I live in Bangkok", type="fact", tags=["location"], importance=0.8)
     memory_b = MemoryFact(
-        text="I work in Bangkok",
-        type="fact",
-        tags=["location", "job"],
-        importance=0.8
+        text="I work in Bangkok", type="fact", tags=["location", "job"], importance=0.8
     )
 
     is_duplicate = await detector.is_duplicate_or_refinement(memory_a, memory_b, 0.88)
@@ -245,11 +213,7 @@ async def test_duplicate_custom_prompt():
     """Test using a custom system prompt."""
     custom_prompt = "Custom prompt for duplicate detection"
     provider = MockLLMProvider("SAME")
-    detector = LLMDuplicateDetector(
-        provider,
-        "test-model",
-        system_prompt=custom_prompt
-    )
+    detector = LLMDuplicateDetector(provider, "test-model", system_prompt=custom_prompt)
 
     assert detector.system_prompt == custom_prompt
 
@@ -270,16 +234,10 @@ async def test_paraphrase_detection():
     detector = LLMDuplicateDetector(provider, "test-model")
 
     memory_a = MemoryFact(
-        text="I work as a software engineer",
-        type="fact",
-        tags=["job"],
-        importance=0.8
+        text="I work as a software engineer", type="fact", tags=["job"], importance=0.8
     )
     memory_b = MemoryFact(
-        text="I'm employed as a software developer",
-        type="fact",
-        tags=["job"],
-        importance=0.8
+        text="I'm employed as a software developer", type="fact", tags=["job"], importance=0.8
     )
 
     is_duplicate = await detector.is_duplicate_or_refinement(memory_a, memory_b, 0.87)
@@ -292,18 +250,8 @@ async def test_intensity_variations():
     provider = MockLLMProvider("SAME")
     detector = LLMDuplicateDetector(provider, "test-model")
 
-    memory_a = MemoryFact(
-        text="I like coffee",
-        type="preference",
-        tags=["drink"],
-        importance=0.7
-    )
-    memory_b = MemoryFact(
-        text="I love coffee",
-        type="preference",
-        tags=["drink"],
-        importance=0.9
-    )
+    memory_a = MemoryFact(text="I like coffee", type="preference", tags=["drink"], importance=0.7)
+    memory_b = MemoryFact(text="I love coffee", type="preference", tags=["drink"], importance=0.9)
 
     is_duplicate = await detector.is_duplicate_or_refinement(memory_a, memory_b, 0.90)
     assert is_duplicate is True
@@ -315,18 +263,8 @@ async def test_contradictions_are_distinct():
     provider = MockLLMProvider("DISTINCT")
     detector = LLMDuplicateDetector(provider, "test-model")
 
-    memory_a = MemoryFact(
-        text="I live in Paris",
-        type="fact",
-        tags=["location"],
-        importance=0.9
-    )
-    memory_b = MemoryFact(
-        text="I live in London",
-        type="fact",
-        tags=["location"],
-        importance=0.9
-    )
+    memory_a = MemoryFact(text="I live in Paris", type="fact", tags=["location"], importance=0.9)
+    memory_b = MemoryFact(text="I live in London", type="fact", tags=["location"], importance=0.9)
 
     is_duplicate = await detector.is_duplicate_or_refinement(memory_a, memory_b, 0.85)
     assert is_duplicate is False
@@ -338,17 +276,9 @@ async def test_temporal_changes_are_distinct():
     provider = MockLLMProvider("DISTINCT")
     detector = LLMDuplicateDetector(provider, "test-model")
 
-    memory_a = MemoryFact(
-        text="I lived in Paris",
-        type="fact",
-        tags=["location"],
-        importance=0.8
-    )
+    memory_a = MemoryFact(text="I lived in Paris", type="fact", tags=["location"], importance=0.8)
     memory_b = MemoryFact(
-        text="I now live in London",
-        type="fact",
-        tags=["location"],
-        importance=0.9
+        text="I now live in London", type="fact", tags=["location"], importance=0.9
     )
 
     is_duplicate = await detector.is_duplicate_or_refinement(memory_a, memory_b, 0.75)
@@ -364,16 +294,16 @@ async def test_multiple_duplicate_checks():
     memory_pairs = [
         (
             MemoryFact(text="I live in London", type="fact", tags=[], importance=0.8),
-            MemoryFact(text="I live in Central London", type="fact", tags=[], importance=0.9)
+            MemoryFact(text="I live in Central London", type="fact", tags=[], importance=0.9),
         ),
         (
             MemoryFact(text="I like coffee", type="preference", tags=[], importance=0.7),
-            MemoryFact(text="I love coffee", type="preference", tags=[], importance=0.9)
+            MemoryFact(text="I love coffee", type="preference", tags=[], importance=0.9),
         ),
         (
             MemoryFact(text="My name is Alex", type="fact", tags=[], importance=1.0),
-            MemoryFact(text="My name is Alex", type="fact", tags=[], importance=1.0)
-        )
+            MemoryFact(text="My name is Alex", type="fact", tags=[], importance=1.0),
+        ),
     ]
 
     for memory_a, memory_b in memory_pairs:

@@ -13,7 +13,7 @@ from datetime import datetime
 from casual_memory.classifiers.models import MemoryClassificationResult
 from casual_memory.execution.models import MemoryActionResult
 from casual_memory.models import MemoryConflict
-from casual_memory.storage.protocols import VectorMemoryStore, ConflictStore
+from casual_memory.storage.protocols import ConflictStore, VectorMemoryStore
 
 logger = logging.getLogger(__name__)
 
@@ -70,9 +70,7 @@ class MemoryActionExecutor:
             return await self._execute_conflict(result, embedding)
 
         else:
-            raise ValueError(
-                f"Unknown overall outcome: {result.overall_outcome}"
-            )
+            raise ValueError(f"Unknown overall outcome: {result.overall_outcome}")
 
     async def _execute_add(
         self,
@@ -111,10 +109,7 @@ class MemoryActionExecutor:
         }
 
         # Add new memory first
-        memory_id = self.vector_store.add(
-            vector=embedding,
-            payload=payload
-        )
+        memory_id = self.vector_store.add(vector=embedding, payload=payload)
         logger.info(f"Added new memory: {memory_id}")
 
         # Archive any superseded memories
@@ -125,15 +120,19 @@ class MemoryActionExecutor:
                 superseded_by=memory_id,
             )
             superseded_ids.append(old_memory_id)
-            logger.info(
-                f"Archived memory {old_memory_id}, superseded by {memory_id}"
-            )
+            logger.info(f"Archived memory {old_memory_id}, superseded by {memory_id}")
 
         return MemoryActionResult(
             action="added",
             memory_id=memory_id,
             superseded_ids=superseded_ids,
-            metadata={"text": result.new_memory.text[:50] + "..." if len(result.new_memory.text) > 50 else result.new_memory.text}
+            metadata={
+                "text": (
+                    result.new_memory.text[:50] + "..."
+                    if len(result.new_memory.text) > 50
+                    else result.new_memory.text
+                )
+            },
         )
 
     async def _execute_skip(self, result: MemoryClassificationResult) -> MemoryActionResult:
@@ -151,9 +150,7 @@ class MemoryActionExecutor:
         same_memory_id = result.same_as
 
         if not same_memory_id:
-            logger.error(
-                "Skip outcome but no same_as memory found. This should not happen."
-            )
+            logger.error("Skip outcome but no same_as memory found. This should not happen.")
             raise ValueError("Skip outcome requires same_as memory")
 
         # Get current memory to increment mention_count
@@ -176,7 +173,13 @@ class MemoryActionExecutor:
         return MemoryActionResult(
             action="updated",
             memory_id=same_memory_id,
-            metadata={"text": result.new_memory.text[:50] + "..." if len(result.new_memory.text) > 50 else result.new_memory.text}
+            metadata={
+                "text": (
+                    result.new_memory.text[:50] + "..."
+                    if len(result.new_memory.text) > 50
+                    else result.new_memory.text
+                )
+            },
         )
 
     async def _execute_conflict(
@@ -252,7 +255,11 @@ class MemoryActionExecutor:
             action="conflict",
             conflict_ids=conflict_ids,
             metadata={
-                "text": result.new_memory.text[:50] + "..." if len(result.new_memory.text) > 50 else result.new_memory.text,
-                "conflict_count": len(conflict_ids)
-            }
+                "text": (
+                    result.new_memory.text[:50] + "..."
+                    if len(result.new_memory.text) > 50
+                    else result.new_memory.text
+                ),
+                "conflict_count": len(conflict_ids),
+            },
         )

@@ -6,8 +6,9 @@ They are implementation-agnostic and can be backed by various databases
 (Qdrant, PostgreSQL, in-memory, etc.).
 """
 
-from typing import Protocol, List, Optional, Dict, Any
-from casual_memory.models import MemoryFact, MemoryConflict, ConflictResolution, ShortTermMemory
+from typing import Any, Optional, Protocol
+
+from casual_memory.models import ConflictResolution, MemoryConflict, ShortTermMemory
 
 
 class VectorMemoryStore(Protocol):
@@ -19,7 +20,7 @@ class VectorMemoryStore(Protocol):
     but could also be implemented with other vector stores or in-memory for testing.
     """
 
-    def add(self, vector: List[float], payload: dict) -> str:
+    def add(self, vector: list[float], payload: dict[str, Any]) -> str:
         """
         Add a memory to the store.
 
@@ -34,11 +35,11 @@ class VectorMemoryStore(Protocol):
 
     def search(
         self,
-        query_embedding: List[float],
+        query_embedding: list[float],
         top_k: int = 5,
         min_score: float = 0.7,
-        filters: Optional[Any] = None
-    ) -> List[Any]:
+        filters: Optional[Any] = None,
+    ) -> list[Any]:
         """
         Search for memories by vector similarity.
 
@@ -55,12 +56,12 @@ class VectorMemoryStore(Protocol):
 
     def find_similar_memories(
         self,
-        embedding: List[float],
+        embedding: list[float],
         user_id: Optional[str] = None,
         threshold: Optional[float] = None,
         limit: int = 5,
-        exclude_archived: bool = True
-    ) -> List[tuple[Any, float]]:
+        exclude_archived: bool = True,
+    ) -> list[tuple[Any, float]]:
         """
         Find similar memories based on vector similarity.
 
@@ -76,7 +77,7 @@ class VectorMemoryStore(Protocol):
         """
         ...
 
-    def update_memory(self, memory_id: str, payload_updates: dict) -> bool:
+    def update_memory(self, memory_id: str, payload_updates: dict[str, Any]) -> bool:
         """
         Update specific fields in a memory's payload.
 
@@ -101,11 +102,7 @@ class VectorMemoryStore(Protocol):
         """
         ...
 
-    def archive_memory(
-        self,
-        memory_id: str,
-        superseded_by: Optional[str] = None
-    ) -> bool:
+    def archive_memory(self, memory_id: str, superseded_by: Optional[str] = None) -> bool:
         """
         Archive a memory by marking it as archived.
 
@@ -165,10 +162,8 @@ class ConflictStore(Protocol):
         ...
 
     def get_pending_conflicts(
-        self,
-        user_id: str,
-        limit: Optional[int] = None
-    ) -> List[MemoryConflict]:
+        self, user_id: str, limit: Optional[int] = None
+    ) -> list[MemoryConflict]:
         """
         Get all pending conflicts for a user.
 
@@ -181,11 +176,7 @@ class ConflictStore(Protocol):
         """
         ...
 
-    def resolve_conflict(
-        self,
-        conflict_id: str,
-        resolution: ConflictResolution
-    ) -> bool:
+    def resolve_conflict(self, conflict_id: str, resolution: ConflictResolution) -> bool:
         """
         Mark a conflict as resolved.
 
@@ -198,11 +189,7 @@ class ConflictStore(Protocol):
         """
         ...
 
-    def get_conflict_count(
-        self,
-        user_id: str,
-        status: Optional[str] = None
-    ) -> int:
+    def get_conflict_count(self, user_id: str, status: Optional[str] = None) -> int:
         """
         Count conflicts for a user.
 
@@ -227,11 +214,7 @@ class ConflictStore(Protocol):
         """
         ...
 
-    def clear_user_conflicts(
-        self,
-        user_id: str,
-        status: Optional[str] = None
-    ) -> int:
+    def clear_user_conflicts(self, user_id: str, status: Optional[str] = None) -> int:
         """
         Clear conflicts for a user.
 
@@ -254,11 +237,7 @@ class ShortTermStore(Protocol):
     Stores the last N messages per user for immediate conversational context.
     """
 
-    def add_messages(
-        self,
-        user_id: str,
-        messages: List[ShortTermMemory]
-    ) -> int:
+    def add_messages(self, user_id: str, messages: list[ShortTermMemory]) -> int:
         """
         Add messages to short-term storage.
 
@@ -271,11 +250,7 @@ class ShortTermStore(Protocol):
         """
         ...
 
-    def get_recent_messages(
-        self,
-        user_id: str,
-        limit: int = 20
-    ) -> List[ShortTermMemory]:
+    def get_recent_messages(self, user_id: str, limit: int = 20) -> list[ShortTermMemory]:
         """
         Get recent messages for a user.
 

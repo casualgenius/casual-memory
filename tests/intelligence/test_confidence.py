@@ -1,14 +1,14 @@
 """Tests for confidence scoring."""
 
-import pytest
 from datetime import datetime, timedelta
+
 from casual_memory.intelligence.confidence import (
-    calculate_confidence,
-    calculate_days_span,
-    calculate_days_since,
-    MEMORY_MIN_CONFIDENCE,
-    MEMORY_MAX_CONFIDENCE,
     MEMORY_HIGH_CONFIDENCE_MENTIONS,
+    MEMORY_MAX_CONFIDENCE,
+    MEMORY_MIN_CONFIDENCE,
+    calculate_confidence,
+    calculate_days_since,
+    calculate_days_span,
 )
 
 
@@ -104,11 +104,7 @@ def test_confidence_spread_factor_max_boost():
 def test_confidence_combined_factors():
     """Test confidence calculation with all factors combined."""
     # High mentions, spread over time, but old
-    confidence = calculate_confidence(
-        mention_count=5,
-        days_span=90,
-        days_since_last=31
-    )
+    confidence = calculate_confidence(mention_count=5, days_span=90, days_since_last=31)
 
     # Should have:
     # - Base: 0.95 (high mentions)
@@ -233,9 +229,7 @@ def test_confidence_realistic_scenarios():
     days_span = calculate_days_span(first, last)
     days_since_last = calculate_days_since(last)
     confidence = calculate_confidence(
-        mention_count=5,
-        days_span=days_span,
-        days_since_last=days_since_last
+        mention_count=5, days_span=days_span, days_since_last=days_since_last
     )
     assert confidence >= 0.90  # High confidence, recent, spread out
 
@@ -243,8 +237,5 @@ def test_confidence_realistic_scenarios():
     first = (now - timedelta(days=180)).isoformat()
     last = (now - timedelta(days=60)).isoformat()
     days_since_last = calculate_days_since(last)
-    confidence = calculate_confidence(
-        mention_count=3,
-        days_since_last=days_since_last
-    )
+    confidence = calculate_confidence(mention_count=3, days_since_last=days_since_last)
     assert confidence < 0.8  # Reduced by recency decay

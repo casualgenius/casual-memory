@@ -7,8 +7,8 @@ with multiple replicas, use Redis implementation instead.
 """
 
 import logging
-from typing import List, Dict
 from collections import deque
+
 from casual_memory.models import ShortTermMemory
 
 logger = logging.getLogger(__name__)
@@ -30,12 +30,12 @@ class InMemoryShortTermStore:
             max_messages: Maximum number of messages to store per user (default: 20)
         """
         # Store messages by user_id
-        self._messages: Dict[str, deque] = {}
+        self._messages: dict[str, deque[ShortTermMemory]] = {}
         self._max_messages = max_messages
 
         logger.info(f"InMemoryShortTermStore initialized (max_messages={max_messages})")
 
-    def add_messages(self, user_id: str, messages: List[ShortTermMemory]) -> int:
+    def add_messages(self, user_id: str, messages: list[ShortTermMemory]) -> int:
         """Add messages to short-term storage."""
         if user_id not in self._messages:
             self._messages[user_id] = deque(maxlen=self._max_messages)
@@ -51,7 +51,7 @@ class InMemoryShortTermStore:
 
         return count
 
-    def get_recent_messages(self, user_id: str, limit: int = 20) -> List[ShortTermMemory]:
+    def get_recent_messages(self, user_id: str, limit: int = 20) -> list[ShortTermMemory]:
         """Get recent messages for a user."""
         if user_id not in self._messages:
             return []

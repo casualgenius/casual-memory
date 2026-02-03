@@ -4,14 +4,14 @@ Tests for date normalization utilities.
 Tests extract_and_normalize_date, calculate_valid_until, and normalize_memory_dates.
 """
 
-import pytest
-from datetime import datetime, timedelta
+from datetime import datetime
+
 from casual_memory.utils.date_normalizer import (
-    get_next_weekday,
-    extract_and_normalize_date,
-    calculate_valid_until,
-    normalize_memory_dates,
     WEEKDAY_MAP,
+    calculate_valid_until,
+    extract_and_normalize_date,
+    get_next_weekday,
+    normalize_memory_dates,
 )
 
 
@@ -401,7 +401,15 @@ class TestWeekdayMap:
 
     def test_weekday_map_completeness(self):
         """Test that all weekdays are in the map."""
-        expected_days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+        expected_days = [
+            "monday",
+            "tuesday",
+            "wednesday",
+            "thursday",
+            "friday",
+            "saturday",
+            "sunday",
+        ]
         assert list(WEEKDAY_MAP.keys()) == expected_days
 
     def test_weekday_map_values(self):

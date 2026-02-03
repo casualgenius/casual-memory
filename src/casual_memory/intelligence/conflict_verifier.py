@@ -6,17 +6,19 @@ with graceful degradation to heuristic-based detection.
 """
 
 import logging
-from typing import Optional
+from typing import Any, Optional
 
-from casual_memory.models import MemoryFact
+from casual_llm import AssistantMessage, LLMProvider, SystemMessage, UserMessage
+
 from casual_memory.intelligence.prompts import CONFLICT_DETECTION_SYSTEM_PROMPT
-from casual_llm import LLMProvider, UserMessage, SystemMessage
+from casual_memory.models import MemoryFact
 
 logger = logging.getLogger(__name__)
 
 prompt = """Statement A: "{statement_a}"
 Statement B: "{statement_b}"
 """
+
 
 class LLMConflictVerifier:
     """
@@ -31,7 +33,7 @@ class LLMConflictVerifier:
         llm_provider: LLMProvider,
         model_name: str,
         enable_fallback: bool = True,
-        system_prompt: Optional[str] = None
+        system_prompt: Optional[str] = None,
     ):
         """
         Initialize the LLM conflict verifier.
@@ -58,7 +60,7 @@ class LLMConflictVerifier:
             f"custom_prompt={system_prompt is not None}"
         )
 
-    async def _call_llm(self, prompt: str):
+    async def _call_llm(self, prompt: str) -> AssistantMessage:
         """
         Call the LLM for conflict verification.
 
@@ -73,9 +75,12 @@ class LLMConflictVerifier:
         """
         self.llm_call_count += 1
         try:
-            messages = [SystemMessage(content=self.system_prompt), UserMessage(content=prompt)]
-            response = await self.llm_provider.chat(
-                messages,
+            messages: list[SystemMessage | UserMessage] = [
+                SystemMessage(content=self.system_prompt),
+                UserMessage(content=prompt),
+            ]
+            response: AssistantMessage = await self.llm_provider.chat(
+                messages,  # type: ignore[arg-type]
                 response_format="text",
                 temperature=0.1,
                 max_tokens=10,  # We only need YES or NO
@@ -102,21 +107,20 @@ class LLMConflictVerifier:
             - is_conflicting: True if memories conflict
             - detection_method: "llm" or "heuristic_fallback"
         """
-        user_prompt = prompt.format(
-            statement_a=memory_a.text, statement_b=memory_b.text
-        )
+        user_prompt = prompt.format(statement_a=memory_a.text, statement_b=memory_b.text)
 
         try:
             # Try LLM-based detection
             llm_response = await self._call_llm(user_prompt)
-            response_upper = llm_response.content.upper()
+            content = llm_response.content or ""
+            response_upper = content.upper()
             is_conflicting = "YES" in response_upper
 
             logger.debug(
                 f"LLM conflict verification: {'CONFLICT' if is_conflicting else 'NO CONFLICT'}\n"
                 f"  A: {memory_a.text}\n"
                 f"  B: {memory_b.text}\n"
-                f"  Response: {llm_response.content}"
+                f"  Response: {content}"
             )
 
             return is_conflicting, "llm"
@@ -212,14 +216,14 @@ class LLMConflictVerifier:
 
         return False
 
-    def get_metrics(self) -> dict:
+    def get_metrics(self) -> dict[str, Any]:
         """
         Get metrics about conflict verification.
 
         Returns:
             Dictionary with call counts and success rates
         """
-        metrics = {
+        metrics: dict[str, Any] = {
             "conflict_verifier_llm_call_count": self.llm_call_count,
             "conflict_verifier_llm_success_count": self.llm_success_count,
             "conflict_verifier_llm_failure_count": self.llm_failure_count,
@@ -227,7 +231,7 @@ class LLMConflictVerifier:
         }
 
         if self.llm_call_count > 0:
-            success_rate = (self.llm_success_count / self.llm_call_count) * 100
+            success_rate: float = (self.llm_success_count / self.llm_call_count) * 100
             metrics["conflict_verifier_llm_success_rate_percent"] = round(success_rate, 2)
 
         return metrics

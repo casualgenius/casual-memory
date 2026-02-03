@@ -70,37 +70,60 @@ The classification pipeline is the heart of casual-memory. It chains multiple cl
 - Composable (add/remove classifiers)
 - Protocol-based (no inheritance required)
 
-**Design Pattern:**
-```python
-@runtime_checkable
-class MemoryClassifier(Protocol):
-    """Protocol for memory classifiers."""
+**Classifier Interface:**
 
-    async def classify(
-        self, request: ClassificationRequest
-    ) -> ClassificationRequest:
-        """Classify memory pairs and update results."""
-        ...
+Individual classifiers implement `classify_pair()` for comparing one memory pair:
+
+```python
+async def classify_pair(
+    self,
+    new_memory: MemoryFact,
+    similar_memory: SimilarMemory,
+    check_type: CheckType = "primary",  # "primary" or "secondary"
+    existing_result: Optional[SimilarityResult] = None,
+) -> Optional[SimilarityResult]:
+    """
+    Classify a single memory pair.
+
+    Returns:
+        - SimilarityResult if classifier is confident
+        - None to pass to next classifier
+        - existing_result to pass through unchanged
+    """
+    ...
 ```
+
+The pipeline calls `classify_pair()` for each classifier in sequence, passing results through the chain.
 
 ### 2. Classification Outcomes
 
-Three possible outcomes for each memory pair:
+**Similarity Outcomes** (for each similar memory):
 
-- **MERGE** - Memories should be combined
-  - Duplicates (exact copies)
-  - Refinements (general → specific)
-  - Auto-resolved conflicts (one clearly supersedes the other)
-
-- **CONFLICT** - Contradictory memories needing manual resolution
+- **conflict** - Contradictory memories needing manual resolution
   - Location conflicts ("I live in London" vs "I live in Paris")
   - Job conflicts ("I work as a teacher" vs "I work as a doctor")
   - Preference conflicts ("I like coffee" vs "I don't like coffee")
 
-- **ADD** - Distinct memories that should both be stored
+- **superseded** - Similar memory should be archived
+  - New memory is a refinement (more specific)
+  - New memory has higher confidence
+  - Auto-resolved conflicts (new one clearly wins)
+
+- **same** - Duplicate memory (update existing metadata)
+  - Exact duplicates
+  - Paraphrases of the same fact
+  - Auto-resolved conflicts (old one clearly wins)
+
+- **neutral** - Distinct memories that can coexist
   - Different facts ("I live in Bangkok" vs "I work in Bangkok")
   - Compatible preferences ("I like coffee" vs "I like tea")
   - Unrelated information
+
+**Memory Outcomes** (overall action for new memory):
+
+- **add** - Insert new memory to vector store
+- **skip** - Update existing memory (increment mention_count)
+- **conflict** - Create conflict record for user resolution
 
 ### 3. Memory Types
 
@@ -123,43 +146,47 @@ class MemoryFact:
 ### Sequential Execution Flow
 
 ```python
-Input: ClassificationRequest
-  pairs: List[MemoryPair]      # Similar memories to classify
-  results: List[ClassificationResult]  # Empty initially
-  user_id: str
+Input:
+  new_memory: MemoryFact          # New memory being added
+  similar_memories: list[SimilarMemory]  # From vector search
+  results: list[SimilarityResult]  # Empty initially
 
 ↓ NLI Classifier (Fast Filter, ~50-200ms)
-  For each unclassified pair:
+  For each unclassified similar memory:
     - Calculate entailment/contradiction/neutral scores
-    - High entailment (≥0.85) → MERGE
-    - High neutral (≥0.5) → ADD
+    - High entailment (≥0.85) → same
+    - High neutral (≥0.5) → neutral
     - Uncertain → Skip to next classifier
 
 ↓ Conflict Classifier (~500-2000ms)
-  For each unclassified pair:
+  For each unclassified similar memory:
     - Call LLM conflict verifier
-    - If contradiction detected → CONFLICT (with metadata)
+    - If contradiction detected → conflict (with category metadata)
     - If fallback triggered → Use heuristic patterns
     - No conflict → Skip to next classifier
 
 ↓ Duplicate Classifier (~500-2000ms)
-  For each unclassified pair:
+  For each unclassified similar memory:
     - Call LLM duplicate detector
-    - If same fact/refinement → MERGE
-    - If distinct → ADD
+    - If same fact → same
+    - If refinement → superseded
+    - If distinct → neutral
 
 ↓ Auto-Resolution Classifier (instant)
-  For each CONFLICT result:
+  For each conflict result:
     - Calculate confidence ratio (new / existing)
-    - Ratio ≥ 1.3 → MERGE (keep_new)
-    - Ratio ≤ 0.7 → MERGE (keep_old)
-    - Else → Keep as CONFLICT
+    - Ratio ≥ 1.3 → superseded (keep_new)
+    - Ratio ≤ 0.7 → same (keep_old)
+    - Else → Keep as conflict
 
-↓ Default Handler (fallback)
-  For each still unclassified pair:
-    - Conservative default → ADD
+↓ Pipeline determines overall_outcome:
+  - Any conflict result → "conflict"
+  - Any same result → "skip"
+  - Otherwise → "add"
 
-Output: ClassificationRequest with populated results
+Output: MemoryClassificationResult
+  - overall_outcome: "add" | "skip" | "conflict"
+  - similarity_results: list[SimilarityResult]
 ```
 
 ### Classifier Independence
@@ -173,15 +200,23 @@ Each classifier is independent and can be:
 Example custom pipeline:
 ```python
 # Fast pipeline (NLI only)
-fast_pipeline = ClassificationPipeline(classifiers=[
+fast_pipeline = MemoryClassificationPipeline(classifiers=[
     NLIClassifier(nli_filter=nli_filter)
 ])
 
 # Accuracy-focused (skip NLI, use only LLM)
-accuracy_pipeline = ClassificationPipeline(classifiers=[
+accuracy_pipeline = MemoryClassificationPipeline(classifiers=[
     ConflictClassifier(llm_conflict_verifier=verifier),
     DuplicateClassifier(llm_duplicate_detector=detector)
 ])
+
+# Strategy options: "single", "tiered", "all"
+tiered_pipeline = MemoryClassificationPipeline(
+    classifiers=[...],
+    strategy="tiered",
+    secondary_conflict_threshold=0.90,
+    max_secondary_checks=3,
+)
 ```
 
 ---
@@ -304,53 +339,93 @@ Storage backends implement runtime-checkable protocols (PEP 544).
 
 ```python
 @runtime_checkable
-class VectorStore(Protocol):
+class VectorMemoryStore(Protocol):
     """Vector storage for semantic search."""
 
-    async def add(self, memory: MemoryFact, user_id: str) -> str:
-        """Add memory and return ID."""
+    def add(self, vector: list[float], payload: dict[str, Any]) -> str:
+        """Add memory vector and payload, return ID."""
 
-    async def search(
-        self, query_text: str, user_id: str, limit: int = 5
-    ) -> list[MemoryFact]:
+    def search(
+        self,
+        query_embedding: list[float],
+        top_k: int = 5,
+        min_score: float = 0.7,
+        filters: Optional[Any] = None,
+    ) -> list[Any]:
         """Semantic search for similar memories."""
 
-    async def update(self, memory_id: str, memory: MemoryFact, user_id: str):
-        """Update existing memory."""
+    def find_similar_memories(
+        self,
+        embedding: list[float],
+        user_id: Optional[str] = None,
+        threshold: Optional[float] = None,
+        limit: int = 5,
+        exclude_archived: bool = True,
+    ) -> list[tuple[Any, float]]:
+        """Find similar memories for classification. Returns (memory_point, score) tuples."""
 
-    async def archive(
-        self, memory_id: str, user_id: str, superseded_by: str | None
-    ):
-        """Soft-delete memory."""
+    def update_memory(self, memory_id: str, payload_updates: dict[str, Any]) -> bool:
+        """Update memory metadata (mention_count, last_seen, etc.)."""
+
+    def get_by_id(self, memory_id: str) -> Optional[Any]:
+        """Retrieve a specific memory by ID."""
+
+    def archive_memory(
+        self, memory_id: str, superseded_by: Optional[str] = None
+    ) -> bool:
+        """Soft-delete memory (sets archived=True)."""
+
+    def clear_user_memories(self, user_id: str) -> int:
+        """Clear all memories for a user. Returns count deleted."""
+
 
 @runtime_checkable
 class ConflictStore(Protocol):
     """Storage for memory conflicts."""
 
-    async def add(self, conflict: MemoryConflict, user_id: str) -> str:
+    def add_conflict(self, conflict: MemoryConflict) -> str:
         """Store conflict and return ID."""
 
-    async def get(self, conflict_id: str, user_id: str) -> MemoryConflict | None:
+    def get_conflict(self, conflict_id: str) -> Optional[MemoryConflict]:
         """Retrieve conflict by ID."""
 
-    async def list_pending(self, user_id: str) -> list[MemoryConflict]:
-        """List unresolved conflicts."""
+    def get_pending_conflicts(
+        self, user_id: str, limit: Optional[int] = None
+    ) -> list[MemoryConflict]:
+        """List unresolved conflicts for a user."""
 
-    async def resolve(self, resolution: ConflictResolution, user_id: str):
+    def resolve_conflict(
+        self, conflict_id: str, resolution: ConflictResolution
+    ) -> bool:
         """Mark conflict as resolved."""
+
+    def get_conflict_count(self, user_id: str, status: Optional[str] = None) -> int:
+        """Count conflicts for a user."""
+
+    def escalate_conflict(self, conflict_id: str) -> bool:
+        """Escalate a conflict that couldn't be auto-resolved."""
+
+    def clear_user_conflicts(self, user_id: str, status: Optional[str] = None) -> int:
+        """Clear conflicts for a user. Returns count cleared."""
+
 
 @runtime_checkable
 class ShortTermStore(Protocol):
     """Storage for conversation history."""
 
-    async def add(self, messages: list[ShortTermMemory], user_id: str):
-        """Add messages to history."""
+    def add_messages(self, user_id: str, messages: list[ShortTermMemory]) -> int:
+        """Add messages to history. Returns count added."""
 
-    async def get(self, user_id: str, limit: int = 20) -> list[ShortTermMemory]:
-        """Get recent messages."""
+    def get_recent_messages(
+        self, user_id: str, limit: int = 20
+    ) -> list[ShortTermMemory]:
+        """Get recent messages for a user."""
 
-    async def clear(self, user_id: str):
-        """Clear all messages for user."""
+    def clear_user_messages(self, user_id: str) -> int:
+        """Clear all messages for user. Returns count deleted."""
+
+    def get_message_count(self, user_id: str) -> int:
+        """Get the number of messages stored for a user."""
 ```
 
 ### User Isolation
@@ -358,14 +433,17 @@ class ShortTermStore(Protocol):
 All storage operations scoped by `user_id`:
 
 ```python
-# Different users have separate memory spaces
-await vector_store.add(memory, user_id="alice")
-await vector_store.add(memory, user_id="bob")
+# user_id is included in the memory payload
+vector_store.add(vector, payload={"text": "I love hiking", "user_id": "alice", ...})
+vector_store.add(vector, payload={"text": "I love gaming", "user_id": "bob", ...})
 
-# Searches only return user's own memories
-results_alice = await vector_store.search("hobby", user_id="alice")
-results_bob = await vector_store.search("hobby", user_id="bob")
-# results_alice != results_bob
+# find_similar_memories has explicit user_id parameter
+results_alice = vector_store.find_similar_memories(embedding, user_id="alice")
+results_bob = vector_store.find_similar_memories(embedding, user_id="bob")
+# results_alice != results_bob - each user sees only their own memories
+
+# search() uses filters for user isolation
+results = vector_store.search(query_embedding, filters={"user_id": "alice"})
 ```
 
 ### Soft Delete Pattern
@@ -405,6 +483,20 @@ results = await vector_store.search(
 ---
 
 ## Memory Extraction
+
+### LLMMemoryExtracter
+
+Use `LLMMemoryExtracter` with the `source` parameter:
+
+```python
+from casual_memory.extractors import LLMMemoryExtracter
+
+# For user-stated memories (importance × 1.0)
+user_extractor = LLMMemoryExtracter(llm_provider=llm_provider, source="user")
+
+# For assistant-observed memories (importance × 0.6)
+assistant_extractor = LLMMemoryExtracter(llm_provider=llm_provider, source="assistant")
+```
 
 ### Two-Phase Extraction
 

@@ -5,9 +5,9 @@ Tests conflict storage, retrieval, resolution, and management.
 """
 
 import pytest
-from datetime import datetime
+
+from casual_memory.models import ConflictResolution, MemoryConflict
 from casual_memory.storage.conflicts.memory import InMemoryConflictStore
-from casual_memory.models import MemoryConflict, ConflictResolution
 
 
 @pytest.fixture

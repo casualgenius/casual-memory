@@ -4,8 +4,10 @@ Unit tests for in-memory vector storage.
 Tests vector search, similarity matching, filtering, archiving, and memory management.
 """
 
-import pytest
 from datetime import datetime
+
+import pytest
+
 from casual_memory.storage.vector.memory import InMemoryVectorStore
 
 

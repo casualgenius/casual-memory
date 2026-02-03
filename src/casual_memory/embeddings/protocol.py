@@ -5,7 +5,8 @@ Provides a unified interface for embedding text into dense vectors
 for semantic similarity search.
 """
 
-from typing import Protocol, List
+from typing import Protocol
+
 from typing_extensions import runtime_checkable
 
 
@@ -56,7 +57,7 @@ class TextEmbedding(Protocol):
         """
         ...
 
-    async def embed_document(self, text: str) -> List[float]:
+    async def embed_document(self, text: str) -> list[float]:
         """
         Generate embedding for a document to be stored.
 
@@ -74,7 +75,7 @@ class TextEmbedding(Protocol):
         """
         ...
 
-    async def embed_query(self, text: str) -> List[float]:
+    async def embed_query(self, text: str) -> list[float]:
         """
         Generate embedding for a search query.
 
@@ -92,9 +93,7 @@ class TextEmbedding(Protocol):
         """
         ...
 
-    async def embed_documents(
-        self, texts: List[str], batch_size: int = 32
-    ) -> List[List[float]]:
+    async def embed_documents(self, texts: list[str], batch_size: int = 32) -> list[list[float]]:
         """
         Generate embeddings for multiple documents efficiently.
 
@@ -112,9 +111,7 @@ class TextEmbedding(Protocol):
         """
         ...
 
-    async def embed_queries(
-        self, texts: List[str], batch_size: int = 32
-    ) -> List[List[float]]:
+    async def embed_queries(self, texts: list[str], batch_size: int = 32) -> list[list[float]]:
         """
         Generate embeddings for multiple queries efficiently.
 
