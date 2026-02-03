@@ -9,8 +9,7 @@ import asyncio
 from dataclasses import dataclass
 from typing import Optional
 
-from casual_memory.classifiers import MemoryClassificationPipeline, SimilarMemory, SimilarityResult
-from casual_memory.classifiers.models import MemoryClassificationResult
+from casual_memory.classifiers import MemoryClassificationPipeline, SimilarityResult, SimilarMemory
 from casual_memory.models import MemoryFact
 
 

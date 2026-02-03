@@ -138,28 +138,25 @@ class QdrantMemoryStore:
 
             qdrant_filter = Filter(must=conditions) if conditions else None  # type: ignore[arg-type]
 
-        hits = self.client.search(  # type: ignore[attr-defined]
+        response = self.client.query_points(
             collection_name=self.collection_name,
-            query_vector=query_embedding,
+            query=query_embedding,
             limit=top_k,
             query_filter=qdrant_filter,
+            score_threshold=min_score,
             with_vectors=True,
             with_payload=True,
         )
 
         results = []
+        hits = response.points
         logger.debug(f"{len(hits)} hits found")
         for hit in hits:
-            if hit.score >= min_score:
-                logger.debug(f"Score: {hit.score}, Memory: '{hit.payload.get('text', '')[:50]}...'")
-                memory = MemoryPoint(
-                    id=str(hit.id), vector=hit.vector, payload=MemoryPointPayload(**hit.payload)
-                )
-                results.append(memory)
-            else:
-                logger.debug(
-                    f"Skipping Due to Low Score: {hit.score}, Memory: '{hit.payload.get('text', '')[:50]}...'"
-                )
+            logger.debug(f"Score: {hit.score}, Memory: '{hit.payload.get('text', '')[:50]}...'")
+            memory = MemoryPoint(
+                id=str(hit.id), vector=hit.vector, payload=MemoryPointPayload(**hit.payload)
+            )
+            results.append(memory)
 
         return results
 
@@ -201,9 +198,9 @@ class QdrantMemoryStore:
         qdrant_filter = Filter(must=conditions) if conditions else None  # type: ignore[arg-type]
 
         # Perform similarity search
-        hits = self.client.search(  # type: ignore[attr-defined]
+        response = self.client.query_points(
             collection_name=self.collection_name,
-            query_vector=embedding,
+            query=embedding,
             limit=limit,
             query_filter=qdrant_filter,
             score_threshold=threshold,
@@ -213,7 +210,7 @@ class QdrantMemoryStore:
 
         # Convert results and filter archived in post-processing
         results = []
-        for hit in hits:
+        for hit in response.points:
             memory_point = MemoryPoint(
                 id=str(hit.id), vector=hit.vector, payload=MemoryPointPayload(**hit.payload)
             )
