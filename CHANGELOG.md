@@ -1,19 +1,8 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+## [0.1.0] - 2026-02-03
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-## [Unreleased]
-
-### Planned
-- PyPI package publishing
-- Additional storage backend adapters (Pinecone, Weaviate)
-- Streaming support for LLM responses
-- Batch processing for memory classification
-
-## [0.1.0] - 2025-01-XX
+Initial Release
 
 ### Added
 
@@ -24,29 +13,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Duplicate Classifier for distinguishing duplicates from distinct facts
   - Auto-Resolution Classifier for confidence-based conflict resolution
   - Sequential execution with early termination
-
-#### Intelligence Layer
-- **NLI Pre-Filter** - DeBERTa-v3-base-mnli-fever-anli cross-encoder
-  - 92.38% accuracy on SNLI, 90.04% on MNLI
-  - LRU caching with 1000-entry limit
-  - Lazy loading for optional dependency
-  - ~200ms CPU, ~50ms GPU performance
-
-- **LLM Conflict Verifier** - High-accuracy contradiction detection
-  - LLM-based detection with structured prompts
-  - Heuristic fallback for negation, location, job conflicts
-  - Configurable fallback threshold (similarity ≥ 0.90)
-  - Metrics tracking (calls, success rate, fallbacks)
-
-- **LLM Duplicate Detector** - Smart duplicate vs distinct classification
-  - Distinguishes refinements from contradictions
-  - Conservative fallback (similarity ≥ 0.95)
-  - Handles paraphrases and intensity variations
-
-- **Confidence Scoring** - Multi-factor memory confidence calculation
-  - Mention frequency (1-5+ mentions: 0.5-0.95)
-  - Recency factor (30-day decay)
-  - Spread factor (temporal distribution bonus)
 
 #### Memory Extraction
 - **LLM Memory Extractor** - Extract structured memories from conversations
@@ -88,36 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Documentation
 - Comprehensive README.md with installation, quickstart, benchmarks
 - ARCHITECTURE.md with system design and performance analysis
-- 5 working examples:
-  - basic_classification.py - Pipeline usage
-  - custom_classifier.py - Custom classifier implementation
-  - memory_extraction.py - LLM-based extraction
-  - conflict_detection_demo.py - Conflict detection with fallback
-  - custom_storage_backend.py - Custom storage protocol
-
-### Testing
-- **76 unit tests** (51% code coverage)
-  - 12 memory extraction tests
-  - 23 confidence scoring tests
-  - 12 NLI filter tests
-  - 13 conflict verifier tests
-  - 16 duplicate detector tests
-
-- **17 integration tests** for optional backends
-  - 5 Qdrant storage tests
-  - 6 SQLAlchemy conflict storage tests
-  - 6 Redis short-term storage tests
-  - Auto-skip when services unavailable
-
-- **pytest configuration** with async support, coverage reporting
-- **Test fixtures** for mock LLM providers and storage backends
-
-### CI/CD
-- GitHub Actions workflow with test matrix (Python 3.10, 3.11, 3.12)
-- Codecov integration for coverage reporting
-- UV dependency caching for faster builds
-- Linting with ruff (formatter + linter)
-- Type checking with mypy
+- Working examples
 
 ### Dependencies
 - **Core**: pydantic, casual-llm (LLM provider abstraction)
@@ -128,24 +65,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `redis` - redis-py for short-term storage
   - `all` - All optional dependencies
 
-### Development Tools
-- UV for fast dependency management
-- pytest with asyncio and coverage plugins
-- ruff for linting and formatting
-- mypy for static type checking
-
 ---
 
 ## Version History
 
-- **0.1.0** (2025-01-XX) - Initial release with classification pipeline, intelligence layer, storage abstraction
-- **Unreleased** - Future enhancements planned
+- **0.1.0** (2026-02-03) - Initial release with classification pipeline, intelligence layer, storage abstraction
 
 ---
-
-## Links
-
-- **Documentation**: [README.md](README.md) | [ARCHITECTURE.md](docs/ARCHITECTURE.md)
-- **Examples**: [examples/](examples/)
-- **Issue Tracker**: https://github.com/yourusername/casual-memory/issues
-- **PyPI**: https://pypi.org/project/casual-memory/ (coming soon)
