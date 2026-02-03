@@ -1,6 +1,6 @@
 import logging
 import uuid
-from typing import Any, Optional
+from typing import Any, Optional, TypeGuard
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
@@ -19,6 +19,11 @@ from casual_memory.storage.vector.models import MemoryPoint, MemoryPointPayload
 logger = logging.getLogger(__name__)
 
 vector_dimension = 768
+
+
+def _is_flat_vector(v: Any) -> TypeGuard[list[float]]:
+    """Type guard to verify vector is a flat list of floats (not nested)."""
+    return isinstance(v, list) and len(v) > 0 and not isinstance(v[0], list)
 
 
 class QdrantMemoryStore:
@@ -152,6 +157,8 @@ class QdrantMemoryStore:
         hits = response.points
         logger.debug(f"{len(hits)} hits found")
         for hit in hits:
+            if hit.payload is None or not _is_flat_vector(hit.vector):
+                continue
             logger.debug(f"Score: {hit.score}, Memory: '{hit.payload.get('text', '')[:50]}...'")
             memory = MemoryPoint(
                 id=str(hit.id), vector=hit.vector, payload=MemoryPointPayload(**hit.payload)
@@ -211,19 +218,21 @@ class QdrantMemoryStore:
         # Convert results and filter archived in post-processing
         results = []
         for hit in response.points:
+            if hit.payload is None or not _is_flat_vector(hit.vector):
+                continue
             memory_point = MemoryPoint(
                 id=str(hit.id), vector=hit.vector, payload=MemoryPointPayload(**hit.payload)
             )
 
             # Skip archived memories if requested
             if exclude_archived and memory_point.payload.archived:
-                logger.debug(f"Skipping archived memory: {hit.payload.get('text', '')[:50]}")
+                logger.debug(f"Skipping archived memory: {memory_point.payload.text[:50]}")
                 continue
 
             results.append((memory_point, hit.score))
             logger.debug(
                 f"Similar memory found: score={hit.score:.3f}, "
-                f"text='{hit.payload.get('text', '')[:50]}...'"
+                f"text='{memory_point.payload.text[:50]}...'"
             )
 
         logger.info(
