@@ -221,6 +221,6 @@ auto_resolver = AutoResolutionClassifier(
 
 If you encounter issues not covered here:
 
-1. Check the [GitHub Issues](https://github.com/yourusername/casual-memory/issues)
+1. Check the [GitHub Issues](https://github.com/casualgenius/casual-memory/issues)
 2. Review the [Architecture Guide](ARCHITECTURE.md)
 3. Look at the [examples/](../examples/) directory

@@ -333,8 +333,8 @@ Storage backends implement runtime-checkable protocols (PEP 544).
 class VectorMemoryStore(Protocol):
     """Vector storage for semantic search."""
 
-    def add(self, embedding: list[float], payload: dict) -> str:
-        """Add memory embedding and payload, return ID."""
+    def add(self, vector: list[float], payload: dict[str, Any]) -> str:
+        """Add memory vector and payload, return ID."""
 
     def search(
         self,
@@ -345,22 +345,30 @@ class VectorMemoryStore(Protocol):
     ) -> list[Any]:
         """Semantic search for similar memories."""
 
-    def update_memory(self, memory_id: str, updates: dict) -> bool:
+    def find_similar_memories(
+        self,
+        embedding: list[float],
+        user_id: Optional[str] = None,
+        threshold: Optional[float] = None,
+        limit: int = 5,
+        exclude_archived: bool = True,
+    ) -> list[tuple[Any, float]]:
+        """Find similar memories for classification. Returns (memory_point, score) tuples."""
+
+    def update_memory(self, memory_id: str, payload_updates: dict[str, Any]) -> bool:
         """Update memory metadata (mention_count, last_seen, etc.)."""
+
+    def get_by_id(self, memory_id: str) -> Optional[Any]:
+        """Retrieve a specific memory by ID."""
 
     def archive_memory(
         self, memory_id: str, superseded_by: Optional[str] = None
     ) -> bool:
-        """Soft-delete memory."""
+        """Soft-delete memory (sets archived=True)."""
 
-    def find_similar_memories(
-        self,
-        embedding: list[float],
-        user_id: str,
-        threshold: float = 0.85,
-        limit: int = 5,
-    ) -> list[SimilarMemory]:
-        """Find similar memories for classification."""
+    def clear_user_memories(self, user_id: str) -> int:
+        """Clear all memories for a user. Returns count deleted."""
+
 
 @runtime_checkable
 class ConflictStore(Protocol):
@@ -375,27 +383,40 @@ class ConflictStore(Protocol):
     def get_pending_conflicts(
         self, user_id: str, limit: Optional[int] = None
     ) -> list[MemoryConflict]:
-        """List unresolved conflicts."""
+        """List unresolved conflicts for a user."""
 
     def resolve_conflict(
         self, conflict_id: str, resolution: ConflictResolution
     ) -> bool:
         """Mark conflict as resolved."""
 
+    def get_conflict_count(self, user_id: str, status: Optional[str] = None) -> int:
+        """Count conflicts for a user."""
+
+    def escalate_conflict(self, conflict_id: str) -> bool:
+        """Escalate a conflict that couldn't be auto-resolved."""
+
+    def clear_user_conflicts(self, user_id: str, status: Optional[str] = None) -> int:
+        """Clear conflicts for a user. Returns count cleared."""
+
+
 @runtime_checkable
 class ShortTermStore(Protocol):
     """Storage for conversation history."""
 
-    def add_messages(self, user_id: str, messages: list[ShortTermMemory]):
-        """Add messages to history."""
+    def add_messages(self, user_id: str, messages: list[ShortTermMemory]) -> int:
+        """Add messages to history. Returns count added."""
 
-    def get_messages(
+    def get_recent_messages(
         self, user_id: str, limit: int = 20
     ) -> list[ShortTermMemory]:
-        """Get recent messages."""
+        """Get recent messages for a user."""
 
-    def clear_messages(self, user_id: str):
-        """Clear all messages for user."""
+    def clear_user_messages(self, user_id: str) -> int:
+        """Clear all messages for user. Returns count deleted."""
+
+    def get_message_count(self, user_id: str) -> int:
+        """Get the number of messages stored for a user."""
 ```
 
 ### User Isolation
@@ -403,14 +424,17 @@ class ShortTermStore(Protocol):
 All storage operations scoped by `user_id`:
 
 ```python
-# Different users have separate memory spaces
-await vector_store.add(memory, user_id="alice")
-await vector_store.add(memory, user_id="bob")
+# user_id is included in the memory payload
+vector_store.add(vector, payload={"text": "I love hiking", "user_id": "alice", ...})
+vector_store.add(vector, payload={"text": "I love gaming", "user_id": "bob", ...})
 
-# Searches only return user's own memories
-results_alice = await vector_store.search("hobby", user_id="alice")
-results_bob = await vector_store.search("hobby", user_id="bob")
-# results_alice != results_bob
+# find_similar_memories has explicit user_id parameter
+results_alice = vector_store.find_similar_memories(embedding, user_id="alice")
+results_bob = vector_store.find_similar_memories(embedding, user_id="bob")
+# results_alice != results_bob - each user sees only their own memories
+
+# search() uses filters for user isolation
+results = vector_store.search(query_embedding, filters={"user_id": "alice"})
 ```
 
 ### Soft Delete Pattern

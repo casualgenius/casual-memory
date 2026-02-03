@@ -33,8 +33,8 @@ async def main():
 
     # Initialize intelligence components
     nli_filter = NLIPreFilter()
-    conflict_verifier = LLMConflictVerifier(llm_provider, "qwen2.5:7b")
-    duplicate_detector = LLMDuplicateDetector(llm_provider, "qwen2.5:7b")
+    conflict_verifier = LLMConflictVerifier(llm_provider, "qwen2.5:7b-instruct")
+    duplicate_detector = LLMDuplicateDetector(llm_provider, "qwen2.5:7b-instruct")
 
     # Build pipeline with memory-centric classifiers
     pipeline = MemoryClassificationPipeline(

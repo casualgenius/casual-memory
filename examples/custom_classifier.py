@@ -31,7 +31,7 @@ class SimpleRuleBasedClassifier:
 
     This classifier uses a simple similarity threshold:
     - Similarity >= 0.95 → same (duplicate)
-    - Similarity >= 0.90 → potential conflict (needs further review)
+    - Similarity >= 0.90 → neutral (conservative: let other classifiers decide)
     - Similarity < 0.90 → neutral (distinct)
     """
 
