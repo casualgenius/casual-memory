@@ -6,8 +6,10 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 from casual_llm import AssistantMessage, SystemMessage, UserMessage
+from pydantic import BaseModel, Field
 
 from casual_memory.extractors.llm_extractor import LLMMemoryExtracter
+from casual_memory.extractors.models import MemoryExtractionResponse
 from casual_memory.extractors.prompts import USER_MEMORY_PROMPT
 
 
@@ -393,3 +395,238 @@ async def test_extract_with_defaults():
     assert memories[0].importance == 0.7  # LLM must provide this
     assert memories[0].valid_until is None  # Optional, defaults to None
     assert memories[0].source is None  # System-managed, not extracted
+
+
+# =============================================================================
+# Tests for parameterized extraction model
+# =============================================================================
+
+
+class CustomMemoryExtraction(BaseModel):
+    """Custom memory extraction model for testing.
+
+    Must include fields compatible with MemoryFact (text, type, tags, importance)
+    since extract() converts results to MemoryFact instances.
+    Can add additional custom fields for domain-specific extraction.
+    """
+
+    text: str = Field(..., description="Memory text")
+    type: str = Field(..., description="Custom type like 'insight', 'reflection'")
+    tags: list[str] = Field(default_factory=list, description="Tags for categorization")
+    importance: float = Field(..., ge=0.0, le=1.0)
+    # Custom field beyond standard MemoryFact fields
+    custom_field: str = Field(default="", description="Custom field for testing")
+
+
+class CustomExtractionResponse(BaseModel):
+    """Custom extraction response with custom memory model."""
+
+    memories: list[CustomMemoryExtraction] = Field(default_factory=list)
+
+
+@pytest.mark.asyncio
+async def test_extract_with_custom_extraction_model():
+    """Test extraction with a custom extraction model."""
+    response_json = json.dumps(
+        {
+            "memories": [
+                {
+                    "text": "This is an insight about learning",
+                    "type": "insight",  # Custom type
+                    "tags": ["learning", "insight"],
+                    "importance": 0.8,
+                    "custom_field": "reflection_context",
+                }
+            ]
+        }
+    )
+
+    provider = MockLLMProvider(response_json)
+    custom_prompt = "Extract insights: {today_natural} (ISO: {isonow})"
+
+    extractor = LLMMemoryExtracter(
+        llm_provider=provider,
+        prompt=custom_prompt,
+        extraction_model=CustomExtractionResponse,
+    )
+
+    messages = [UserMessage(content="I've learned something important")]
+    memories = await extractor.extract(messages)
+
+    assert len(memories) == 1
+    assert memories[0].text == "This is an insight about learning"
+    assert memories[0].type == "insight"  # Custom type preserved
+    assert memories[0].importance == 0.8
+    assert memories[0].tags == ["learning", "insight"]
+
+    # Verify the custom model was used for LLM response_format
+    call_args = provider.chat.call_args
+    assert call_args[1]["response_format"] == CustomExtractionResponse
+
+
+@pytest.mark.asyncio
+async def test_extract_with_default_extraction_model():
+    """Test that default extraction model (MemoryExtractionResponse) works."""
+    response_json = json.dumps(
+        {
+            "memories": [
+                {
+                    "text": "My name is Test",
+                    "type": "fact",
+                    "tags": ["name"],
+                    "importance": 0.9,
+                    "valid_until": None,
+                }
+            ]
+        }
+    )
+
+    provider = MockLLMProvider(response_json)
+
+    # Create extractor without explicit extraction_model - should use default
+    extractor = LLMMemoryExtracter(
+        llm_provider=provider,
+        prompt=USER_MEMORY_PROMPT,
+    )
+
+    messages = [UserMessage(content="My name is Test")]
+    memories = await extractor.extract(messages)
+
+    assert len(memories) == 1
+    assert memories[0].text == "My name is Test"
+
+    # Verify default model was used
+    call_args = provider.chat.call_args
+    assert call_args[1]["response_format"] == MemoryExtractionResponse
+
+
+@pytest.mark.asyncio
+async def test_extract_custom_model_filters_low_importance():
+    """Test that importance filtering works with custom models."""
+    response_json = json.dumps(
+        {
+            "memories": [
+                {
+                    "text": "High importance insight",
+                    "type": "insight",
+                    "tags": ["test"],
+                    "importance": 0.9,
+                    "custom_field": "",
+                },
+                {
+                    "text": "Low importance insight",
+                    "type": "insight",
+                    "tags": ["test"],
+                    "importance": 0.3,  # Below threshold
+                    "custom_field": "",
+                },
+            ]
+        }
+    )
+
+    provider = MockLLMProvider(response_json)
+
+    extractor = LLMMemoryExtracter(
+        llm_provider=provider,
+        prompt="Extract insights: {today_natural} (ISO: {isonow})",
+        extraction_model=CustomExtractionResponse,
+    )
+
+    messages = [UserMessage(content="Test")]
+    memories = await extractor.extract(messages)
+
+    # Only high importance should pass the filter
+    assert len(memories) == 1
+    assert memories[0].importance == 0.9
+
+
+@pytest.mark.asyncio
+async def test_extract_custom_model_with_custom_types():
+    """Test extraction with custom memory types (insight, reflection, opinion)."""
+    response_json = json.dumps(
+        {
+            "memories": [
+                {
+                    "text": "I think AI will transform education",
+                    "type": "opinion",
+                    "tags": ["ai", "education", "opinion"],
+                    "importance": 0.7,
+                    "custom_field": "tech_opinion",
+                },
+                {
+                    "text": "My relationship with learning has improved",
+                    "type": "reflection",
+                    "tags": ["learning", "self-improvement"],
+                    "importance": 0.8,
+                    "custom_field": "self_reflection",
+                },
+            ]
+        }
+    )
+
+    provider = MockLLMProvider(response_json)
+
+    extractor = LLMMemoryExtracter(
+        llm_provider=provider,
+        prompt="Extract reflections: {today_natural} (ISO: {isonow})",
+        extraction_model=CustomExtractionResponse,
+    )
+
+    messages = [UserMessage(content="Test")]
+    memories = await extractor.extract(messages)
+
+    assert len(memories) == 2
+    types = {m.type for m in memories}
+    assert types == {"opinion", "reflection"}
+
+
+@pytest.mark.asyncio
+async def test_extraction_model_stored_on_instance():
+    """Test that extraction_model is stored on the extractor instance."""
+    provider = MockLLMProvider(json.dumps({"memories": []}))
+
+    # Default model
+    extractor_default = LLMMemoryExtracter(
+        llm_provider=provider,
+        prompt=USER_MEMORY_PROMPT,
+    )
+    assert extractor_default.extraction_model == MemoryExtractionResponse
+
+    # Custom model
+    extractor_custom = LLMMemoryExtracter(
+        llm_provider=provider,
+        prompt="Custom prompt: {today_natural} (ISO: {isonow})",
+        extraction_model=CustomExtractionResponse,
+    )
+    assert extractor_custom.extraction_model == CustomExtractionResponse
+
+
+@pytest.mark.asyncio
+async def test_custom_model_validation_error():
+    """Test that validation errors with custom models raise ValueError."""
+    # Response missing required 'importance' field
+    response_json = json.dumps(
+        {
+            "memories": [
+                {
+                    "text": "Missing importance",
+                    "type": "insight",
+                    "tags": ["test"],
+                    # importance is required but missing
+                }
+            ]
+        }
+    )
+
+    provider = MockLLMProvider(response_json)
+
+    extractor = LLMMemoryExtracter(
+        llm_provider=provider,
+        prompt="Extract: {today_natural} (ISO: {isonow})",
+        extraction_model=CustomExtractionResponse,
+    )
+
+    messages = [UserMessage(content="Test")]
+
+    with pytest.raises(ValueError, match="LLM response did not match expected schema"):
+        await extractor.extract(messages)

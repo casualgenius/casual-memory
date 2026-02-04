@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Sequence
 
 from casual_llm import ChatMessage, LLMProvider, SystemMessage, UserMessage
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from casual_memory.extractors.models import MemoryExtractionResponse
 from casual_memory.models import MemoryFact
@@ -12,11 +12,49 @@ logger = logging.getLogger(__name__)
 
 
 class LLMMemoryExtracter:
-    """Extracts memories from messages in conversations using JSON schema."""
+    """Extracts memories from messages in conversations using JSON schema.
 
-    def __init__(self, llm_provider: LLMProvider, prompt: str):
+    The extractor supports custom extraction models and prompts for flexibility:
+    - extraction_model: Pydantic model defining the JSON schema for LLM response.
+      Must have a 'memories' attribute returning a list of memory-like objects.
+    - prompt: System prompt for the LLM with {today_natural} and {isonow} placeholders.
+
+    Example with defaults (standard memory extraction):
+        extractor = LLMMemoryExtracter(llm_provider, USER_MEMORY_PROMPT)
+
+    Example with custom model and prompt (e.g., Moltbook):
+        class CustomMemory(BaseModel):
+            text: str
+            type: str  # Custom types like 'insight', 'reflection'
+            importance: float
+
+        class CustomExtractionResponse(BaseModel):
+            memories: list[CustomMemory]
+
+        extractor = LLMMemoryExtracter(
+            llm_provider=provider,
+            prompt=CUSTOM_PROMPT,
+            extraction_model=CustomExtractionResponse,
+        )
+    """
+
+    def __init__(
+        self,
+        llm_provider: LLMProvider,
+        prompt: str,
+        extraction_model: type[BaseModel] = MemoryExtractionResponse,
+    ):
+        """Initialize the memory extractor.
+
+        Args:
+            llm_provider: LLM provider for chat completions (casual-llm compatible).
+            prompt: System prompt with {today_natural} and {isonow} placeholders.
+            extraction_model: Pydantic model for structured LLM output.
+                Must have a 'memories' attribute. Defaults to MemoryExtractionResponse.
+        """
         self.prompt = prompt
         self.llm_provider = llm_provider
+        self.extraction_model = extraction_model
 
     async def extract(self, messages: list[ChatMessage]) -> list[MemoryFact]:
         from casual_memory.utils.date_normalizer import normalize_memory_dates
@@ -40,7 +78,7 @@ class LLMMemoryExtracter:
             logger.debug("Extracting memories with JSON schema")
             response = await self.llm_provider.chat(
                 messages=llm_messages,  # type: ignore[arg-type]
-                response_format=MemoryExtractionResponse,  # Pass Pydantic model
+                response_format=self.extraction_model,  # Pass configurable Pydantic model
                 temperature=0.2,
             )
 
@@ -52,8 +90,9 @@ class LLMMemoryExtracter:
             # DEBUG: Log raw LLM response to check if importance field is included
             logger.debug(f"Raw LLM response: {content[:500]}...")  # First 500 chars
 
-            extraction_response = MemoryExtractionResponse.model_validate_json(content)
-            memories = extraction_response.memories
+            extraction_response = self.extraction_model.model_validate_json(content)
+            # Access memories attribute - extraction_model must have this attribute
+            memories: list[BaseModel] = getattr(extraction_response, "memories")
 
             logger.debug(f"LLM returned {len(memories)} memories")
 
