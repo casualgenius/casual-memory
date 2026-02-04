@@ -478,3 +478,145 @@ async def test_query_memory_empty_results(memory_service, mock_vector_store):
 
     # Verify
     assert len(memories) == 0
+
+
+# Tests for flexible string types (task-001)
+
+
+def test_memory_fact_custom_type():
+    """Test that MemoryFact accepts custom type strings."""
+    # Standard type
+    standard_memory = MemoryFact(
+        text="Test fact",
+        type="fact",
+        tags=[],
+        importance=0.8,
+    )
+    assert standard_memory.type == "fact"
+
+    # Custom type for agent memories (Moltbook use case)
+    agent_memory = MemoryFact(
+        text="I find their social posts interesting",
+        type="opinion",  # Custom type not in original Literal
+        tags=["social", "interest"],
+        importance=0.7,
+    )
+    assert agent_memory.type == "opinion"
+
+    # Another custom type
+    relationship_memory = MemoryFact(
+        text="Alice and I have interacted 5 times",
+        type="relationship",  # Custom type
+        tags=["community", "interaction"],
+        importance=0.6,
+    )
+    assert relationship_memory.type == "relationship"
+
+
+def test_memory_fact_custom_source():
+    """Test that MemoryFact accepts custom source strings."""
+    # Standard source
+    user_memory = MemoryFact(
+        text="Test fact",
+        type="fact",
+        tags=[],
+        importance=0.8,
+        source="user",
+    )
+    assert user_memory.source == "user"
+
+    # Custom source for agent self-reflection
+    self_reflection = MemoryFact(
+        text="I realize I tend to be overly cautious",
+        type="insight",
+        tags=["self-awareness"],
+        importance=0.8,
+        source="self_reflection",  # Custom source
+    )
+    assert self_reflection.source == "self_reflection"
+
+    # Custom source for Moltbook
+    moltbook_memory = MemoryFact(
+        text="Community event happening tomorrow",
+        type="event",
+        tags=["community", "moltbook"],
+        importance=0.7,
+        source="moltbook_feed",  # Custom source
+    )
+    assert moltbook_memory.source == "moltbook_feed"
+
+
+def test_memory_fact_type_validation_non_empty():
+    """Test that empty type strings are rejected."""
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        MemoryFact(
+            text="Test fact",
+            type="",  # Empty string should fail
+            tags=[],
+            importance=0.8,
+        )
+
+
+def test_memory_fact_backwards_compatibility():
+    """Test that existing standard types still work."""
+    standard_types = ["fact", "preference", "event", "goal", "weather"]
+    standard_sources = ["user", "assistant", "tool"]
+
+    for mem_type in standard_types:
+        memory = MemoryFact(
+            text=f"Test {mem_type}",
+            type=mem_type,
+            tags=[],
+            importance=0.7,
+        )
+        assert memory.type == mem_type
+
+    for source in standard_sources:
+        memory = MemoryFact(
+            text="Test fact",
+            type="fact",
+            tags=[],
+            importance=0.7,
+            source=source,
+        )
+        assert memory.source == source
+
+
+def test_memory_fact_extraction_custom_type():
+    """Test that MemoryFactExtraction accepts custom type strings."""
+    from casual_memory.models import MemoryFactExtraction
+
+    # Standard type
+    extraction = MemoryFactExtraction(
+        text="Test memory",
+        type="fact",
+        tags=["test"],
+        importance=0.7,
+    )
+    assert extraction.type == "fact"
+
+    # Custom type
+    custom_extraction = MemoryFactExtraction(
+        text="I find this community welcoming",
+        type="impression",  # Custom type
+        tags=["community", "sentiment"],
+        importance=0.6,
+    )
+    assert custom_extraction.type == "impression"
+
+
+def test_memory_fact_extraction_type_validation():
+    """Test that MemoryFactExtraction rejects empty type strings."""
+    from pydantic import ValidationError
+
+    from casual_memory.models import MemoryFactExtraction
+
+    with pytest.raises(ValidationError):
+        MemoryFactExtraction(
+            text="Test",
+            type="",  # Empty should fail
+            tags=[],
+            importance=0.7,
+        )
