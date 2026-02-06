@@ -28,7 +28,6 @@ ENV/
 
 # UV
 .python-version
-uv.lock
 
 # Testing
 .pytest_cache/

@@ -486,69 +486,85 @@ results = await vector_store.search(
 
 ### LLMMemoryExtracter
 
-Use `LLMMemoryExtracter` with the `source` parameter:
-
 ```python
 from casual_memory.extractors import LLMMemoryExtracter
+from casual_memory.extractors.prompts import USER_MEMORY_PROMPT
 
-# For user-stated memories (importance × 1.0)
-user_extractor = LLMMemoryExtracter(llm_provider=llm_provider, source="user")
+extractor = LLMMemoryExtracter(
+    llm_provider=llm_provider,
+    prompt=USER_MEMORY_PROMPT,
+)
 
-# For assistant-observed memories (importance × 0.6)
-assistant_extractor = LLMMemoryExtracter(llm_provider=llm_provider, source="assistant")
+memories = await extractor.extract(messages)
 ```
 
-### Two-Phase Extraction
+**Parameters:**
 
-1. **User-sourced memories** (importance × 1.0)
-   - Extracted from user messages
-   - First-person perspective: "My name is Alex"
-   - Higher confidence (directly stated)
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `llm_provider` | `LLMProvider` | (required) | casual-llm compatible provider |
+| `prompt` | `str` | (required) | System prompt with `{today_natural}` and `{isonow}` placeholders |
+| `extraction_model` | `type[BaseModel]` | `MemoryExtractionResponse` | Pydantic model defining the JSON schema for LLM output |
 
-2. **Assistant-sourced memories** (importance × 0.6)
-   - Extracted from assistant observations
-   - Inferred from context
-   - Lower confidence (observed, not stated)
+### Custom Extraction Models
+
+By default, the extractor uses `MemoryExtractionResponse` which wraps `MemoryFactExtraction` — a strict schema with `Literal` types for the `type` field (`"fact"`, `"preference"`, `"event"`, `"goal"`, `"weather"`).
+
+For applications that need custom memory types (e.g., `"insight"`, `"reflection"`, `"opinion"`), pass your own Pydantic model via the `extraction_model` parameter. The model must have a `memories` attribute that returns a list of objects compatible with `MemoryFact` (at minimum: `text`, `type`, `tags`, `importance`).
+
+```python
+from pydantic import BaseModel, Field
+
+# 1. Define your custom memory extraction fields
+class AgentMemory(BaseModel):
+    text: str = Field(..., description="Memory text")
+    type: str = Field(..., description="Custom types: 'insight', 'reflection', 'opinion'")
+    tags: list[str] = Field(default_factory=list)
+    importance: float = Field(..., ge=0.0, le=1.0)
+
+# 2. Wrap in a response model with a 'memories' attribute
+class AgentExtractionResponse(BaseModel):
+    memories: list[AgentMemory] = Field(default_factory=list)
+
+# 3. Pass to the extractor
+extractor = LLMMemoryExtracter(
+    llm_provider=provider,
+    prompt=AGENT_MEMORY_PROMPT,  # Your custom prompt
+    extraction_model=AgentExtractionResponse,
+)
+
+memories = await extractor.extract(messages)
+# memories[0].type could be "insight", "reflection", etc.
+```
+
+This works because `MemoryFact.type` is a flexible `str` field at the storage layer, while `MemoryFactExtraction.type` (the default schema) is a strict `Literal` — giving you validation by default with the option to bypass it.
 
 ### Extraction Process
 
-```python
+```
 Input: Conversation messages
   [UserMessage("My name is Alex and I live in Bangkok"),
    AssistantMessage("Nice to meet you!")]
 
 ↓ LLM Memory Extraction
-  System Prompt: Instructions for extraction
-    - First-person perspective rules
-    - Atomic fact splitting
-    - Importance scoring (0.0-1.0)
-    - Memory type classification
-
-  User Prompt: Formatted conversation
+  System Prompt: Instructions for extraction (with date placeholders)
+  Response Format: extraction_model JSON schema
 
 ↓ LLM Response (Structured JSON)
-  [
-    {
-      "text": "My name is Alex",
-      "type": "fact",
-      "tags": ["name", "identity"],
-      "importance": 0.9
-    },
-    {
-      "text": "I live in Bangkok",
-      "type": "fact",
-      "tags": ["location", "residence"],
-      "importance": 0.8
-    }
-  ]
+  {
+    "memories": [
+      {"text": "My name is Alex", "type": "fact", "tags": ["name"], "importance": 0.9},
+      {"text": "I live in Bangkok", "type": "fact", "tags": ["location"], "importance": 0.8}
+    ]
+  }
 
 ↓ Filtering & Normalization
-  - Filter importance ≥ 0.5
+  - Validate against extraction_model
   - Normalize dates with date_normalizer
-  - Apply source weighting (user=1.0x, assistant=0.6x)
-  - Create MemoryFact objects
+  - Filter importance ≥ 0.5
+  - Convert to MemoryFact objects
 
-Output: List[MemoryFact]
+Output: list[MemoryFact]
 ```
 
 ### Date Normalization

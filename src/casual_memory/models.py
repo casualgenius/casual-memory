@@ -79,16 +79,18 @@ class MemoryFact(BaseModel):
             "Must be understandable without conversation context."
         ),
     )
-    type: Literal["fact", "preference", "event", "goal", "weather"] = Field(
+    type: str = Field(
         ...,
         description=(
-            "Memory category: "
+            "Memory category. Common types include: "
             "'fact' (verifiable information like name, location, job, allergies), "
             "'preference' (subjective likes/dislikes or opinions), "
             "'event' (specific occurrences with dates like appointments, trips), "
             "'goal' (intentions or tasks to accomplish like reminders, learning objectives), "
-            "'weather' (weather forecasts or conditions)"
+            "'weather' (weather forecasts or conditions). "
+            "Custom types are also supported for application-specific categorization."
         ),
+        min_length=1,
     )
     tags: list[str] = Field(
         ...,
@@ -108,13 +110,14 @@ class MemoryFact(BaseModel):
             "Events = 0.7-0.8"
         ),
     )
-    source: Optional[Literal["assistant", "tool", "user"]] = Field(
+    source: str | None = Field(
         default=None,
         description=(
-            "Origin of the memory: "
+            "Origin of the memory. Common sources include: "
             "'user' (from user messages), "
             "'assistant' (from assistant responses), "
-            "'tool' (from tool outputs)"
+            "'tool' (from tool outputs). "
+            "Custom sources are also supported for application-specific tracking."
         ),
     )
     valid_until: Optional[str | None] = Field(
@@ -160,13 +163,13 @@ class MemoryBlock(BaseModel):
 
 
 class MemoryPointPayload(BaseModel):
-    # Existing fields (unchanged)
-    text: str
-    type: Literal["fact", "preference", "event", "goal", "weather"]
+    # Core fields
+    text: str = Field(..., min_length=1)
+    type: str = Field(..., min_length=1)  # Flexible string type for custom categories
     tags: list[str]
     importance: Optional[float] = 0.5  # Default if not included
     session_id: str | None
-    source: str | None
+    source: str | None  # Flexible string source for custom origins
     timestamp: str
     valid_until: Optional[str | None] = None
 

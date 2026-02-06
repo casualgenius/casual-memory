@@ -9,7 +9,7 @@ Core components:
 - models: Core data models (MemoryFact, MemoryConflict, etc.)
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 from casual_memory.memory_service import MemoryService
 from casual_memory.models import (
