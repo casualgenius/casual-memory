@@ -164,8 +164,8 @@ class MemoryBlock(BaseModel):
 
 class MemoryPointPayload(BaseModel):
     # Core fields
-    text: str
-    type: str  # Flexible string type for custom categories
+    text: str = Field(..., min_length=1)
+    type: str = Field(..., min_length=1)  # Flexible string type for custom categories
     tags: list[str]
     importance: Optional[float] = 0.5  # Default if not included
     session_id: str | None

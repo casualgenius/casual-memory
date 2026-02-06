@@ -91,8 +91,28 @@ class LLMMemoryExtracter:
             logger.debug(f"Raw LLM response: {content[:500]}...")  # First 500 chars
 
             extraction_response = self.extraction_model.model_validate_json(content)
-            # Access memories attribute - extraction_model must have this attribute
-            memories: list[BaseModel] = getattr(extraction_response, "memories")
+
+            # Validate that the extraction model exposes a 'memories' list
+            if not hasattr(extraction_response, "memories"):
+                raise ValueError(
+                    f"Extraction model {self.extraction_model.__name__} must have a "
+                    f"'memories' attribute, but {type(extraction_response).__name__} "
+                    f"has: {list(extraction_response.model_fields.keys())}"
+                )
+
+            memories = extraction_response.memories
+            if not isinstance(memories, list):
+                raise ValueError(
+                    f"Expected 'memories' to be a list, got {type(memories).__name__} "
+                    f"from {self.extraction_model.__name__}"
+                )
+
+            for i, item in enumerate(memories):
+                if not isinstance(item, BaseModel):
+                    raise ValueError(
+                        f"Expected memories[{i}] to be a BaseModel instance, "
+                        f"got {type(item).__name__} from {self.extraction_model.__name__}"
+                    )
 
             logger.debug(f"LLM returned {len(memories)} memories")
 
