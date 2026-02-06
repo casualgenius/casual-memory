@@ -210,9 +210,18 @@ print(result.overall_outcome)  # "add", "skip", or "conflict"
 
 ```python
 from casual_memory.extractors import LLMMemoryExtracter
+from casual_memory.extractors.prompts import USER_MEMORY_PROMPT
 
-extractor = LLMMemoryExtracter(llm_provider=llm_provider, source="user")
+# Default: uses MemoryExtractionResponse (strict Literal types)
+extractor = LLMMemoryExtracter(llm_provider=llm_provider, prompt=USER_MEMORY_PROMPT)
 memories = await extractor.extract(messages)
+
+# Custom: pass your own Pydantic model for custom memory types
+extractor = LLMMemoryExtracter(
+    llm_provider=provider,
+    prompt=CUSTOM_PROMPT,
+    extraction_model=CustomExtractionResponse,  # Must have 'memories' attribute
+)
 ```
 
 ### SQLAlchemy Conflict Store

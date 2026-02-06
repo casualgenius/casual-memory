@@ -584,30 +584,36 @@ def test_memory_fact_backwards_compatibility():
         assert memory.source == source
 
 
-def test_memory_fact_extraction_custom_type():
-    """Test that MemoryFactExtraction accepts custom type strings."""
+def test_memory_fact_extraction_standard_types():
+    """Test that MemoryFactExtraction accepts standard Literal types."""
     from casual_memory.models import MemoryFactExtraction
 
-    # Standard type
-    extraction = MemoryFactExtraction(
-        text="Test memory",
-        type="fact",
-        tags=["test"],
-        importance=0.7,
-    )
-    assert extraction.type == "fact"
-
-    # Custom type
-    custom_extraction = MemoryFactExtraction(
-        text="I find this community welcoming",
-        type="impression",  # Custom type
-        tags=["community", "sentiment"],
-        importance=0.6,
-    )
-    assert custom_extraction.type == "impression"
+    for mem_type in ["fact", "preference", "event", "goal", "weather"]:
+        extraction = MemoryFactExtraction(
+            text=f"Test {mem_type}",
+            type=mem_type,
+            tags=["test"],
+            importance=0.7,
+        )
+        assert extraction.type == mem_type
 
 
-def test_memory_fact_extraction_type_validation():
+def test_memory_fact_extraction_rejects_custom_types():
+    """Test that MemoryFactExtraction rejects non-standard types (use custom extraction_model instead)."""
+    from pydantic import ValidationError
+
+    from casual_memory.models import MemoryFactExtraction
+
+    with pytest.raises(ValidationError):
+        MemoryFactExtraction(
+            text="I find this community welcoming",
+            type="impression",  # Not in Literal — should fail
+            tags=["community", "sentiment"],
+            importance=0.6,
+        )
+
+
+def test_memory_fact_extraction_rejects_empty_type():
     """Test that MemoryFactExtraction rejects empty type strings."""
     from pydantic import ValidationError
 

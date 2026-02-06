@@ -29,18 +29,16 @@ class MemoryFactExtraction(BaseModel):
             "Must be understandable without conversation context."
         ),
     )
-    type: str = Field(
+    type: Literal["fact", "preference", "event", "goal", "weather"] = Field(
         ...,
         description=(
-            "Memory category. Common types include: "
+            "Memory category: "
             "'fact' (verifiable information like name, location, job, allergies), "
             "'preference' (subjective likes/dislikes or opinions), "
             "'event' (specific occurrences with dates like appointments, trips), "
             "'goal' (intentions or tasks to accomplish like reminders, learning objectives), "
-            "'weather' (weather forecasts or conditions). "
-            "Custom types are also supported for application-specific categorization."
+            "'weather' (weather forecasts or conditions)"
         ),
-        min_length=1,
     )
     tags: list[str] = Field(
         ...,
