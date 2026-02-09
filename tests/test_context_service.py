@@ -112,7 +112,7 @@ def test_get_custom_limit(service):
 
 
 def test_get_trims_tool_boundary(service):
-    """get() trims to safe boundary when window starts at tool_result."""
+    """get() searches buffer backward when window starts at tool_result."""
     service.add(
         "user1",
         "sess1",
@@ -134,11 +134,12 @@ def test_get_trims_tool_boundary(service):
     )
 
     # limit=3 naive slice would be [tool_result, user, assistant]
+    # buffer-first: finds user("First question") backward → returns all 5
     result = service.get("user1", "sess1", limit=3)
 
     assert result[0].message.role == "user"
-    assert result[0].message.content == "Second question"
-    assert len(result) == 2
+    assert result[0].message.content == "First question"
+    assert len(result) == 5
 
 
 def test_get_no_trimming_when_already_safe(service):

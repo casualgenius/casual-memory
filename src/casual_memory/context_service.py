@@ -64,8 +64,8 @@ class ContextService:
         """Get recent messages with safe boundary trimming.
 
         Over-fetches from the store and trims the result so the first
-        message has role "user" or "system", ensuring tool-call sequences
-        are never split.
+        message has role "user", ensuring tool-call sequences are never
+        split.
 
         Args:
             user_id: The user ID
@@ -73,8 +73,9 @@ class ContextService:
             limit: Max messages to return (defaults to short_term_limit)
 
         Returns:
-            List of messages starting at a user/system boundary.
-            May return fewer than limit messages.
+            List of messages starting at a user message boundary.
+            May return more or fewer than limit messages, or an empty
+            list if no user message is found.
         """
         effective_limit = limit or self.short_term_limit
         key = self._compose_key(user_id, session_id)

@@ -151,8 +151,8 @@ class MemoryFact:
 
 **Key Responsibilities:**
 - **Session isolation** — Messages keyed by `user_id:session_id` composite key
-- **Message filtering** — System messages are filtered out on `add()`
-- **Safe boundary trimming** — `get()` ensures the returned window never starts mid-tool-call sequence
+- **Message filtering** — `add()` drops system messages; only `user`, `assistant`, and `tool` messages are persisted
+- **Safe boundary trimming** — `get()` ensures the returned window starts at a `user` message, never mid-tool-call sequence
 
 **API:**
 
@@ -181,12 +181,14 @@ When fetching the last N messages, the cut boundary can land mid-tool-call seque
 ... [user] [assistant w/ tool_calls] [tool_result] | ← cut → [tool_result] [user] ...
 ```
 
-A `tool_result` without its preceding `assistant(tool_calls)` breaks LLM APIs. `ContextService.get()` handles this by:
+A `tool_result` without its preceding `assistant(tool_calls)` breaks LLM APIs. Since `add()` drops system messages, only `user`, `assistant`, and `tool` messages exist in the store — making `user` the only safe boundary. `get()` handles this by:
 
 1. Over-fetching `limit + 10` messages from the store
 2. Finding the ideal start position (`len - limit`)
-3. If that position isn't a `user` or `system` message, scanning forward to the next one
-4. Returning the trimmed window (may be slightly fewer than `limit`)
+3. If that position is a `user` message, return from there (exactly `limit` messages)
+4. Otherwise search **backward** into the over-fetch buffer for the nearest `user` message — prefers returning slightly more than `limit` over losing messages
+5. If no `user` message exists in the buffer, search **forward** from the ideal start, trimming messages until a `user` message is found (returns fewer than `limit`)
+6. If no `user` message is found anywhere, return an **empty list** — this avoids silently returning a broken window that would cause LLM API errors
 
 This logic lives in a shared utility (`trim_to_safe_boundary` in `storage/short_term/utils.py`) and is called only from `ContextService` — keeping storage backends as simple CRUD.
 
@@ -200,7 +202,7 @@ ContextService.add(user_id, session_id, messages)
 
 ContextService.get(user_id, session_id, limit)
   1. → Over-fetch (limit + 10) from ShortTermStore
-  2. → trim_to_safe_boundary() ensures first message is user/system
+  2. → trim_to_safe_boundary() ensures first message is user
   3. → Return trimmed message list
 ```
 

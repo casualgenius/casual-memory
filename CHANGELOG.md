@@ -4,11 +4,11 @@
 
 ### Added
 
-- ContextService to use short term storage for add/get/clear 
+- ContextService to use short-term storage for add/get/clear 
 
 ### Fixed
 
-- Ensure short term memory starts with a user message to avoid broken tool call/result pairs.
+- Ensure short-term memory starts with a user message to avoid broken tool call/result pairs.
 
 ## [0.2.0] - 2026-02-06
 
