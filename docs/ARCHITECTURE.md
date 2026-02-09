@@ -33,6 +33,12 @@ casual-memory is an intelligent semantic memory library built on three core prin
 └─────────────────────────────────────────────────────────┘
                          ↓
 ┌─────────────────────────────────────────────────────────┐
+│  Service Layer                                          │
+│  ├─ MemoryService  (Long-term semantic memory)         │
+│  └─ ContextService (Short-term conversation context)   │
+└─────────────────────────────────────────────────────────┘
+                         ↓
+┌─────────────────────────────────────────────────────────┐
 │  Classification Pipeline                                │
 │  ├─ NLI Classifier (Fast pre-filter)                   │
 │  ├─ Conflict Classifier (LLM-based)                    │
@@ -137,6 +143,65 @@ class MemoryFact:
     importance: float      # 0.0-1.0 (≥0.5 threshold for storage)
     source: str            # "user" or "assistant"
     valid_until: str | None  # Temporal validity (ISO timestamp)
+```
+
+### 4. Context Service
+
+`ContextService` manages short-term conversation context — the recent messages that form the LLM's conversational window. It sits above the storage layer and handles business logic that storage backends don't need to know about.
+
+**Key Responsibilities:**
+- **Session isolation** — Messages keyed by `user_id:session_id` composite key
+- **Message filtering** — System messages are filtered out on `add()`
+- **Safe boundary trimming** — `get()` ensures the returned window never starts mid-tool-call sequence
+
+**API:**
+
+```python
+from casual_memory import ContextService
+from casual_memory.storage.short_term.memory import InMemoryShortTermStore
+
+store = InMemoryShortTermStore(max_messages=100)
+context = ContextService(short_term_store=store, short_term_limit=50)
+
+# Add messages (accepts list[ChatMessage])
+context.add("user1", "session1", messages)
+
+# Get recent messages (safe boundary guaranteed)
+messages = context.get("user1", "session1", limit=50)
+
+# Clear session
+context.clear("user1", "session1")
+```
+
+**Safe Boundary Trimming:**
+
+When fetching the last N messages, the cut boundary can land mid-tool-call sequence:
+
+```
+... [user] [assistant w/ tool_calls] [tool_result] | ← cut → [tool_result] [user] ...
+```
+
+A `tool_result` without its preceding `assistant(tool_calls)` breaks LLM APIs. `ContextService.get()` handles this by:
+
+1. Over-fetching `limit + 10` messages from the store
+2. Finding the ideal start position (`len - limit`)
+3. If that position isn't a `user` or `system` message, scanning forward to the next one
+4. Returning the trimmed window (may be slightly fewer than `limit`)
+
+This logic lives in a shared utility (`trim_to_safe_boundary` in `storage/short_term/utils.py`) and is called only from `ContextService` — keeping storage backends as simple CRUD.
+
+**Data Flow:**
+
+```
+ContextService.add(user_id, session_id, messages)
+  1. → Filter out system messages
+  2. → Wrap each ChatMessage in ShortTermMemory (with timestamp)
+  3. → Store to ShortTermStore via composed key "user_id:session_id"
+
+ContextService.get(user_id, session_id, limit)
+  1. → Over-fetch (limit + 10) from ShortTermStore
+  2. → trim_to_safe_boundary() ensures first message is user/system
+  3. → Return trimmed message list
 ```
 
 ---
