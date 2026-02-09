@@ -53,12 +53,17 @@ uv run mypy src/casual_memory/ # Type check
    - `add_memory()`: Find similar, classify, execute actions
    - `query_memory()`: Semantic search with filtering
 
-4. **Storage** ([src/casual_memory/storage/](src/casual_memory/storage/))
+4. **Context Service** ([src/casual_memory/context_service.py](src/casual_memory/context_service.py))
+   - `add()`: Store conversation messages (filters system messages)
+   - `get()`: Retrieve recent messages with safe boundary trimming
+   - `clear()`: Clear session messages
+
+5. **Storage** ([src/casual_memory/storage/](src/casual_memory/storage/))
    - Vector: `InMemoryVectorStore`, `QdrantMemoryStore`
    - Conflict: `InMemoryConflictStore`, `SQLAlchemyConflictStore`
    - Short-term: `InMemoryShortTermStore`, `RedisShortTermStore`
 
-5. **Extraction** ([src/casual_memory/extractors/](src/casual_memory/extractors/))
+6. **Extraction** ([src/casual_memory/extractors/](src/casual_memory/extractors/))
    - `LLMMemoryExtracter`: Extract facts from conversations
 
 ### Classification Flow
@@ -104,7 +109,8 @@ from casual_memory import (
     ConflictResolution,   # Resolution decision
     ShortTermMemory,      # Conversation message
     MemoryQueryFilter,    # Query filtering
-    MemoryService,        # Main entry point
+    MemoryService,        # Long-term memory service
+    ContextService,       # Short-term conversation context
 )
 
 # Classification
@@ -157,7 +163,8 @@ src/casual_memory/
 ├── embeddings/        # E5, OpenAI embeddings
 ├── execution/         # Action executor
 ├── models.py          # Core data models
-└── memory_service.py  # High-level service
+├── memory_service.py  # Long-term memory service
+└── context_service.py # Short-term context service
 ```
 
 ## Dependencies
@@ -204,6 +211,29 @@ similar = [SimilarMemory(memory_id="...", memory=MemoryFact(...), similarity_sco
 
 result = await pipeline.classify(new_memory, similar)
 print(result.overall_outcome)  # "add", "skip", or "conflict"
+```
+
+### Context Service Usage
+
+```python
+from casual_memory import ContextService
+from casual_memory.storage.short_term.memory import InMemoryShortTermStore
+from casual_llm.messages import UserMessage, AssistantMessage
+
+store = InMemoryShortTermStore(max_messages=100)
+context = ContextService(short_term_store=store, short_term_limit=50)
+
+# Add messages (system messages are filtered out automatically)
+context.add("user1", "session1", [
+    UserMessage(content="What's the weather?"),
+    AssistantMessage(content="It's sunny today!"),
+])
+
+# Get recent messages (trimmed to safe boundary — never starts mid-tool-call)
+messages = context.get("user1", "session1")
+
+# Clear a session
+context.clear("user1", "session1")
 ```
 
 ### Memory Extraction

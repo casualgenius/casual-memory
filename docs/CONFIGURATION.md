@@ -57,6 +57,12 @@ auto_resolver = AutoResolutionClassifier(
 | `top_k` | `5` | `query_memory()` | Number of results to return |
 | `min_score` | `0.75` | `query_memory()` | Min similarity score for query results |
 
+## Context Service
+
+| Parameter | Default | Location | Description |
+|-----------|---------|----------|-------------|
+| `short_term_limit` | `50` | `ContextService` | Default max messages returned by `get()` |
+
 ## Duplicate Detection
 
 | Parameter | Default | Location | Description |

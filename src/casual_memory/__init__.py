@@ -7,10 +7,12 @@ Core components:
 - extractors: Memory extraction from conversations
 - storage: Protocol abstractions for vector stores, conflict stores, etc.
 - models: Core data models (MemoryFact, MemoryConflict, etc.)
+- services: High-level service APIs (MemoryService, ContextService)
 """
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
+from casual_memory.context_service import ContextService
 from casual_memory.memory_service import MemoryService
 from casual_memory.models import (
     ConflictResolution,
@@ -32,5 +34,7 @@ __all__ = [
     "ConflictResolution",
     "ShortTermMemory",
     "MemoryQueryFilter",
+    # Services
     "MemoryService",
+    "ContextService",
 ]

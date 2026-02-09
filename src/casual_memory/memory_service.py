@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from casual_memory.classifiers import MemoryClassificationPipeline
 from casual_memory.classifiers.models import SimilarMemory
@@ -90,13 +90,16 @@ class MemoryService:
         )
 
         memories: list[MemoryFact] = []
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
 
         for result in results:
             # Filter out expired memories
             if result.payload.valid_until:
                 try:
                     valid_until = datetime.fromisoformat(result.payload.valid_until)
+                    # Normalize naive datetimes to UTC for comparison
+                    if valid_until.tzinfo is None:
+                        valid_until = valid_until.replace(tzinfo=timezone.utc)
                     if valid_until < now:
                         logger.debug(f"Skipping expired memory: {result.payload.text}")
                         continue
