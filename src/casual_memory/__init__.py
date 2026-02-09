@@ -7,6 +7,7 @@ Core components:
 - extractors: Memory extraction from conversations
 - storage: Protocol abstractions for vector stores, conflict stores, etc.
 - models: Core data models (MemoryFact, MemoryConflict, etc.)
+- services: High-level service APIs (MemoryService, ContextService)
 """
 
 __version__ = "0.2.1"

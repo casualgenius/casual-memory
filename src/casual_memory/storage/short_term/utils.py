@@ -9,7 +9,7 @@ from casual_memory.models import ShortTermMemory
 
 _SAFE_START_ROLES = {"user"}
 
-_OVERFETCH_BUFFER = 10
+OVERFETCH_BUFFER = 10
 
 
 def trim_to_safe_boundary(

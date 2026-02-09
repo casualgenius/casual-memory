@@ -5,7 +5,7 @@ from casual_llm import ChatMessage
 
 from casual_memory.models import ShortTermMemory
 from casual_memory.storage.protocols import ShortTermStore
-from casual_memory.storage.short_term.utils import _OVERFETCH_BUFFER, trim_to_safe_boundary
+from casual_memory.storage.short_term.utils import OVERFETCH_BUFFER, trim_to_safe_boundary
 
 logger = logging.getLogger(__name__)
 
@@ -77,10 +77,10 @@ class ContextService:
             May return more or fewer than limit messages, or an empty
             list if no user message is found.
         """
-        effective_limit = limit or self.short_term_limit
+        effective_limit = self.short_term_limit if limit is None else limit
         key = self._compose_key(user_id, session_id)
 
-        fetch_count = effective_limit + _OVERFETCH_BUFFER
+        fetch_count = effective_limit + OVERFETCH_BUFFER
         messages = self.short_term_store.get_recent_messages(key, fetch_count)
 
         return trim_to_safe_boundary(messages, target_limit=effective_limit)
