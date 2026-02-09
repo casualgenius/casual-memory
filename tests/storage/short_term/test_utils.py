@@ -149,13 +149,13 @@ def test_buffer_search_prefers_backward():
 def test_buffer_finds_nearest_user():
     """Backward scan finds the user closest to ideal_start in the buffer."""
     messages = [
-        _user("far_user"),       # index 0
-        _assistant("a1"),        # index 1
-        _user("near_user"),      # index 2
-        _assistant("a2"),        # index 3
-        _tool_result(),          # index 4 = ideal start for limit=3
-        _user("target_user"),    # index 5
-        _assistant("a3"),        # index 6
+        _user("far_user"),  # index 0
+        _assistant("a1"),  # index 1
+        _user("near_user"),  # index 2
+        _assistant("a2"),  # index 3
+        _tool_result(),  # index 4 = ideal start for limit=3
+        _user("target_user"),  # index 5
+        _assistant("a3"),  # index 6
     ]
     # ideal_start = 7-3 = 4 (tool_result)
     # backward: index 3 (assistant), 2 (user "near_user") → use index 2
@@ -167,11 +167,11 @@ def test_buffer_finds_nearest_user():
 def test_forward_trim_when_no_buffer_user():
     """Falls back to forward trim when buffer has no user messages."""
     messages = [
-        _assistant("buf1"),      # index 0 (buffer)
-        _tool_result(),          # index 1 (buffer)
-        _assistant("a1"),        # index 2 = ideal start for limit=3
-        _user("forward_user"),   # index 3
-        _assistant("a2"),        # index 4
+        _assistant("buf1"),  # index 0 (buffer)
+        _tool_result(),  # index 1 (buffer)
+        _assistant("a1"),  # index 2 = ideal start for limit=3
+        _user("forward_user"),  # index 3
+        _assistant("a2"),  # index 4
     ]
     # ideal_start = 5-3 = 2 (assistant)
     # backward: index 1 (tool_result), 0 (assistant) → no user in buffer
@@ -203,14 +203,14 @@ def test_overfetch_buffer_used():
 def test_real_scenario_tool_break():
     """Simulate the exact bug: limit window starts at orphaned tool result."""
     messages = [
-        _user("What's the weather?"),       # index 0
-        _assistant_with_tool_calls(),        # index 1
-        _tool_result(),                      # index 2 = ideal start for limit=6
-        _user("Thanks! And tomorrow?"),      # index 3
-        _assistant_with_tool_calls(),        # index 4
-        _tool_result(),                      # index 5
-        _user("Great, thanks!"),             # index 6
-        _assistant("You're welcome!"),       # index 7
+        _user("What's the weather?"),  # index 0
+        _assistant_with_tool_calls(),  # index 1
+        _tool_result(),  # index 2 = ideal start for limit=6
+        _user("Thanks! And tomorrow?"),  # index 3
+        _assistant_with_tool_calls(),  # index 4
+        _tool_result(),  # index 5
+        _user("Great, thanks!"),  # index 6
+        _assistant("You're welcome!"),  # index 7
     ]
     # ideal_start = 8-6 = 2 (tool_result)
     # backward: index 1 (assistant), 0 (user) → use index 0
