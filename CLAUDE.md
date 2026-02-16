@@ -117,6 +117,7 @@ These fields are set on `MemoryFact`, `MemoryConflict`, and `MemoryQueryFilter` 
 from casual_memory import (
     MemoryFact,           # Core memory unit (has namespace, entity_id fields)
     MemoryFactExtraction, # Extraction model (LLM response format)
+    MemoryBlock,          # MCP context block wrapping a list of MemoryFact
     MemoryConflict,       # Conflict tracking (has namespace, entity_id fields)
     ConflictResolution,   # Resolution decision
     ShortTermMemory,      # Conversation message
