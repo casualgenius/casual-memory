@@ -26,19 +26,19 @@ class InMemoryVectorStore:
         """Initialize storage (no-op for in-memory)."""
         pass
 
-    async def add(self, memory: MemoryFact, user_id: str) -> str:
+    async def add(self, memory: MemoryFact, entity_id: str) -> str:
         """Add memory and return ID."""
-        memory_id = f"{user_id}_mem_{self.next_id}"
+        memory_id = f"{entity_id}_mem_{self.next_id}"
         self.next_id += 1
 
-        # Store with user_id prefix for isolation
+        # Store with entity_id prefix for isolation
         memory.id = memory_id
         self.memories[memory_id] = memory
 
         return memory_id
 
     async def search(
-        self, query_text: str, user_id: str, limit: int = 5, exclude_archived: bool = True
+        self, query_text: str, entity_id: str, limit: int = 5, exclude_archived: bool = True
     ) -> List[MemoryFact]:
         """
         Simple keyword search (no embeddings).
@@ -48,8 +48,8 @@ class InMemoryVectorStore:
         results = []
 
         for memory_id, memory in self.memories.items():
-            # User isolation
-            if not memory_id.startswith(f"{user_id}_"):
+            # Entity isolation
+            if not memory_id.startswith(f"{entity_id}_"):
                 continue
 
             # Skip archived if requested
@@ -65,12 +65,12 @@ class InMemoryVectorStore:
 
         return results
 
-    async def update(self, memory_id: str, memory: MemoryFact, user_id: str):
+    async def update(self, memory_id: str, memory: MemoryFact, entity_id: str):
         """Update existing memory."""
         if memory_id in self.memories:
             self.memories[memory_id] = memory
 
-    async def archive(self, memory_id: str, user_id: str, superseded_by: Optional[str] = None):
+    async def archive(self, memory_id: str, entity_id: str, superseded_by: Optional[str] = None):
         """Soft-delete memory."""
         if memory_id in self.memories:
             self.memories[memory_id].archived = True
@@ -97,26 +97,26 @@ async def main():
         source="user",
     )
 
-    mem_id1 = await storage.add(memory1, user_id="user_123")
-    mem_id2 = await storage.add(memory2, user_id="user_123")
+    mem_id1 = await storage.add(memory1, entity_id="user-123")
+    mem_id2 = await storage.add(memory2, entity_id="user-123")
 
     print("Added 2 memories")
     print(f"  Memory 1 ID: {mem_id1}")
     print(f"  Memory 2 ID: {mem_id2}\n")
 
     # Search
-    results = await storage.search("Bangkok", user_id="user_123", limit=5)
+    results = await storage.search("Bangkok", entity_id="user-123", limit=5)
 
     print(f"Search results for 'Bangkok': {len(results)} found")
     for i, memory in enumerate(results, 1):
         print(f"  {i}. {memory.text}")
 
     # Archive one memory
-    await storage.archive(mem_id1, user_id="user_123", superseded_by=mem_id2)
+    await storage.archive(mem_id1, entity_id="user-123", superseded_by=mem_id2)
     print(f"\nArchived memory {mem_id1}")
 
     # Search again (excluding archived)
-    results = await storage.search("Bangkok", user_id="user_123", exclude_archived=True)
+    results = await storage.search("Bangkok", entity_id="user-123", exclude_archived=True)
 
     print(f"Search results after archiving: {len(results)} found")
     for i, memory in enumerate(results, 1):

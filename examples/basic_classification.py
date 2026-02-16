@@ -54,7 +54,7 @@ async def main():
         tags=["location"],
         importance=0.9,
         confidence=0.8,
-        user_id="user_123",
+        entity_id="user-123",
     )
 
     # Similar memories from vector search (these would come from your vector store)
@@ -67,7 +67,7 @@ async def main():
                 tags=["location"],
                 importance=0.8,
                 confidence=0.6,
-                user_id="user_123",
+                entity_id="user-123",
             ),
             similarity_score=0.88,
         )

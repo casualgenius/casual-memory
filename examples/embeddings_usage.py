@@ -121,7 +121,7 @@ async def example_with_vector_store():
         payload = {
             "text": doc,
             "type": "fact",
-            "user_id": "user_123",
+            "entity_id": "user-123",
             "timestamp": "2024-01-01T00:00:00Z",
         }
         memory_id = vector_store.add(
