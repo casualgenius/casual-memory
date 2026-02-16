@@ -87,23 +87,26 @@ await vector_store.archive_memory(
 # superseded_by="mem_456"
 ```
 
-## 5. Multi-User Isolation by Default
+## 5. Multi-Entity Isolation with Namespace Scoping
 
-**Why:** Built for production multi-tenant systems
+**Why:** Built for production multi-tenant systems with flexible grouping
 
-- `user_id` field in all memory structures from the start
-- All storage operations filter by `user_id`
-- Prevents data leakage between users
-- No retrofitting needed for multi-user support
+- `entity_id` and `namespace` fields in all memory structures from the start
+- All storage operations filter by both `entity_id` and `namespace`
+- **Namespaces** provide logical isolation (e.g., `"work"`, `"personal"`)
+- **Entity IDs** identify whose memories they are (e.g., a user, agent, or organization)
+- Prevents data leakage between entities and across namespaces
 
 ```python
-# Different users have separate memory spaces
-await vector_store.add(embedding, payload={"user_id": "alice", ...})
-await vector_store.add(embedding, payload={"user_id": "bob", ...})
+# Different entities have separate memory spaces
+vector_store.add(embedding, payload={"entity_id": "alice", "namespace": "default", ...})
+vector_store.add(embedding, payload={"entity_id": "bob", "namespace": "default", ...})
 
-# Searches only return user's own memories
-results = await vector_store.search(embedding, filters={"user_id": "alice"})
+# Searches scoped by entity_id and namespace
+results = vector_store.search(embedding, filters={"entity_id": "alice", "namespace": "work"})
 ```
+
+> **Deprecation note**: The `user_id` field/parameter is deprecated across all models and services. Use `entity_id` instead. Passing `user_id` still works (with a `DeprecationWarning`) during the migration period.
 
 ## 6. Async/Await Throughout
 

@@ -10,7 +10,7 @@ When a conflict is detected, you can retrieve and resolve it:
 
 ```python
 # Get pending conflicts for a user
-conflicts = await conflict_store.get_pending_conflicts(user_id="user_123")
+conflicts = await conflict_store.get_pending_conflicts(entity_id="user-123")
 
 for conflict in conflicts:
     print(f"Conflict ID: {conflict.id}")

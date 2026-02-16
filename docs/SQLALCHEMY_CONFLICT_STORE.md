@@ -46,7 +46,8 @@ store.create_tables()
 # Use the store
 conflict = MemoryConflict(
     id="conflict_123",
-    user_id="user1",
+    entity_id="user-1",
+    namespace="default",
     memory_a_id="mem_a",
     memory_b_id="mem_b",
     category="location",
@@ -131,6 +132,7 @@ def upgrade():
         'conflicts',
         sa.Column('id', sa.String, primary_key=True),
         sa.Column('user_id', sa.String, nullable=False, index=True),
+        sa.Column('namespace', sa.String, nullable=False, server_default='default'),
         sa.Column('memory_a_id', sa.String, nullable=False),
         sa.Column('memory_b_id', sa.String, nullable=False),
         sa.Column('category', sa.String, nullable=False),
@@ -147,11 +149,13 @@ def upgrade():
         sa.Column('metadata_json', sa.Text, nullable=False, default='{}'),
     )
 
-    op.create_index('idx_conflicts_user_status', 'conflicts', ['user_id', 'status'])
+    op.create_index('idx_conflicts_ns_user_status', 'conflicts', ['namespace', 'user_id', 'status'])
 
 def downgrade():
     op.drop_table('conflicts')
 ```
+
+> **Note:** The DB column is named `user_id` for migration safety. The SQLAlchemy store maps it to the domain `entity_id` field via `to_memory_conflict()`/`from_memory_conflict()` translation methods.
 
 Apply migrations:
 ```bash
@@ -164,11 +168,12 @@ The `SQLAlchemyConflictStore` implements the `ConflictStore` protocol with these
 
 - `add_conflict(conflict: MemoryConflict) -> str` - Store a new conflict
 - `get_conflict(conflict_id: str) -> Optional[MemoryConflict]` - Retrieve by ID
-- `get_pending_conflicts(user_id: str, limit: Optional[int] = None) -> List[MemoryConflict]` - Get pending conflicts
+- `get_pending_conflicts(entity_id: str, namespace: str = "default", limit: Optional[int] = None) -> list[MemoryConflict]` - Get pending conflicts
 - `resolve_conflict(conflict_id: str, resolution: ConflictResolution) -> bool` - Resolve a conflict
-- `get_conflict_count(user_id: str, status: Optional[str] = None) -> int` - Count conflicts
+- `get_conflict_count(entity_id: str, namespace: str = "default", status: str | None = None) -> int` - Count conflicts
 - `escalate_conflict(conflict_id: str) -> bool` - Escalate unresolvable conflicts
-- `clear_user_conflicts(user_id: str, status: Optional[str] = None) -> int` - Clear conflicts
+- `clear_conflicts(entity_id: str, namespace: str = "default", status: str | None = None) -> int` - Clear conflicts
+- `clear_user_conflicts(user_id: str, status: str | None = None) -> int` - **Deprecated**: Use `clear_conflicts()` instead
 
 ## Database Schema
 
@@ -177,13 +182,14 @@ The conflicts table schema:
 | Column | Type | Description |
 |--------|------|-------------|
 | id | VARCHAR(PK) | Unique conflict identifier |
-| user_id | VARCHAR(indexed) | User this conflict belongs to |
+| user_id | VARCHAR | Entity ID (column named `user_id` for migration compat; maps to domain `entity_id`) |
+| namespace | VARCHAR | Namespace for conflict isolation (default: `"default"`) |
 | memory_a_id | VARCHAR | ID of first conflicting memory |
 | memory_b_id | VARCHAR | ID of second conflicting memory |
 | category | VARCHAR | Conflict category (location, job, etc.) |
 | is_singleton_category | BOOLEAN | Whether only one memory allowed |
 | similarity_score | FLOAT | Vector similarity score (0.0-1.0) |
-| status | VARCHAR(indexed) | Status: pending/resolved/escalated |
+| status | VARCHAR | Status: pending/resolved/escalated |
 | avg_importance | FLOAT | Average importance (0.0-1.0) |
 | clarification_hint | TEXT | Suggested clarification question |
 | resolution_type | VARCHAR | How resolved: manual/automated/conversational |
@@ -192,6 +198,9 @@ The conflicts table schema:
 | created_at | DATETIME | When conflict was detected |
 | resolved_at | DATETIME | When conflict was resolved |
 | metadata_json | TEXT | Additional metadata (JSON) |
+
+**Indexes:**
+- `idx_conflicts_ns_user_status` — Compound index on `(namespace, user_id, status)` for efficient scoped queries
 
 ## Performance Considerations
 
@@ -211,9 +220,7 @@ engine = create_engine(
 ### Query Optimization
 
 The store automatically creates indexes for:
-- `user_id` - Fast user-specific queries
-- `status` - Fast status filtering
-- `(user_id, status)` - Composite index for combined queries
+- `(namespace, user_id, status)` - Compound index for namespace-scoped entity queries
 
 ### Transaction Management
 

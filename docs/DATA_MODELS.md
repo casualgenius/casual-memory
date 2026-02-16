@@ -17,7 +17,8 @@ class MemoryFact(BaseModel):
     tags: list[str]             # Semantic tags for filtering
     importance: float           # 0.0-1.0 (≥0.5 threshold for storage)
     confidence: float = 0.5     # Calculated confidence score
-    user_id: Optional[str]      # User this memory belongs to
+    entity_id: Optional[str]    # Entity this memory belongs to (e.g., user ID)
+    namespace: str = "default"  # Namespace for memory isolation
     mention_count: int = 1      # How many times mentioned
     first_seen: Optional[str]   # ISO timestamp of first mention
     last_seen: Optional[str]    # ISO timestamp of last mention
@@ -27,6 +28,8 @@ class MemoryFact(BaseModel):
     archived_at: Optional[str]  # When archived
     superseded_by: Optional[str] # ID of memory that replaced this one
 ```
+
+> **Note:** `user_id` is accepted as a deprecated alias for `entity_id` (emits `DeprecationWarning`).
 
 **Memory Types:**
 - `fact` - Factual information (name, location, job, etc.)
@@ -53,7 +56,8 @@ Tracks contradictory memories pending resolution.
 ```python
 class MemoryConflict(BaseModel):
     id: str                     # Unique conflict identifier
-    user_id: str                # User this conflict belongs to
+    entity_id: str              # Entity this conflict belongs to
+    namespace: str = "default"  # Namespace for conflict isolation
     memory_a_id: str            # ID of first conflicting memory
     memory_b_id: str            # ID of second conflicting memory
     category: str               # "location", "job", "preference", "temporal", "factual"
@@ -103,7 +107,8 @@ class MemoryQueryFilter(BaseModel):
     type: Optional[list[str]] = None      # Filter by memory types
     tags: Optional[list[str]] = None      # Filter by tags
     min_importance: Optional[float] = None # Minimum importance
-    user_id: Optional[str] = None          # Filter by user
+    entity_id: Optional[str] = None        # Filter by entity
+    namespace: Optional[str] = None        # Filter by namespace
     exclude_archived: bool = True          # Exclude archived memories
 ```
 

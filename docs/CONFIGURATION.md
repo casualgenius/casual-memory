@@ -63,6 +63,17 @@ auto_resolver = AutoResolutionClassifier(
 |-----------|---------|----------|-------------|
 | `short_term_limit` | `50` | `ContextService` | Default max messages returned by `get()` |
 
+## Namespace & Entity Isolation
+
+| Parameter | Default | Location | Description |
+|-----------|---------|----------|-------------|
+| `namespace` | `"default"` | Models, service methods | Logical namespace for memory isolation (e.g., `"work"`, `"personal"`) |
+| `entity_id` | `None` | Models, service methods | Entity identifier for multi-entity isolation (e.g., user ID) |
+
+All memory operations (add, query, conflict tracking, short-term context) are scoped by `namespace` and `entity_id`. These fields appear on `MemoryFact`, `MemoryConflict`, and `MemoryQueryFilter` models, and are passed as parameters to `ContextService` methods.
+
+> **Deprecation note**: The `user_id` parameter/field is deprecated across all models and services. Use `entity_id` instead. Passing `user_id` still works (with a `DeprecationWarning`).
+
 ## Duplicate Detection
 
 | Parameter | Default | Location | Description |
