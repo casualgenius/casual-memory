@@ -77,7 +77,7 @@ def test_sqlalchemy_list_pending_conflicts(skip_if_no_postgres):
             storage.add_conflict(conflict)
 
         # List pending conflicts
-        pending = storage.get_pending_conflicts(user_id="test_user")
+        pending = storage.get_pending_conflicts("test_user")
 
         assert len(pending) == 3
         assert all(c.status == "pending" for c in pending)
@@ -175,8 +175,8 @@ def test_sqlalchemy_user_isolation(skip_if_no_postgres):
         storage.add_conflict(conflict2)
 
         # List conflicts for each user
-        user1_conflicts = storage.get_pending_conflicts(user_id="user_1")
-        user2_conflicts = storage.get_pending_conflicts(user_id="user_2")
+        user1_conflicts = storage.get_pending_conflicts("user_1")
+        user2_conflicts = storage.get_pending_conflicts("user_2")
 
         # Each user should only see their own conflicts
         assert len(user1_conflicts) == 1
@@ -219,7 +219,7 @@ def test_sqlalchemy_count_conflicts(skip_if_no_postgres):
             storage.add_conflict(conflict)
 
         # Count conflicts
-        count = storage.get_conflict_count(user_id="test_user", status="pending")
+        count = storage.get_conflict_count("test_user", status="pending")
         assert count == 3
 
     finally:

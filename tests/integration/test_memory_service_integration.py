@@ -672,7 +672,7 @@ async def test_add_conflicting_memory_creates_conflict(
     assert result2.memory_id is None
 
     # Verify conflict is stored
-    conflicts = conflict_store.get_pending_conflicts(user_id="user_123")
+    conflicts = conflict_store.get_pending_conflicts("user_123")
     assert len(conflicts) == 1
     assert conflicts[0].category == "location"
 
@@ -928,5 +928,5 @@ async def test_complex_scenario_multiple_memories(memory_service, vector_store, 
     assert len(all_memories) >= 2
 
     # Should have conflict record
-    conflicts = conflict_store.get_pending_conflicts(user_id=user_id)
+    conflicts = conflict_store.get_pending_conflicts(user_id)
     assert len(conflicts) == 1

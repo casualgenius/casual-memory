@@ -7,9 +7,10 @@ for multi-tenant deployments.
 """
 
 import logging
+import warnings
 from contextlib import contextmanager
 from datetime import datetime
-from typing import Any, Generator, Optional, Type
+from typing import Any, Generator, Type
 
 from sqlalchemy import (
     JSON,
@@ -32,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 
 def create_conflict_model(
-    schema: Optional[str] = None,
+    schema: str | None = None,
 ) -> tuple[Any, Type["ConflictDBBase"]]:
     """
     Factory function to create ConflictDB model with optional schema.
@@ -54,7 +55,8 @@ def create_conflict_model(
         # Primary key
         id = Column(String, primary_key=True)
 
-        # Conflict details
+        # Namespace and entity identification
+        namespace = Column(String, nullable=False, default="default")
         user_id = Column(String, nullable=False, index=True)
         memory_a_id = Column(String, nullable=False)
         memory_b_id = Column(String, nullable=False)
@@ -81,7 +83,7 @@ def create_conflict_model(
 
         # Indexes
         __table_args__ = (
-            Index("idx_conflicts_user_status", "user_id", "status"),
+            Index("idx_conflicts_namespace_entity_status", "namespace", "user_id", "status"),
             {"schema": schema} if schema else {},
         )
 
@@ -89,6 +91,7 @@ def create_conflict_model(
             """Convert database model to MemoryConflict."""
             return MemoryConflict(
                 id=self.id,  # type: ignore[arg-type]
+                namespace=self.namespace or "default",  # type: ignore[arg-type]
                 entity_id=self.user_id,  # type: ignore[arg-type]
                 memory_a_id=self.memory_a_id,  # type: ignore[arg-type]
                 memory_b_id=self.memory_b_id,  # type: ignore[arg-type]
@@ -111,6 +114,7 @@ def create_conflict_model(
             """Create database model from MemoryConflict."""
             return cls(
                 id=conflict.id,
+                namespace=conflict.namespace,
                 user_id=conflict.entity_id,
                 memory_a_id=conflict.memory_a_id,
                 memory_b_id=conflict.memory_b_id,
@@ -136,6 +140,7 @@ class ConflictDBBase:
     """Type stub for ConflictDB instances."""
 
     id: str
+    namespace: str
     user_id: str
     memory_a_id: str
     memory_b_id: str
@@ -144,12 +149,12 @@ class ConflictDBBase:
     similarity_score: float
     status: str
     avg_importance: float
-    clarification_hint: Optional[str]
-    resolution_type: Optional[str]
-    winning_memory_id: Optional[str]
+    clarification_hint: str | None
+    resolution_type: str | None
+    winning_memory_id: str | None
     resolution_attempts: int
     created_at: datetime
-    resolved_at: Optional[datetime]
+    resolved_at: datetime | None
     conflict_metadata: dict[str, Any]
 
     def to_memory_conflict(self) -> MemoryConflict:
@@ -183,7 +188,7 @@ class SQLAlchemyConflictStore:
         store.create_tables()
     """
 
-    def __init__(self, engine: Engine, schema: Optional[str] = None):
+    def __init__(self, engine: Engine, schema: str | None = None):
         """
         Initialize the SQLAlchemy conflict store.
 
@@ -223,13 +228,14 @@ class SQLAlchemyConflictStore:
             session.add(db_conflict)
 
             logger.info(
-                f"Stored conflict {conflict.id} for user {conflict.entity_id}: "
+                f"Stored conflict {conflict.id} for entity {conflict.entity_id} "
+                f"in namespace {conflict.namespace}: "
                 f"{conflict.category} ({conflict.status})"
             )
 
             return conflict.id
 
-    def get_conflict(self, conflict_id: str) -> Optional[MemoryConflict]:
+    def get_conflict(self, conflict_id: str) -> MemoryConflict | None:
         """Retrieve a conflict by ID."""
         with self._session() as session:
             db_conflict = (
@@ -244,14 +250,15 @@ class SQLAlchemyConflictStore:
             return db_conflict.to_memory_conflict()
 
     def get_pending_conflicts(
-        self, user_id: str, limit: Optional[int] = None
+        self, entity_id: str, namespace: str = "default", limit: int | None = None
     ) -> list[MemoryConflict]:
-        """Get all pending conflicts for a user."""
+        """Get all pending conflicts for an entity within a namespace."""
         with self._session() as session:
             query = (
                 session.query(self._conflict_db)
                 .filter(
-                    self._conflict_db.user_id == user_id,  # type: ignore[arg-type]
+                    self._conflict_db.namespace == namespace,  # type: ignore[arg-type]
+                    self._conflict_db.user_id == entity_id,  # type: ignore[arg-type]
                     self._conflict_db.status == "pending",  # type: ignore[arg-type]
                 )
                 .order_by(self._conflict_db.avg_importance.desc())  # type: ignore[attr-defined]
@@ -308,11 +315,14 @@ class SQLAlchemyConflictStore:
 
             return True
 
-    def get_conflict_count(self, user_id: str, status: Optional[str] = None) -> int:
-        """Count conflicts for a user."""
+    def get_conflict_count(
+        self, entity_id: str, namespace: str = "default", status: str | None = None
+    ) -> int:
+        """Count conflicts for an entity within a namespace."""
         with self._session() as session:
             query = session.query(self._conflict_db).filter(
-                self._conflict_db.user_id == user_id  # type: ignore[arg-type]
+                self._conflict_db.namespace == namespace,  # type: ignore[arg-type]
+                self._conflict_db.user_id == entity_id,  # type: ignore[arg-type]
             )
 
             if status:
@@ -342,8 +352,38 @@ class SQLAlchemyConflictStore:
 
             return True
 
-    def clear_user_conflicts(self, user_id: str, status: Optional[str] = None) -> int:
-        """Clear conflicts for a user."""
+    def clear_conflicts(
+        self, entity_id: str, namespace: str = "default", status: str | None = None
+    ) -> int:
+        """Clear conflicts for an entity within a namespace."""
+        with self._session() as session:
+            query = session.query(self._conflict_db).filter(
+                self._conflict_db.namespace == namespace,  # type: ignore[arg-type]
+                self._conflict_db.user_id == entity_id,  # type: ignore[arg-type]
+            )
+
+            if status:
+                query = query.filter(self._conflict_db.status == status)  # type: ignore[arg-type]
+
+            count = query.delete()
+
+            logger.info(
+                f"Cleared {count} conflicts for entity {entity_id} "
+                f"in namespace {namespace} (status={status or 'all'})"
+            )
+
+            return count
+
+    def clear_user_conflicts(self, user_id: str, status: str | None = None) -> int:
+        """Deprecated: Use clear_conflicts() instead.
+
+        Clear conflicts for a user across all namespaces.
+        """
+        warnings.warn(
+            "clear_user_conflicts() is deprecated, use clear_conflicts() instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         with self._session() as session:
             query = session.query(self._conflict_db).filter(
                 self._conflict_db.user_id == user_id  # type: ignore[arg-type]

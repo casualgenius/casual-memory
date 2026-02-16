@@ -185,13 +185,14 @@ class ConflictStore(Protocol):
         ...
 
     def get_pending_conflicts(
-        self, user_id: str, limit: Optional[int] = None
+        self, entity_id: str, namespace: str = "default", limit: Optional[int] = None
     ) -> list[MemoryConflict]:
         """
-        Get all pending conflicts for a user.
+        Get all pending conflicts for an entity within a namespace.
 
         Args:
-            user_id: The user ID
+            entity_id: The entity ID
+            namespace: Namespace for conflict isolation (default: "default")
             limit: Maximum number of conflicts to return
 
         Returns:
@@ -212,12 +213,15 @@ class ConflictStore(Protocol):
         """
         ...
 
-    def get_conflict_count(self, user_id: str, status: Optional[str] = None) -> int:
+    def get_conflict_count(
+        self, entity_id: str, namespace: str = "default", status: str | None = None
+    ) -> int:
         """
-        Count conflicts for a user.
+        Count conflicts for an entity within a namespace.
 
         Args:
-            user_id: The user ID
+            entity_id: The entity ID
+            namespace: Namespace for conflict isolation (default: "default")
             status: Optional status filter ("pending", "resolved", "escalated")
 
         Returns:
@@ -237,9 +241,27 @@ class ConflictStore(Protocol):
         """
         ...
 
-    def clear_user_conflicts(self, user_id: str, status: Optional[str] = None) -> int:
+    def clear_conflicts(
+        self, entity_id: str, namespace: str = "default", status: str | None = None
+    ) -> int:
         """
-        Clear conflicts for a user.
+        Clear conflicts for an entity within a namespace.
+
+        Args:
+            entity_id: The entity ID
+            namespace: Namespace for conflict isolation (default: "default")
+            status: Optional status filter (only clear conflicts with this status)
+
+        Returns:
+            Number of conflicts cleared
+        """
+        ...
+
+    def clear_user_conflicts(self, user_id: str, status: str | None = None) -> int:
+        """
+        Deprecated: Use clear_conflicts() instead.
+
+        Clear conflicts for a user across all namespaces.
 
         Args:
             user_id: The user ID
