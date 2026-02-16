@@ -9,21 +9,26 @@ This document covers common usage scenarios and troubleshooting tips.
 When a conflict is detected, you can retrieve and resolve it:
 
 ```python
-# Get pending conflicts for a user
-conflicts = await conflict_store.get_pending_conflicts(user_id="user_123")
+# Get pending conflicts for an entity
+conflicts = await conflict_store.get_pending_conflicts(entity_id="user-123", namespace="default")
 
 for conflict in conflicts:
     print(f"Conflict ID: {conflict.id}")
     print(f"Category: {conflict.category}")  # location, job, preference, temporal, factual
-    print(f"Memory A: {conflict.memory_a.text}")
-    print(f"Memory B: {conflict.memory_b.text}")
+    print(f"Memory A ID: {conflict.memory_a_id}")
+    print(f"Memory B ID: {conflict.memory_b_id}")
     print(f"Hints: {conflict.clarification_hint}")
 
-    # Resolve the conflict
+    # Memory texts are stored in conflict metadata by the action executor
+    print(f"Memory A text: {conflict.metadata.get('memory_a_text')}")
+    print(f"Memory B text: {conflict.metadata.get('memory_b_text')}")
+
+    # Resolve the conflict - you need to fetch/construct the winning MemoryFact
+    winning_memory = MemoryFact(...)  # The memory to keep
     resolution = ConflictResolution(
         conflict_id=conflict.id,
-        decision="keep_b",  # or "keep_a", "merge", "both_valid"
-        resolved_memory=conflict.memory_b,  # the chosen memory
+        decision="keep_a",  # or "keep_b", "merge", "both_valid"
+        resolved_memory=winning_memory,
     )
     await conflict_store.resolve_conflict(conflict.id, resolution)
 ```

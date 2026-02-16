@@ -26,7 +26,8 @@ class VectorMemoryStore(Protocol):
 
         Args:
             vector: The embedding vector for the memory
-            payload: Dictionary of memory fields (should match MemoryFact structure)
+            payload: Dictionary of memory fields (should match MemoryFact structure).
+                     Should include 'namespace' and 'entity_id' keys for isolation.
 
         Returns:
             The generated memory ID
@@ -47,7 +48,12 @@ class VectorMemoryStore(Protocol):
             query_embedding: The query embedding vector
             top_k: Maximum number of results to return
             min_score: Minimum similarity score (0.0-1.0)
-            filters: Optional filters (implementation-specific)
+            filters: Optional filters dict. Supported keys:
+                     - 'entity_id': Filter by entity ID (replaces deprecated 'user_id')
+                     - 'namespace': Filter by namespace
+                     - 'type': Filter by memory type (str or list[str])
+                     - 'min_importance': Filter by minimum importance
+                     - 'user_id': Deprecated, use 'entity_id' instead
 
         Returns:
             List of memory points matching the query
@@ -57,8 +63,9 @@ class VectorMemoryStore(Protocol):
     def find_similar_memories(
         self,
         embedding: list[float],
-        user_id: Optional[str] = None,
-        threshold: Optional[float] = None,
+        entity_id: str | None = None,
+        namespace: str = "default",
+        threshold: float | None = None,
         limit: int = 5,
         exclude_archived: bool = True,
     ) -> list[tuple[Any, float]]:
@@ -67,7 +74,8 @@ class VectorMemoryStore(Protocol):
 
         Args:
             embedding: The embedding vector to search for
-            user_id: Filter by user ID (for multi-user isolation)
+            entity_id: Filter by entity ID (for multi-entity isolation)
+            namespace: Namespace for memory isolation (default: "default")
             threshold: Similarity threshold (0.0-1.0)
             limit: Maximum number of results to return
             exclude_archived: Whether to exclude archived memories
@@ -115,9 +123,24 @@ class VectorMemoryStore(Protocol):
         """
         ...
 
+    def clear_memories(self, entity_id: str, namespace: str = "default") -> int:
+        """
+        Clear all memories for a specific entity within a namespace.
+
+        Args:
+            entity_id: The ID of the entity whose memories to clear
+            namespace: Namespace to clear within (default: "default")
+
+        Returns:
+            Number of memories deleted
+        """
+        ...
+
     def clear_user_memories(self, user_id: str) -> int:
         """
-        Clear all memories for a specific user.
+        Deprecated: Use clear_memories() instead.
+
+        Clear all memories for a specific user across all namespaces.
 
         Args:
             user_id: The ID of the user whose memories to clear
@@ -162,13 +185,14 @@ class ConflictStore(Protocol):
         ...
 
     def get_pending_conflicts(
-        self, user_id: str, limit: Optional[int] = None
+        self, entity_id: str, namespace: str = "default", limit: Optional[int] = None
     ) -> list[MemoryConflict]:
         """
-        Get all pending conflicts for a user.
+        Get all pending conflicts for an entity within a namespace.
 
         Args:
-            user_id: The user ID
+            entity_id: The entity ID
+            namespace: Namespace for conflict isolation (default: "default")
             limit: Maximum number of conflicts to return
 
         Returns:
@@ -189,12 +213,15 @@ class ConflictStore(Protocol):
         """
         ...
 
-    def get_conflict_count(self, user_id: str, status: Optional[str] = None) -> int:
+    def get_conflict_count(
+        self, entity_id: str, namespace: str = "default", status: str | None = None
+    ) -> int:
         """
-        Count conflicts for a user.
+        Count conflicts for an entity within a namespace.
 
         Args:
-            user_id: The user ID
+            entity_id: The entity ID
+            namespace: Namespace for conflict isolation (default: "default")
             status: Optional status filter ("pending", "resolved", "escalated")
 
         Returns:
@@ -214,9 +241,27 @@ class ConflictStore(Protocol):
         """
         ...
 
-    def clear_user_conflicts(self, user_id: str, status: Optional[str] = None) -> int:
+    def clear_conflicts(
+        self, entity_id: str, namespace: str = "default", status: str | None = None
+    ) -> int:
         """
-        Clear conflicts for a user.
+        Clear conflicts for an entity within a namespace.
+
+        Args:
+            entity_id: The entity ID
+            namespace: Namespace for conflict isolation (default: "default")
+            status: Optional status filter (only clear conflicts with this status)
+
+        Returns:
+            Number of conflicts cleared
+        """
+        ...
+
+    def clear_user_conflicts(self, user_id: str, status: str | None = None) -> int:
+        """
+        Deprecated: Use clear_conflicts() instead.
+
+        Clear conflicts for a user across all namespaces.
 
         Args:
             user_id: The user ID
@@ -234,38 +279,60 @@ class ShortTermStore(Protocol):
 
     Implementations should provide fast access to recent conversation messages.
     This is typically backed by Redis for production or in-memory for testing.
-    Stores the last N messages per user for immediate conversational context.
+    Stores the last N messages per entity within a namespace for immediate
+    conversational context.
     """
 
-    def add_messages(self, user_id: str, messages: list[ShortTermMemory]) -> int:
+    def add_messages(
+        self, entity_id: str, messages: list[ShortTermMemory], namespace: str = "default"
+    ) -> int:
         """
         Add messages to short-term storage.
 
         Args:
-            user_id: The user ID
+            entity_id: The entity ID (e.g., composed user_id:session_id from ContextService)
             messages: List of messages to add
+            namespace: Namespace for message isolation (default: "default")
 
         Returns:
             Number of messages added
         """
         ...
 
-    def get_recent_messages(self, user_id: str, limit: int = 20) -> list[ShortTermMemory]:
+    def get_recent_messages(
+        self, entity_id: str, limit: int = 20, namespace: str = "default"
+    ) -> list[ShortTermMemory]:
         """
-        Get recent messages for a user.
+        Get recent messages for an entity.
 
         Args:
-            user_id: The user ID
+            entity_id: The entity ID
             limit: Maximum number of messages to return (default: 20)
+            namespace: Namespace for message isolation (default: "default")
 
         Returns:
             List of recent messages, ordered by timestamp (oldest first)
         """
         ...
 
+    def clear_messages(self, entity_id: str, namespace: str = "default") -> int:
+        """
+        Clear all messages for an entity within a namespace.
+
+        Args:
+            entity_id: The entity ID
+            namespace: Namespace for message isolation (default: "default")
+
+        Returns:
+            Number of messages deleted
+        """
+        ...
+
     def clear_user_messages(self, user_id: str) -> int:
         """
-        Clear all messages for a user.
+        Deprecated: Use clear_messages() instead.
+
+        Clear all messages for a user across all namespaces.
 
         Args:
             user_id: The user ID
@@ -275,12 +342,13 @@ class ShortTermStore(Protocol):
         """
         ...
 
-    def get_message_count(self, user_id: str) -> int:
+    def get_message_count(self, entity_id: str, namespace: str = "default") -> int:
         """
-        Get the number of messages stored for a user.
+        Get the number of messages stored for an entity.
 
         Args:
-            user_id: The user ID
+            entity_id: The entity ID
+            namespace: Namespace for message isolation (default: "default")
 
         Returns:
             Number of messages

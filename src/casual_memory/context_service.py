@@ -1,4 +1,5 @@
 import logging
+import warnings
 from datetime import datetime
 
 from casual_llm import ChatMessage
@@ -25,12 +26,18 @@ class ContextService:
         self.short_term_store = short_term_store
         self.short_term_limit = short_term_limit
 
-    def _compose_key(self, user_id: str, session_id: str) -> str:
-        """Compose a storage key from user_id and session_id."""
-        return f"{user_id}:{session_id}"
+    def _compose_key(self, entity_id: str, session_id: str) -> str:
+        """Compose a storage key from entity_id and session_id."""
+        return f"{entity_id}:{session_id}"
 
     def add(
-        self, user_id: str, session_id: str, messages: list[ChatMessage]
+        self,
+        entity_id: str | None = None,
+        session_id: str | None = None,
+        messages: list[ChatMessage] | None = None,
+        namespace: str = "default",
+        *,
+        user_id: str | None = None,
     ) -> list[ShortTermMemory]:
         """Add ChatMessages to short-term storage.
 
@@ -38,14 +45,24 @@ class ContextService:
         ShortTermMemory with a timestamp before storage.
 
         Args:
-            user_id: The user ID
+            entity_id: The entity ID (or user ID for backward compatibility).
+                Previously named ``user_id``; callers may still pass
+                ``user_id`` as a keyword argument.
             session_id: The session ID
             messages: List of ChatMessages to store
+            namespace: Namespace for message isolation (default: "default")
+            user_id: Deprecated. Use entity_id instead.
 
         Returns:
             List of ShortTermMemory objects that were stored.
         """
-        memories = []
+        entity_id = self._resolve_entity_id(entity_id, user_id)
+        if session_id is None:
+            raise TypeError("add() missing required argument: 'session_id'")
+        if messages is None:
+            raise TypeError("add() missing required argument: 'messages'")
+
+        memories: list[ShortTermMemory] = []
         for message in messages:
             if message.role not in ("user", "assistant", "tool"):
                 logger.debug(f"Skipping message with role '{message.role}'")
@@ -54,13 +71,21 @@ class ContextService:
             memories.append(memory)
 
         if memories:
-            key = self._compose_key(user_id, session_id)
-            self.short_term_store.add_messages(key, memories)
+            key = self._compose_key(entity_id, session_id)
+            self.short_term_store.add_messages(key, memories, namespace=namespace)
             logger.info(f"Saved {len(memories)} messages to short-term store")
 
         return memories
 
-    def get(self, user_id: str, session_id: str, limit: int | None = None) -> list[ShortTermMemory]:
+    def get(
+        self,
+        entity_id: str | None = None,
+        session_id: str | None = None,
+        limit: int | None = None,
+        namespace: str = "default",
+        *,
+        user_id: str | None = None,
+    ) -> list[ShortTermMemory]:
         """Get recent messages with safe boundary trimming.
 
         Over-fetches from the store and trims the result so the first
@@ -68,32 +93,84 @@ class ContextService:
         split.
 
         Args:
-            user_id: The user ID
+            entity_id: The entity ID (or user ID for backward compatibility).
+                Previously named ``user_id``; callers may still pass
+                ``user_id`` as a keyword argument.
             session_id: The session ID
             limit: Max messages to return (defaults to short_term_limit)
+            namespace: Namespace for message isolation (default: "default")
+            user_id: Deprecated. Use entity_id instead.
 
         Returns:
             List of messages starting at a user message boundary.
             May return more or fewer than limit messages, or an empty
             list if no user message is found.
         """
+        entity_id = self._resolve_entity_id(entity_id, user_id)
+        if session_id is None:
+            raise TypeError("get() missing required argument: 'session_id'")
+
         effective_limit = self.short_term_limit if limit is None else limit
-        key = self._compose_key(user_id, session_id)
+        key = self._compose_key(entity_id, session_id)
 
         fetch_count = effective_limit + OVERFETCH_BUFFER
-        messages = self.short_term_store.get_recent_messages(key, fetch_count)
+        messages = self.short_term_store.get_recent_messages(key, fetch_count, namespace=namespace)
 
         return trim_to_safe_boundary(messages, target_limit=effective_limit)
 
-    def clear(self, user_id: str, session_id: str) -> int:
+    def clear(
+        self,
+        entity_id: str | None = None,
+        session_id: str | None = None,
+        namespace: str = "default",
+        *,
+        user_id: str | None = None,
+    ) -> int:
         """Clear all messages for a session.
 
         Args:
-            user_id: The user ID
+            entity_id: The entity ID (or user ID for backward compatibility).
+                Previously named ``user_id``; callers may still pass
+                ``user_id`` as a keyword argument.
             session_id: The session ID
+            namespace: Namespace for message isolation (default: "default")
+            user_id: Deprecated. Use entity_id instead.
 
         Returns:
             Number of messages deleted.
         """
-        key = self._compose_key(user_id, session_id)
-        return self.short_term_store.clear_user_messages(key)
+        entity_id = self._resolve_entity_id(entity_id, user_id)
+        if session_id is None:
+            raise TypeError("clear() missing required argument: 'session_id'")
+
+        key = self._compose_key(entity_id, session_id)
+        return self.short_term_store.clear_messages(key, namespace=namespace)
+
+    @staticmethod
+    def _resolve_entity_id(entity_id: str | None, user_id: str | None) -> str:
+        """Resolve entity_id from positional arg and deprecated user_id kwarg.
+
+        Supports three calling patterns:
+        1. ``service.add("eid", ...)`` -- new style, entity_id positional
+        2. ``service.add(user_id="uid", ...)`` -- old keyword style, mapped
+           to entity_id with deprecation warning
+        3. ``service.add("eid", ..., user_id="uid")`` -- both provided,
+           entity_id takes precedence, deprecation warning emitted
+
+        Raises:
+            TypeError: If neither entity_id nor user_id is provided.
+        """
+        if user_id is not None:
+            warnings.warn(
+                "ContextService user_id parameter is deprecated, use entity_id instead.",
+                DeprecationWarning,
+                stacklevel=3,
+            )
+            if entity_id is None:
+                # Old-style keyword call: service.add(user_id="uid", ...)
+                return user_id
+            # Both provided: entity_id takes precedence, user_id is ignored
+            # (deprecation warning already emitted above)
+        if entity_id is None:
+            raise TypeError("Missing required argument: 'entity_id' (or deprecated 'user_id')")
+        return entity_id

@@ -103,7 +103,7 @@ async def example_1_basic_classification():
         tags=["location"],
         importance=0.8,
         confidence=0.9,  # High confidence
-        user_id="user_123",
+        entity_id="user-123",
     )
 
     # Similar memories from vector search
@@ -116,7 +116,7 @@ async def example_1_basic_classification():
                 tags=["location"],
                 importance=0.8,
                 confidence=0.6,  # Lower confidence
-                user_id="user_123",
+                entity_id="user-123",
             ),
             similarity_score=0.92,  # High similarity
         ),
@@ -128,7 +128,7 @@ async def example_1_basic_classification():
                 tags=["location", "work"],
                 importance=0.7,
                 confidence=0.8,
-                user_id="user_123",
+                entity_id="user-123",
             ),
             similarity_score=0.88,  # Medium-high similarity
         ),
@@ -187,7 +187,7 @@ async def example_2_auto_resolution():
         tags=["location"],
         importance=0.8,
         confidence=0.9,  # Very high confidence
-        user_id="user_123",
+        entity_id="user-123",
     )
 
     similar_low = SimilarMemory(
@@ -198,7 +198,7 @@ async def example_2_auto_resolution():
             tags=["location"],
             importance=0.8,
             confidence=0.5,  # Low confidence
-            user_id="user_123",
+            entity_id="user-123",
         ),
         similarity_score=0.91,
     )
@@ -220,7 +220,7 @@ async def example_2_auto_resolution():
         tags=["location"],
         importance=0.8,
         confidence=0.4,  # Low confidence
-        user_id="user_123",
+        entity_id="user-123",
     )
 
     similar_high = SimilarMemory(
@@ -231,7 +231,7 @@ async def example_2_auto_resolution():
             tags=["location"],
             importance=0.8,
             confidence=0.9,  # Very high confidence
-            user_id="user_123",
+            entity_id="user-123",
         ),
         similarity_score=0.90,
     )
@@ -253,7 +253,7 @@ async def example_2_auto_resolution():
         tags=["location"],
         importance=0.8,
         confidence=0.8,  # Medium confidence
-        user_id="user_123",
+        entity_id="user-123",
     )
 
     similar_mid = SimilarMemory(
@@ -264,7 +264,7 @@ async def example_2_auto_resolution():
             tags=["location"],
             importance=0.8,
             confidence=0.8,  # Same confidence
-            user_id="user_123",
+            entity_id="user-123",
         ),
         similarity_score=0.89,
     )
@@ -301,7 +301,7 @@ async def example_3_custom_pipeline():
         tags=["job"],
         importance=0.7,
         confidence=0.8,
-        user_id="user_123",
+        entity_id="user-123",
     )
 
     similar_memories = [
@@ -313,7 +313,7 @@ async def example_3_custom_pipeline():
                 tags=["job"],
                 importance=0.7,
                 confidence=0.8,
-                user_id="user_123",
+                entity_id="user-123",
             ),
             similarity_score=0.88,
         ),
@@ -325,7 +325,7 @@ async def example_3_custom_pipeline():
                 tags=["job"],
                 importance=0.5,
                 confidence=0.7,
-                user_id="user_123",
+                entity_id="user-123",
             ),
             similarity_score=0.82,
         ),
@@ -357,7 +357,7 @@ async def example_4_strategy_comparison():
         tags=["hobby"],
         importance=0.6,
         confidence=0.7,
-        user_id="user_123",
+        entity_id="user-123",
     )
 
     similar_memories = [
@@ -369,7 +369,7 @@ async def example_4_strategy_comparison():
                 tags=["hobby"],
                 importance=0.6,
                 confidence=0.8,
-                user_id="user_123",
+                entity_id="user-123",
             ),
             similarity_score=0.95,
         ),
@@ -381,7 +381,7 @@ async def example_4_strategy_comparison():
                 tags=["hobby"],
                 importance=0.6,
                 confidence=0.7,
-                user_id="user_123",
+                entity_id="user-123",
             ),
             similarity_score=0.91,
         ),
@@ -393,7 +393,7 @@ async def example_4_strategy_comparison():
                 tags=["hobby"],
                 importance=0.5,
                 confidence=0.6,
-                user_id="user_123",
+                entity_id="user-123",
             ),
             similarity_score=0.87,
         ),
@@ -445,7 +445,7 @@ async def example_5_full_flow():
         tags=["location"],
         importance=0.8,
         confidence=0.85,
-        user_id="user_123",
+        entity_id="user-123",
     )
     print(f"   New memory: {new_memory.text}")
 
@@ -461,7 +461,7 @@ async def example_5_full_flow():
                 tags=["location"],
                 importance=0.8,
                 confidence=0.7,
-                user_id="user_123",
+                entity_id="user-123",
             ),
             similarity_score=0.93,
         )

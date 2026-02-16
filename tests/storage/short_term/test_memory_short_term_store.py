@@ -137,11 +137,11 @@ def test_fifo_behavior(short_term_store):
     assert all_messages[-1].message.content.startswith("Batch2")
 
 
-def test_clear_user_messages(short_term_store, sample_messages):
-    """Test clearing all messages for a user."""
+def test_clear_messages(short_term_store, sample_messages):
+    """Test clearing all messages for an entity."""
     short_term_store.add_messages("user1", sample_messages)
 
-    count = short_term_store.clear_user_messages("user1")
+    count = short_term_store.clear_messages("user1")
 
     assert count == 3
 
@@ -150,9 +150,9 @@ def test_clear_user_messages(short_term_store, sample_messages):
     assert len(messages) == 0
 
 
-def test_clear_nonexistent_user(short_term_store):
-    """Test clearing messages for a user with no messages."""
-    count = short_term_store.clear_user_messages("nonexistent")
+def test_clear_nonexistent_entity(short_term_store):
+    """Test clearing messages for an entity with no messages."""
+    count = short_term_store.clear_messages("nonexistent")
 
     assert count == 0
 
@@ -173,8 +173,8 @@ def test_get_message_count_empty(short_term_store):
     assert count == 0
 
 
-def test_user_isolation(short_term_store):
-    """Test that messages are isolated per user."""
+def test_entity_isolation(short_term_store):
+    """Test that messages are isolated per entity."""
     messages_user1 = [
         ShortTermMemory(
             message=UserMessage(content="User1 message"),
@@ -192,7 +192,7 @@ def test_user_isolation(short_term_store):
     short_term_store.add_messages("user1", messages_user1)
     short_term_store.add_messages("user2", messages_user2)
 
-    # Each user should only see their own messages
+    # Each entity should only see their own messages
     user1_messages = short_term_store.get_recent_messages("user1")
     user2_messages = short_term_store.get_recent_messages("user2")
 
@@ -202,20 +202,20 @@ def test_user_isolation(short_term_store):
     assert user2_messages[0].message.content == "User2 message"
 
 
-def test_multiple_users_independent_limits(short_term_store):
-    """Test that each user has independent max_messages limit."""
-    # Add 25 messages for each user
-    for user_id in ["user1", "user2"]:
+def test_multiple_entities_independent_limits(short_term_store):
+    """Test that each entity has independent max_messages limit."""
+    # Add 25 messages for each entity
+    for entity_id in ["user1", "user2"]:
         messages = [
             ShortTermMemory(
-                message=UserMessage(content=f"{user_id} message {i}"),
+                message=UserMessage(content=f"{entity_id} message {i}"),
                 timestamp=datetime.now().isoformat(),
             )
             for i in range(25)
         ]
-        short_term_store.add_messages(user_id, messages)
+        short_term_store.add_messages(entity_id, messages)
 
-    # Each user should have 20 messages (max limit)
+    # Each entity should have 20 messages (max limit)
     user1_count = short_term_store.get_message_count("user1")
     user2_count = short_term_store.get_message_count("user2")
 

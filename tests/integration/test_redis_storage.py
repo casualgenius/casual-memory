@@ -35,10 +35,10 @@ def test_redis_add_and_get_messages(skip_if_no_redis):
         ]
 
         # Add messages
-        storage.add_messages(user_id="test_user", messages=messages)
+        storage.add_messages(entity_id="test_user", messages=messages)
 
         # Get messages
-        retrieved = storage.get_recent_messages(user_id="test_user", limit=10)
+        retrieved = storage.get_recent_messages(entity_id="test_user", limit=10)
 
         assert len(retrieved) == 3
         assert retrieved[0].message.content == "Hello, how are you?"
@@ -48,7 +48,7 @@ def test_redis_add_and_get_messages(skip_if_no_redis):
     finally:
         # Cleanup
         try:
-            storage.clear_user_messages(user_id="test_user")
+            storage.clear_messages(entity_id="test_user")
         except Exception:
             pass
 
@@ -78,10 +78,10 @@ def test_redis_message_limit(skip_if_no_redis):
             for i in range(10)
         ]
 
-        storage.add_messages(user_id="test_user", messages=messages)
+        storage.add_messages(entity_id="test_user", messages=messages)
 
         # Should only have the last 5 messages
-        retrieved = storage.get_recent_messages(user_id="test_user", limit=10)
+        retrieved = storage.get_recent_messages(entity_id="test_user", limit=10)
 
         assert len(retrieved) <= 5
         # Should be the most recent messages (5-9)
@@ -89,7 +89,7 @@ def test_redis_message_limit(skip_if_no_redis):
 
     finally:
         try:
-            storage.clear_user_messages(user_id="test_user")
+            storage.clear_messages(entity_id="test_user")
         except Exception:
             pass
 
@@ -111,29 +111,29 @@ def test_redis_clear_messages(skip_if_no_redis):
             )
         ]
 
-        storage.add_messages(user_id="test_user", messages=messages)
+        storage.add_messages(entity_id="test_user", messages=messages)
 
         # Verify messages exist
-        retrieved = storage.get_recent_messages(user_id="test_user")
+        retrieved = storage.get_recent_messages(entity_id="test_user")
         assert len(retrieved) > 0
 
         # Clear messages
-        storage.clear_user_messages(user_id="test_user")
+        storage.clear_messages(entity_id="test_user")
 
         # Verify messages are cleared
-        retrieved = storage.get_recent_messages(user_id="test_user")
+        retrieved = storage.get_recent_messages(entity_id="test_user")
         assert len(retrieved) == 0
 
     finally:
         try:
-            storage.clear_user_messages(user_id="test_user")
+            storage.clear_messages(entity_id="test_user")
         except Exception:
             pass
 
 
 @pytest.mark.integration
 def test_redis_user_isolation(skip_if_no_redis):
-    """Test that messages are isolated by user_id."""
+    """Test that messages are isolated by entity_id."""
     pytest.importorskip("redis")
 
     host = skip_if_no_redis
@@ -147,7 +147,7 @@ def test_redis_user_isolation(skip_if_no_redis):
                 message=UserMessage(content="User 1 message"), timestamp="2024-01-01T10:00:00"
             )
         ]
-        storage.add_messages(user_id="user_1", messages=messages_user1)
+        storage.add_messages(entity_id="user_1", messages=messages_user1)
 
         # Add messages for user2
         messages_user2 = [
@@ -155,11 +155,11 @@ def test_redis_user_isolation(skip_if_no_redis):
                 message=UserMessage(content="User 2 message"), timestamp="2024-01-01T10:00:00"
             )
         ]
-        storage.add_messages(user_id="user_2", messages=messages_user2)
+        storage.add_messages(entity_id="user_2", messages=messages_user2)
 
         # Get messages for each user
-        user1_messages = storage.get_recent_messages(user_id="user_1")
-        user2_messages = storage.get_recent_messages(user_id="user_2")
+        user1_messages = storage.get_recent_messages(entity_id="user_1")
+        user2_messages = storage.get_recent_messages(entity_id="user_2")
 
         # Each user should only see their own messages
         assert len(user1_messages) == 1
@@ -170,8 +170,8 @@ def test_redis_user_isolation(skip_if_no_redis):
 
     finally:
         try:
-            storage.clear_user_messages(user_id="user_1")
-            storage.clear_user_messages(user_id="user_2")
+            storage.clear_messages(entity_id="user_1")
+            storage.clear_messages(entity_id="user_2")
         except Exception:
             pass
 
@@ -199,16 +199,16 @@ def test_redis_get_with_limit(skip_if_no_redis):
             for i in range(10)
         ]
 
-        storage.add_messages(user_id="test_user", messages=messages)
+        storage.add_messages(entity_id="test_user", messages=messages)
 
         # Get only 3 messages
-        retrieved = storage.get_recent_messages(user_id="test_user", limit=3)
+        retrieved = storage.get_recent_messages(entity_id="test_user", limit=3)
 
         assert len(retrieved) == 3
 
     finally:
         try:
-            storage.clear_user_messages(user_id="test_user")
+            storage.clear_messages(entity_id="test_user")
         except Exception:
             pass
 
@@ -231,18 +231,18 @@ def test_redis_message_persistence(skip_if_no_redis):
             )
         ]
 
-        storage1.add_messages(user_id="test_user", messages=messages)
+        storage1.add_messages(entity_id="test_user", messages=messages)
 
         # Second instance retrieves messages
         storage2 = RedisShortTermStore(host=host, port=6379, db=15)
 
-        retrieved = storage2.get_recent_messages(user_id="test_user")
+        retrieved = storage2.get_recent_messages(entity_id="test_user")
 
         assert len(retrieved) == 1
         assert retrieved[0].message.content == "Persistent message"
 
     finally:
         try:
-            storage1.clear_user_messages(user_id="test_user")
+            storage1.clear_messages(entity_id="test_user")
         except Exception:
             pass

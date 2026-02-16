@@ -190,7 +190,7 @@ async def main():
         tags=["job"],
         importance=0.8,
         confidence=0.7,
-        user_id="user_123",
+        entity_id="user-123",
     )
 
     similar_memories = [
@@ -202,7 +202,7 @@ async def main():
                 tags=["job"],
                 importance=0.8,
                 confidence=0.8,
-                user_id="user_123",
+                entity_id="user-123",
             ),
             similarity_score=0.87,
         ),

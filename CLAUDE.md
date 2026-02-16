@@ -50,18 +50,18 @@ uv run mypy src/casual_memory/ # Type check
    - `LLMConflictVerifier`, `LLMDuplicateDetector`: LLM verifiers
 
 3. **Memory Service** ([src/casual_memory/memory_service.py](src/casual_memory/memory_service.py))
-   - `add_memory()`: Find similar, classify, execute actions
-   - `query_memory()`: Semantic search with filtering
+   - `add_memory()`: Find similar, classify, execute actions (scoped by `namespace` and `entity_id` on the `MemoryFact`)
+   - `query_memory()`: Semantic search with filtering (pass `namespace` and `entity_id` via `MemoryQueryFilter`)
 
 4. **Context Service** ([src/casual_memory/context_service.py](src/casual_memory/context_service.py))
-   - `add()`: Store conversation messages (filters system messages)
-   - `get()`: Retrieve recent messages with safe boundary trimming
-   - `clear()`: Clear session messages
+   - `add()`: Store conversation messages (filters system messages). Accepts `entity_id`, `session_id`, `namespace`.
+   - `get()`: Retrieve recent messages with safe boundary trimming. Accepts `entity_id`, `session_id`, `namespace`.
+   - `clear()`: Clear session messages. Accepts `entity_id`, `session_id`, `namespace`.
 
 5. **Storage** ([src/casual_memory/storage/](src/casual_memory/storage/))
-   - Vector: `InMemoryVectorStore`, `QdrantMemoryStore`
-   - Conflict: `InMemoryConflictStore`, `SQLAlchemyConflictStore`
-   - Short-term: `InMemoryShortTermStore`, `RedisShortTermStore`
+   - Vector: `InMemoryVectorStore`, `QdrantMemoryStore` -- namespace-aware via payload `namespace`/`entity_id` fields
+   - Conflict: `InMemoryConflictStore`, `SQLAlchemyConflictStore` -- indexed by `(namespace, entity_id)`
+   - Short-term: `InMemoryShortTermStore`, `RedisShortTermStore` -- keyed by `(namespace, entity_id)`
 
 6. **Extraction** ([src/casual_memory/extractors/](src/casual_memory/extractors/))
    - `LLMMemoryExtracter`: Extract facts from conversations
@@ -85,16 +85,28 @@ Output: overall_outcome = "add" | "skip" | "conflict"
 **Similarity Outcomes**: `conflict`, `superseded`, `same`, `neutral`
 **Memory Outcomes**: `add`, `skip`, `conflict`
 
+### Namespace Scoping
+
+All memory operations are scoped by **namespace** and **entity_id**:
+
+- **namespace** (default: `"default"`): Isolates data into logical groups (e.g., `"work"`, `"personal"`). All storage backends filter by namespace.
+- **entity_id**: Identifies the entity a memory belongs to (e.g., a user ID). Required for conflict tracking, optional elsewhere.
+
+These fields are set on `MemoryFact`, `MemoryConflict`, and `MemoryQueryFilter` models, and passed as parameters to `ContextService` methods.
+
+> **Deprecation note**: The `user_id` parameter/field is deprecated across all models and services. Use `entity_id` instead. Passing `user_id` still works (with a `DeprecationWarning`) during the migration period.
+
 ### Data Flow
 
 ```
 1. MemoryService.add_memory(new_memory)
-2. → Embed text, search similar memories
+   (new_memory.namespace + new_memory.entity_id scope the operation)
+2. → Embed text, search similar memories (filtered by namespace + entity_id)
 3. → Pipeline.classify(new_memory, similar_memories)
 4. → ActionExecutor.execute(result)
-   - "add": Insert to vector store, archive superseded
+   - "add": Insert to vector store (with namespace/entity_id in payload), archive superseded
    - "skip": Update existing (mention_count++)
-   - "conflict": Create conflict record
+   - "conflict": Create conflict record (scoped to namespace/entity_id)
 5. → Return MemoryActionResult
 ```
 
@@ -103,14 +115,15 @@ Output: overall_outcome = "add" | "skip" | "conflict"
 ```python
 # Core exports
 from casual_memory import (
-    MemoryFact,           # Core memory unit
-    MemoryFactExtraction, # Extraction model
-    MemoryConflict,       # Conflict tracking
+    MemoryFact,           # Core memory unit (has namespace, entity_id fields)
+    MemoryFactExtraction, # Extraction model (LLM response format)
+    MemoryBlock,          # MCP context block wrapping a list of MemoryFact
+    MemoryConflict,       # Conflict tracking (has namespace, entity_id fields)
     ConflictResolution,   # Resolution decision
     ShortTermMemory,      # Conversation message
-    MemoryQueryFilter,    # Query filtering
+    MemoryQueryFilter,    # Query filtering (has namespace, entity_id fields)
     MemoryService,        # Long-term memory service
-    ContextService,       # Short-term conversation context
+    ContextService,       # Short-term conversation context (accepts entity_id, namespace)
 )
 
 # Classification
@@ -126,9 +139,11 @@ from casual_memory.intelligence import NLIPreFilter, LLMConflictVerifier, LLMDup
 # Extraction
 from casual_memory.extractors import LLMMemoryExtracter
 
-# Storage
-from casual_memory.storage.vector import InMemoryVectorStore, QdrantMemoryStore
-from casual_memory.storage.conflicts import InMemoryConflictStore, SQLAlchemyConflictStore
+# Storage (use full module paths)
+from casual_memory.storage.vector.memory import InMemoryVectorStore
+from casual_memory.storage.vector.qdrant import QdrantMemoryStore
+from casual_memory.storage.conflicts.memory import InMemoryConflictStore
+from casual_memory.storage.conflicts.sqlalchemy import SQLAlchemyConflictStore
 
 # Embeddings
 from casual_memory.embeddings import E5Embedding, OpenAIEmbedding
@@ -143,6 +158,8 @@ from casual_memory.embeddings import E5Embedding, OpenAIEmbedding
 | `supersede_threshold` | `1.3` | Confidence ratio to supersede |
 | `keep_threshold` | `0.7` | Confidence ratio to keep old |
 | `similarity_threshold` | `0.85` | Min similarity for "similar" |
+| `namespace` | `"default"` | Namespace for memory isolation (on models and service methods) |
+| `entity_id` | `None` | Entity identifier for multi-entity isolation |
 
 See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for all parameters.
 
@@ -157,12 +174,13 @@ src/casual_memory/
 ├── intelligence/      # NLI filter, LLM verifiers
 ├── extractors/        # LLMMemoryExtracter
 ├── storage/           # Protocol-based storage
-│   ├── vector/        # Vector stores
-│   ├── conflicts/     # Conflict stores
-│   └── short_term/    # Short-term stores
+│   ├── vector/        # Vector stores (namespace-aware)
+│   ├── conflicts/     # Conflict stores (namespace-indexed)
+│   └── short_term/    # Short-term stores (namespace-keyed)
 ├── embeddings/        # E5, OpenAI embeddings
 ├── execution/         # Action executor
-├── models.py          # Core data models
+├── utils/             # Shared utilities (validation, etc.)
+├── models.py          # Core data models (MemoryFact, MemoryConflict, etc.)
 ├── memory_service.py  # Long-term memory service
 └── context_service.py # Short-term context service
 ```
@@ -206,7 +224,15 @@ pipeline = MemoryClassificationPipeline(
     strategy="tiered",
 )
 
-new_memory = MemoryFact(text="I live in Paris", type="fact", ...)
+# namespace and entity_id scope the memory for isolation
+new_memory = MemoryFact(
+    text="I live in Paris",
+    type="fact",
+    tags=["location"],
+    importance=0.8,
+    entity_id="user-123",
+    namespace="default",  # optional, defaults to "default"
+)
 similar = [SimilarMemory(memory_id="...", memory=MemoryFact(...), similarity_score=0.91)]
 
 result = await pipeline.classify(new_memory, similar)
@@ -223,17 +249,36 @@ from casual_llm.messages import UserMessage, AssistantMessage
 store = InMemoryShortTermStore(max_messages=100)
 context = ContextService(short_term_store=store, short_term_limit=50)
 
-# Add messages (system messages are filtered out automatically)
-context.add("user1", "session1", [
+# Add messages with entity_id and namespace
+# (system messages are filtered out automatically)
+context.add("user-123", "session1", [
     UserMessage(content="What's the weather?"),
     AssistantMessage(content="It's sunny today!"),
-])
+], namespace="default")
 
-# Get recent messages (trimmed to safe boundary — never starts mid-tool-call)
-messages = context.get("user1", "session1")
+# Get recent messages (trimmed to safe boundary -- never starts mid-tool-call)
+messages = context.get("user-123", "session1", namespace="default")
 
 # Clear a session
-context.clear("user1", "session1")
+context.clear("user-123", "session1", namespace="default")
+
+# Deprecated: user_id keyword still works but emits DeprecationWarning
+context.add(user_id="user-123", session_id="session1", messages=[...])
+```
+
+### Memory Query with Namespace Filtering
+
+```python
+from casual_memory import MemoryQueryFilter
+
+# Query memories scoped to a namespace and entity
+filter = MemoryQueryFilter(
+    entity_id="user-123",
+    namespace="work",
+    type=["fact", "preference"],
+    min_importance=0.5,
+)
+results = await memory_service.query_memory("What city do I live in?", filter=filter)
 ```
 
 ### Memory Extraction
@@ -263,6 +308,9 @@ from casual_memory.storage.conflicts.sqlalchemy import SQLAlchemyConflictStore
 engine = create_engine("postgresql://user:pass@localhost/db")
 store = SQLAlchemyConflictStore(engine)
 store.create_tables()
+
+# Query conflicts scoped to a namespace
+pending = store.get_pending_conflicts(entity_id="user-123", namespace="default")
 ```
 
 See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for common issues.

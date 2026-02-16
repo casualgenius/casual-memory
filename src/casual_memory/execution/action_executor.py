@@ -99,7 +99,8 @@ class MemoryActionExecutor:
             "source": result.new_memory.source,
             "valid_until": result.new_memory.valid_until,
             "timestamp": now,
-            "user_id": result.new_memory.user_id,
+            "namespace": result.new_memory.namespace,
+            "entity_id": result.new_memory.entity_id,
             "confidence": result.new_memory.confidence,
             "mention_count": result.new_memory.mention_count or 1,
             "first_seen": result.new_memory.first_seen or now,
@@ -213,9 +214,16 @@ class MemoryActionExecutor:
                 # Generate temporary ID for new memory (not yet inserted)
                 temp_memory_b_id = f"pending_{str(uuid.uuid4())}"
 
+                if not result.new_memory.entity_id:
+                    raise ValueError(
+                        "Cannot create conflict record: MemoryFact.entity_id is required "
+                        "for conflict tracking."
+                    )
+
                 # Create MemoryConflict object
                 conflict = MemoryConflict(
-                    user_id=result.new_memory.user_id or "default_user",
+                    namespace=result.new_memory.namespace,
+                    entity_id=result.new_memory.entity_id,
                     memory_a_id=similarity_result.similar_memory.memory_id,
                     memory_b_id=temp_memory_b_id,  # Temporary ID for new memory
                     category=category,

@@ -562,7 +562,7 @@ async def test_add_first_memory(memory_service, vector_store):
     query_embedding = await memory_service.embedding.embed_query("Who lives in Paris?")
     stored = vector_store.find_similar_memories(
         embedding=query_embedding,
-        user_id="user_123",
+        entity_id="user_123",
         threshold=0.7,
         limit=5,
     )
@@ -672,7 +672,7 @@ async def test_add_conflicting_memory_creates_conflict(
     assert result2.memory_id is None
 
     # Verify conflict is stored
-    conflicts = conflict_store.get_pending_conflicts(user_id="user_123")
+    conflicts = conflict_store.get_pending_conflicts("user_123")
     assert len(conflicts) == 1
     assert conflicts[0].category == "location"
 
@@ -829,11 +829,11 @@ async def test_multiple_users_isolation(memory_service):
     print("debug")
     print(results1)
     assert len(results1) >= 1
-    assert all(r.user_id == "user_1" for r in results1)
+    assert all(r.entity_id == "user_1" for r in results1)
     assert any("Paris" in r.text for r in results1)
 
     assert len(results2) >= 1
-    assert all(r.user_id == "user_2" for r in results2)
+    assert all(r.entity_id == "user_2" for r in results2)
     assert any("London" in r.text for r in results2)
 
 
@@ -928,5 +928,5 @@ async def test_complex_scenario_multiple_memories(memory_service, vector_store, 
     assert len(all_memories) >= 2
 
     # Should have conflict record
-    conflicts = conflict_store.get_pending_conflicts(user_id=user_id)
+    conflicts = conflict_store.get_pending_conflicts(user_id)
     assert len(conflicts) == 1

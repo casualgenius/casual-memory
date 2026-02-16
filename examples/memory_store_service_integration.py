@@ -21,7 +21,8 @@ class ConflictDetector:
     def store_conflict(self, conflict):
         db_conflict = ConflictDB(
             id=conflict.id,
-            user_id=conflict.user_id,
+            entity_id=conflict.entity_id,
+            namespace=conflict.namespace,
             # ... map all fields
         )
         self.session.add(db_conflict)
@@ -128,10 +129,10 @@ async def create_conflict(conflict: MemoryConflict):
     return {"conflict_id": conflict_id}
 
 
-@app.get("/conflicts/pending/{user_id}")
-async def get_pending_conflicts(user_id: str, limit: int = 10):
-    """Get pending conflicts for a user."""
-    conflicts = conflict_store.get_pending_conflicts(user_id, limit=limit)
+@app.get("/conflicts/pending/{entity_id}")
+async def get_pending_conflicts(entity_id: str, namespace: str = "default", limit: int = 10):
+    """Get pending conflicts for an entity."""
+    conflicts = conflict_store.get_pending_conflicts(entity_id, namespace=namespace, limit=limit)
     return {"conflicts": conflicts}
 
 
@@ -169,9 +170,11 @@ class ConflictDetector:
         """Store a detected conflict."""
         return self.conflict_store.add_conflict(conflict)
 
-    def get_pending_for_user(self, user_id: str) -> list[MemoryConflict]:
+    def get_pending_for_entity(
+        self, entity_id: str, namespace: str = "default"
+    ) -> list[MemoryConflict]:
         """Get all pending conflicts for resolution."""
-        return self.conflict_store.get_pending_conflicts(user_id)
+        return self.conflict_store.get_pending_conflicts(entity_id, namespace=namespace)
 
 
 # ==============================================================================
@@ -212,7 +215,8 @@ def upgrade():
     op.create_table(
         "conflicts",
         sa.Column("id", sa.String, primary_key=True),
-        sa.Column("user_id", sa.String, nullable=False, index=True),
+        sa.Column("namespace", sa.String, nullable=False, server_default="default"),
+        sa.Column("user_id", sa.String, nullable=False, index=True),  # maps to entity_id
         sa.Column("memory_a_id", sa.String, nullable=False),
         sa.Column("memory_b_id", sa.String, nullable=False),
         sa.Column("category", sa.String, nullable=False),
@@ -229,7 +233,7 @@ def upgrade():
         sa.Column("metadata_json", sa.Text, nullable=False, default="{}"),
     )
 
-    op.create_index("idx_conflicts_user_status", "conflicts", ["user_id", "status"])
+    op.create_index("idx_conflicts_ns_user_status", "conflicts", ["namespace", "user_id", "status"])
 
 
 def downgrade():
@@ -295,7 +299,8 @@ def test_conflict_workflow(test_store):
     # Create conflict
     conflict = MemoryConflict(
         id="test_conflict",
-        user_id="test_user",
+        entity_id="test-user",
+        namespace="default",
         memory_a_id="mem_a",
         memory_b_id="mem_b",
         category="location",
@@ -310,7 +315,7 @@ def test_conflict_workflow(test_store):
 
     # Retrieve it
     retrieved = test_store.get_conflict(conflict_id)
-    assert retrieved.user_id == "test_user"
+    assert retrieved.entity_id == "test-user"
 
     # Resolve it
     resolution = ConflictResolution(

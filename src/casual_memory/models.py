@@ -1,4 +1,5 @@
 import uuid
+import warnings
 from datetime import datetime
 from typing import Annotated, Any, Literal, Optional
 
@@ -8,7 +9,15 @@ from casual_llm.messages import (
     ToolResultMessage,
     UserMessage,
 )
-from pydantic import BaseModel, Discriminator, Field, Tag
+from pydantic import (
+    BaseModel,
+    Discriminator,
+    Field,
+    Tag,
+    computed_field,
+    field_validator,
+    model_validator,
+)
 
 
 class MemoryFactExtraction(BaseModel):
@@ -130,10 +139,17 @@ class MemoryFact(BaseModel):
         ),
     )
 
-    # NEW fields for memory intelligence
-    user_id: Optional[str] = Field(
-        None, description="User this memory belongs to (for multi-user isolation)"
+    # Namespace and entity identification
+    namespace: str = Field(
+        default="default",
+        description="Namespace for memory isolation (e.g., 'default', 'work', 'personal')",
     )
+    entity_id: Optional[str] = Field(
+        default=None,
+        description="Entity this memory belongs to (for multi-entity isolation)",
+    )
+
+    # Memory intelligence fields
     confidence: float = Field(
         default=0.5, ge=0.0, le=1.0, description="Confidence score based on mention frequency"
     )
@@ -154,6 +170,78 @@ class MemoryFact(BaseModel):
         default=None, description="ID of the memory that replaced this one"
     )
 
+    @model_validator(mode="before")
+    @classmethod
+    def _handle_user_id_deprecation(cls, data: Any) -> Any:
+        """Map deprecated 'user_id' to 'entity_id' with a deprecation warning."""
+        if isinstance(data, dict):
+            has_user_id = "user_id" in data
+            has_entity_id = "entity_id" in data
+
+            if has_user_id and has_entity_id:
+                user_id_val = data["user_id"]
+                entity_id_val = data["entity_id"]
+
+                if (
+                    user_id_val is not None
+                    and entity_id_val is not None
+                    and user_id_val != entity_id_val
+                ):
+                    # Genuinely ambiguous -- different non-None values
+                    raise ValueError(
+                        "Cannot specify both 'user_id' and 'entity_id'. "
+                        "Use 'entity_id' (user_id is deprecated)."
+                    )
+
+                # Same value or user_id is None: just drop user_id (roundtrip safe)
+                data.pop("user_id")
+
+            elif has_user_id:
+                warnings.warn(
+                    "MemoryFact(user_id=...) is deprecated, use entity_id instead.",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+                data["entity_id"] = data.pop("user_id")
+
+        return data
+
+    @field_validator("namespace")
+    @classmethod
+    def _validate_namespace(cls, v: str) -> str:
+        from casual_memory.utils.validation import validate_identifier
+
+        return validate_identifier(v, "namespace")
+
+    @field_validator("entity_id")
+    @classmethod
+    def _validate_entity_id(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        from casual_memory.utils.validation import validate_identifier
+
+        return validate_identifier(v, "entity_id")
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def user_id(self) -> Optional[str]:
+        """Deprecated: Use entity_id instead.
+
+        Exposed as a computed_field so it appears in both model_dump()
+        and model_dump_json() (e.g., FastAPI responses).
+        """
+        return self.entity_id
+
+    @user_id.setter
+    def user_id(self, value: Optional[str]) -> None:
+        """Deprecated: Use entity_id instead."""
+        warnings.warn(
+            "MemoryFact.user_id is deprecated, use entity_id instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        self.entity_id = value
+
 
 class MemoryBlock(BaseModel):
     type: Literal["mcp/context/v1"]
@@ -162,41 +250,17 @@ class MemoryBlock(BaseModel):
     content: list[MemoryFact]
 
 
-class MemoryPointPayload(BaseModel):
-    # Core fields
-    text: str = Field(..., min_length=1)
-    type: str = Field(..., min_length=1)  # Flexible string type for custom categories
-    tags: list[str]
-    importance: Optional[float] = 0.5  # Default if not included
-    session_id: str | None
-    source: str | None  # Flexible string source for custom origins
-    timestamp: str
-    valid_until: Optional[str | None] = None
-
-    # NEW fields for memory intelligence
-    user_id: Optional[str] = None
-    confidence: float = 0.5
-    mention_count: int = 1
-    first_seen: Optional[str] = None  # ISO format timestamp
-    last_seen: Optional[str] = None  # ISO format timestamp
-    archived: bool = False
-    archived_at: Optional[str] = None  # ISO format timestamp
-    superseded_by: Optional[str] = None
-
-
-class MemoryPoint(BaseModel):
-    id: str
-    vector: list[float]
-    payload: MemoryPointPayload
-
-
 class MemoryConflict(BaseModel):
     """Model for tracking conflicts between contradictory memories"""
 
     id: str = Field(
         default_factory=lambda: str(uuid.uuid4()), description="Unique conflict identifier"
     )
-    user_id: str = Field(..., description="User this conflict belongs to")
+    namespace: str = Field(
+        default="default",
+        description="Namespace for conflict isolation",
+    )
+    entity_id: str = Field(..., description="Entity this conflict belongs to")
     memory_a_id: str = Field(..., description="ID of first conflicting memory (Qdrant point ID)")
     memory_b_id: str = Field(..., description="ID of second conflicting memory (Qdrant point ID)")
     category: str = Field(..., description="Category of conflict (e.g., location, job, preference)")
@@ -231,6 +295,71 @@ class MemoryConflict(BaseModel):
     metadata: dict[str, Any] = Field(
         default_factory=dict, description="Additional metadata for conflict tracking"
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _handle_user_id_deprecation(cls, data: Any) -> Any:
+        """Map deprecated 'user_id' to 'entity_id' with a deprecation warning."""
+        if isinstance(data, dict):
+            has_user_id = "user_id" in data
+            has_entity_id = "entity_id" in data
+
+            if has_user_id and has_entity_id:
+                user_id_val = data["user_id"]
+                entity_id_val = data["entity_id"]
+
+                if (
+                    user_id_val is not None
+                    and entity_id_val is not None
+                    and user_id_val != entity_id_val
+                ):
+                    raise ValueError(
+                        "Cannot specify both 'user_id' and 'entity_id'. "
+                        "Use 'entity_id' (user_id is deprecated)."
+                    )
+
+                # Same value or user_id is None: just drop user_id (roundtrip safe)
+                data.pop("user_id")
+
+            elif has_user_id:
+                warnings.warn(
+                    "MemoryConflict(user_id=...) is deprecated, use entity_id instead.",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+                data["entity_id"] = data.pop("user_id")
+
+        return data
+
+    @field_validator("namespace")
+    @classmethod
+    def _validate_namespace(cls, v: str) -> str:
+        from casual_memory.utils.validation import validate_identifier
+
+        return validate_identifier(v, "namespace")
+
+    @field_validator("entity_id")
+    @classmethod
+    def _validate_entity_id(cls, v: str) -> str:
+        from casual_memory.utils.validation import validate_identifier
+
+        return validate_identifier(v, "entity_id")
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def user_id(self) -> str:
+        """Deprecated: Use entity_id instead."""
+        return self.entity_id
+
+    @user_id.setter
+    def user_id(self, value: str) -> None:
+        """Deprecated: Use entity_id instead."""
+        warnings.warn(
+            "MemoryConflict.user_id is deprecated, use entity_id instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        self.entity_id = value
 
 
 class ConflictResolution(BaseModel):
@@ -293,4 +422,56 @@ class ShortTermMemory(BaseModel):
 class MemoryQueryFilter(BaseModel):
     type: Optional[list[str] | None] = None
     min_importance: Optional[float | None] = None
-    user_id: Optional[str | None] = None
+    namespace: Optional[str | None] = None
+    entity_id: Optional[str | None] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _handle_user_id_deprecation(cls, data: Any) -> Any:
+        """Map deprecated 'user_id' to 'entity_id' with a deprecation warning."""
+        if isinstance(data, dict):
+            has_user_id = "user_id" in data
+            has_entity_id = "entity_id" in data
+
+            if has_user_id and has_entity_id:
+                user_id_val = data["user_id"]
+                entity_id_val = data["entity_id"]
+
+                if (
+                    user_id_val is not None
+                    and entity_id_val is not None
+                    and user_id_val != entity_id_val
+                ):
+                    raise ValueError(
+                        "Cannot specify both 'user_id' and 'entity_id'. "
+                        "Use 'entity_id' (user_id is deprecated)."
+                    )
+
+                # Same value or user_id is None: just drop user_id (roundtrip safe)
+                data.pop("user_id")
+
+            elif has_user_id:
+                warnings.warn(
+                    "MemoryQueryFilter(user_id=...) is deprecated, use entity_id instead.",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+                data["entity_id"] = data.pop("user_id")
+
+        return data
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def user_id(self) -> Optional[str]:
+        """Deprecated: Use entity_id instead."""
+        return self.entity_id
+
+    @user_id.setter
+    def user_id(self, value: Optional[str]) -> None:
+        """Deprecated: Use entity_id instead."""
+        warnings.warn(
+            "MemoryQueryFilter.user_id is deprecated, use entity_id instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        self.entity_id = value

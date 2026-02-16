@@ -108,7 +108,8 @@ async def test_execute_add_simple(action_executor, mock_vector_store):
     assert payload["text"] == "I live in Paris"
     assert payload["type"] == "fact"
     assert payload["tags"] == ["location"]
-    assert payload["user_id"] == "user_123"
+    assert payload["entity_id"] == "user_123"
+    assert payload["namespace"] == "default"
     assert payload["confidence"] == 0.7
     assert payload["archived"] is False
     assert "timestamp" in payload  # Auto-generated timestamp field
@@ -417,7 +418,8 @@ async def test_execute_conflict_single(action_executor, mock_conflict_store):
     conflict = mock_conflict_store.add_conflict.call_args.args[0]
 
     # Verify conflict has correct structure
-    assert conflict.user_id == "user_123"
+    assert conflict.entity_id == "user_123"
+    assert conflict.namespace == "default"
     assert conflict.memory_a_id == "existing_mem_100"  # The stored memory
     assert conflict.memory_b_id.startswith("pending_")  # Temporary ID (not yet stored)
     assert conflict.category == "location"
@@ -586,7 +588,8 @@ async def test_payload_includes_all_fields(action_executor, mock_vector_store):
     # Optional fields that were provided
     assert payload["source"] == "user"
     assert payload["valid_until"] == "2025-12-31T23:59:59"
-    assert payload["user_id"] == "user_456"
+    assert payload["entity_id"] == "user_456"
+    assert payload["namespace"] == "default"
     assert payload["confidence"] == 0.85
     assert payload["mention_count"] == 5
     assert payload["first_seen"] == datetime.fromisoformat("2024-01-01T00:00:00")

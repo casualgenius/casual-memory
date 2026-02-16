@@ -27,7 +27,8 @@ def test_qdrant_add_and_search(skip_if_no_qdrant):
             "tags": ["job", "career"],
             "importance": 0.9,
             "source": "user",
-            "user_id": "test_user",
+            "entity_id": "test_user",
+            "namespace": "default",
             "archived": False,
             "timestamp": "2024-01-01T10:00:00",
         }
@@ -44,7 +45,7 @@ def test_qdrant_add_and_search(skip_if_no_qdrant):
             query_embedding=vector,
             top_k=5,
             min_score=0.5,
-            filters={"user_id": "test_user", "type": None, "min_importance": None},
+            filters={"entity_id": "test_user", "type": None, "min_importance": None},
         )
 
         # Should find the memory we just added
@@ -81,7 +82,8 @@ def test_qdrant_update_memory(skip_if_no_qdrant):
             "tags": ["location"],
             "importance": 0.8,
             "source": "user",
-            "user_id": "test_user",
+            "entity_id": "test_user",
+            "namespace": "default",
             "archived": False,
             "timestamp": "2024-01-01T10:00:00",
         }
@@ -135,7 +137,8 @@ def test_qdrant_archive_memory(skip_if_no_qdrant):
             "tags": ["job"],
             "importance": 0.8,
             "source": "user",
-            "user_id": "test_user",
+            "entity_id": "test_user",
+            "namespace": "default",
             "archived": False,
             "timestamp": "2024-01-01T10:00:00",
         }
@@ -149,7 +152,7 @@ def test_qdrant_archive_memory(skip_if_no_qdrant):
         # Search excluding archived (using find_similar_memories which has exclude_archived)
         results = storage.find_similar_memories(
             embedding=vector,
-            user_id="test_user",
+            entity_id="test_user",
             threshold=0.5,
             limit=5,
             exclude_archived=True,
@@ -168,7 +171,7 @@ def test_qdrant_archive_memory(skip_if_no_qdrant):
 
 @pytest.mark.integration
 def test_qdrant_user_isolation(skip_if_no_qdrant):
-    """Test that memories are isolated by user_id."""
+    """Test that memories are isolated by entity_id."""
     pytest.importorskip("qdrant_client")
 
     from casual_memory.storage.vector.qdrant import QdrantMemoryStore
@@ -190,7 +193,8 @@ def test_qdrant_user_isolation(skip_if_no_qdrant):
             "tags": ["hobby"],
             "importance": 0.7,
             "source": "user",
-            "user_id": "user_1",
+            "entity_id": "user_1",
+            "namespace": "default",
             "archived": False,
             "timestamp": "2024-01-01T10:00:00",
         }
@@ -203,20 +207,21 @@ def test_qdrant_user_isolation(skip_if_no_qdrant):
             "tags": ["hobby"],
             "importance": 0.7,
             "source": "user",
-            "user_id": "user_2",
+            "entity_id": "user_2",
+            "namespace": "default",
             "archived": False,
             "timestamp": "2024-01-01T10:00:00",
         }
         storage.add(vector=vector, payload=payload2)
 
-        # Search as user1 using find_similar_memories (has user_id param)
+        # Search as user1 using find_similar_memories
         results_user1 = storage.find_similar_memories(
-            embedding=vector, user_id="user_1", threshold=0.5, limit=5
+            embedding=vector, entity_id="user_1", threshold=0.5, limit=5
         )
 
         # Search as user2
         results_user2 = storage.find_similar_memories(
-            embedding=vector, user_id="user_2", threshold=0.5, limit=5
+            embedding=vector, entity_id="user_2", threshold=0.5, limit=5
         )
 
         # Each user should only see their own memories

@@ -126,7 +126,7 @@ def memory_fact():
         type="fact",
         tags=["location"],
         importance=0.8,
-        user_id="test_user",
+        entity_id="test-user",
     )
 
 @pytest.fixture

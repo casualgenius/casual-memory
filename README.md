@@ -124,7 +124,7 @@ new_memory = MemoryFact(
     tags=["location"],
     importance=0.9,
     confidence=0.8,
-    user_id="user_123",
+    entity_id="user-123",
 )
 
 similar_memories = [
@@ -136,7 +136,7 @@ similar_memories = [
             tags=["location"],
             importance=0.8,
             confidence=0.6,
-            user_id="user_123",
+            entity_id="user-123",
         ),
         similarity_score=0.91,
     )

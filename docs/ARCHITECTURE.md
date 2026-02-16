@@ -137,12 +137,14 @@ Four memory types supported:
 
 ```python
 class MemoryFact:
-    text: str              # Memory content (first-person perspective)
-    type: str              # "fact", "preference", "goal", "event"
-    tags: list[str]        # Semantic tags for filtering
-    importance: float      # 0.0-1.0 (≥0.5 threshold for storage)
-    source: str            # "user" or "assistant"
-    valid_until: str | None  # Temporal validity (ISO timestamp)
+    text: str                    # Memory content (first-person perspective)
+    type: str                    # "fact", "preference", "goal", "event"
+    tags: list[str]              # Semantic tags for filtering
+    importance: float            # 0.0-1.0 (≥0.5 threshold for storage)
+    entity_id: Optional[str]     # Entity this memory belongs to
+    namespace: str = "default"   # Namespace for memory isolation
+    source: str                  # "user" or "assistant"
+    valid_until: str | None      # Temporal validity (ISO timestamp)
 ```
 
 ### 4. Context Service
@@ -150,7 +152,7 @@ class MemoryFact:
 `ContextService` manages short-term conversation context — the recent messages that form the LLM's conversational window. It sits above the storage layer and handles business logic that storage backends don't need to know about.
 
 **Key Responsibilities:**
-- **Session isolation** — Messages keyed by `user_id:session_id` composite key
+- **Session isolation** — Messages keyed by `entity_id:session_id` composite key, scoped within a `namespace`
 - **Message filtering** — `add()` drops system messages; only `user`, `assistant`, and `tool` messages are persisted
 - **Safe boundary trimming** — `get()` ensures the returned window starts at a `user` message, never mid-tool-call sequence
 
@@ -164,14 +166,16 @@ store = InMemoryShortTermStore(max_messages=100)
 context = ContextService(short_term_store=store, short_term_limit=50)
 
 # Add messages (accepts list[ChatMessage])
-context.add("user1", "session1", messages)
+context.add("user-123", "session1", messages, namespace="default")
 
 # Get recent messages (safe boundary guaranteed)
-messages = context.get("user1", "session1", limit=50)
+messages = context.get("user-123", "session1", limit=50, namespace="default")
 
 # Clear session
-context.clear("user1", "session1")
+context.clear("user-123", "session1", namespace="default")
 ```
+
+> **Deprecation note**: The `user_id` keyword parameter is deprecated. Use the positional `entity_id` parameter instead. Passing `user_id=` still works (with a `DeprecationWarning`).
 
 **Safe Boundary Trimming:**
 
@@ -195,12 +199,12 @@ This logic lives in a shared utility (`trim_to_safe_boundary` in `storage/short_
 **Data Flow:**
 
 ```
-ContextService.add(user_id, session_id, messages)
+ContextService.add(entity_id, session_id, messages, namespace="default")
   1. → Filter out system messages
   2. → Wrap each ChatMessage in ShortTermMemory (with timestamp)
-  3. → Store to ShortTermStore via composed key "user_id:session_id"
+  3. → Store to ShortTermStore via composed key "entity_id:session_id"
 
-ContextService.get(user_id, session_id, limit)
+ContextService.get(entity_id, session_id, limit, namespace="default")
   1. → Over-fetch (limit + 10) from ShortTermStore
   2. → trim_to_safe_boundary() ensures first message is user
   3. → Return trimmed message list
@@ -405,12 +409,11 @@ Storage backends implement runtime-checkable protocols (PEP 544).
 **Protocols:**
 
 ```python
-@runtime_checkable
 class VectorMemoryStore(Protocol):
     """Vector storage for semantic search."""
 
     def add(self, vector: list[float], payload: dict[str, Any]) -> str:
-        """Add memory vector and payload, return ID."""
+        """Add memory vector and payload (include 'namespace' and 'entity_id'), return ID."""
 
     def search(
         self,
@@ -419,17 +422,18 @@ class VectorMemoryStore(Protocol):
         min_score: float = 0.7,
         filters: Optional[Any] = None,
     ) -> list[Any]:
-        """Semantic search for similar memories."""
+        """Semantic search. Filters support 'entity_id', 'namespace', 'type', 'min_importance'."""
 
     def find_similar_memories(
         self,
         embedding: list[float],
-        user_id: Optional[str] = None,
-        threshold: Optional[float] = None,
+        entity_id: str | None = None,
+        namespace: str = "default",
+        threshold: float | None = None,
         limit: int = 5,
         exclude_archived: bool = True,
     ) -> list[tuple[Any, float]]:
-        """Find similar memories for classification. Returns (memory_point, score) tuples."""
+        """Find similar memories scoped by entity_id and namespace. Returns (memory_point, score) tuples."""
 
     def update_memory(self, memory_id: str, payload_updates: dict[str, Any]) -> bool:
         """Update memory metadata (mention_count, last_seen, etc.)."""
@@ -442,11 +446,13 @@ class VectorMemoryStore(Protocol):
     ) -> bool:
         """Soft-delete memory (sets archived=True)."""
 
+    def clear_memories(self, entity_id: str, namespace: str = "default") -> int:
+        """Clear all memories for an entity within a namespace. Returns count deleted."""
+
     def clear_user_memories(self, user_id: str) -> int:
-        """Clear all memories for a user. Returns count deleted."""
+        """Deprecated: Use clear_memories() instead."""
 
 
-@runtime_checkable
 class ConflictStore(Protocol):
     """Storage for memory conflicts."""
 
@@ -457,60 +463,75 @@ class ConflictStore(Protocol):
         """Retrieve conflict by ID."""
 
     def get_pending_conflicts(
-        self, user_id: str, limit: Optional[int] = None
+        self, entity_id: str, namespace: str = "default", limit: Optional[int] = None
     ) -> list[MemoryConflict]:
-        """List unresolved conflicts for a user."""
+        """List unresolved conflicts for an entity within a namespace."""
 
     def resolve_conflict(
         self, conflict_id: str, resolution: ConflictResolution
     ) -> bool:
         """Mark conflict as resolved."""
 
-    def get_conflict_count(self, user_id: str, status: Optional[str] = None) -> int:
-        """Count conflicts for a user."""
+    def get_conflict_count(
+        self, entity_id: str, namespace: str = "default", status: str | None = None
+    ) -> int:
+        """Count conflicts for an entity within a namespace."""
 
     def escalate_conflict(self, conflict_id: str) -> bool:
         """Escalate a conflict that couldn't be auto-resolved."""
 
-    def clear_user_conflicts(self, user_id: str, status: Optional[str] = None) -> int:
-        """Clear conflicts for a user. Returns count cleared."""
+    def clear_conflicts(
+        self, entity_id: str, namespace: str = "default", status: str | None = None
+    ) -> int:
+        """Clear conflicts for an entity within a namespace. Returns count cleared."""
+
+    def clear_user_conflicts(self, user_id: str, status: str | None = None) -> int:
+        """Deprecated: Use clear_conflicts() instead."""
 
 
-@runtime_checkable
 class ShortTermStore(Protocol):
     """Storage for conversation history."""
 
-    def add_messages(self, user_id: str, messages: list[ShortTermMemory]) -> int:
+    def add_messages(
+        self, entity_id: str, messages: list[ShortTermMemory], namespace: str = "default"
+    ) -> int:
         """Add messages to history. Returns count added."""
 
     def get_recent_messages(
-        self, user_id: str, limit: int = 20
+        self, entity_id: str, limit: int = 20, namespace: str = "default"
     ) -> list[ShortTermMemory]:
-        """Get recent messages for a user."""
+        """Get recent messages for an entity within a namespace."""
+
+    def clear_messages(self, entity_id: str, namespace: str = "default") -> int:
+        """Clear all messages for entity within a namespace. Returns count deleted."""
 
     def clear_user_messages(self, user_id: str) -> int:
-        """Clear all messages for user. Returns count deleted."""
+        """Deprecated: Use clear_messages() instead."""
 
-    def get_message_count(self, user_id: str) -> int:
-        """Get the number of messages stored for a user."""
+    def get_message_count(self, entity_id: str, namespace: str = "default") -> int:
+        """Get the number of messages stored for an entity within a namespace."""
 ```
 
-### User Isolation
+### Entity & Namespace Isolation
 
-All storage operations scoped by `user_id`:
+All storage operations are scoped by `entity_id` and `namespace`:
 
 ```python
-# user_id is included in the memory payload
-vector_store.add(vector, payload={"text": "I love hiking", "user_id": "alice", ...})
-vector_store.add(vector, payload={"text": "I love gaming", "user_id": "bob", ...})
+# entity_id and namespace are included in the memory payload
+vector_store.add(vector, payload={"text": "I love hiking", "entity_id": "alice", "namespace": "default", ...})
+vector_store.add(vector, payload={"text": "I love gaming", "entity_id": "bob", "namespace": "default", ...})
 
-# find_similar_memories has explicit user_id parameter
-results_alice = vector_store.find_similar_memories(embedding, user_id="alice")
-results_bob = vector_store.find_similar_memories(embedding, user_id="bob")
-# results_alice != results_bob - each user sees only their own memories
+# find_similar_memories scopes by entity_id and namespace
+results_alice = vector_store.find_similar_memories(embedding, entity_id="alice", namespace="default")
+results_bob = vector_store.find_similar_memories(embedding, entity_id="bob", namespace="default")
+# results_alice != results_bob - each entity sees only their own memories
 
-# search() uses filters for user isolation
-results = vector_store.search(query_embedding, filters={"user_id": "alice"})
+# Namespaces provide additional isolation within the same entity
+results_work = vector_store.find_similar_memories(embedding, entity_id="alice", namespace="work")
+results_personal = vector_store.find_similar_memories(embedding, entity_id="alice", namespace="personal")
+
+# search() uses filters for entity/namespace isolation
+results = vector_store.search(query_embedding, filters={"entity_id": "alice", "namespace": "work"})
 ```
 
 ### Soft Delete Pattern
@@ -527,9 +548,8 @@ memory_fact = MemoryFact(
 )
 
 # Archive when superseded
-await vector_store.archive(
+await vector_store.archive_memory(
     memory_id="mem_123",
-    user_id="user_1",
     superseded_by="mem_456"  # New memory ID
 )
 
@@ -539,10 +559,11 @@ await vector_store.archive(
 # superseded_by="mem_456"
 
 # Excluded from searches by default
-results = await vector_store.search(
-    query_text="location",
-    user_id="user_1",
-    exclude_archived=True  # Default
+results = vector_store.find_similar_memories(
+    embedding=query_embedding,
+    entity_id="user-123",
+    namespace="default",
+    exclude_archived=True,  # Default
 )
 # mem_123 won't appear in results
 ```
