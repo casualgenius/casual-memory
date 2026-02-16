@@ -171,13 +171,24 @@ class MemoryFact(BaseModel):
             has_entity_id = "entity_id" in data
 
             if has_user_id and has_entity_id:
-                # Both provided -- ambiguous, raise error
-                raise ValueError(
-                    "Cannot specify both 'user_id' and 'entity_id'. "
-                    "Use 'entity_id' (user_id is deprecated)."
-                )
+                user_id_val = data["user_id"]
+                entity_id_val = data["entity_id"]
 
-            if has_user_id:
+                if (
+                    user_id_val is not None
+                    and entity_id_val is not None
+                    and user_id_val != entity_id_val
+                ):
+                    # Genuinely ambiguous -- different non-None values
+                    raise ValueError(
+                        "Cannot specify both 'user_id' and 'entity_id'. "
+                        "Use 'entity_id' (user_id is deprecated)."
+                    )
+
+                # Same value or user_id is None: just drop user_id (roundtrip safe)
+                data.pop("user_id")
+
+            elif has_user_id:
                 warnings.warn(
                     "MemoryFact(user_id=...) is deprecated, use entity_id instead.",
                     DeprecationWarning,
@@ -315,12 +326,23 @@ class MemoryConflict(BaseModel):
             has_entity_id = "entity_id" in data
 
             if has_user_id and has_entity_id:
-                raise ValueError(
-                    "Cannot specify both 'user_id' and 'entity_id'. "
-                    "Use 'entity_id' (user_id is deprecated)."
-                )
+                user_id_val = data["user_id"]
+                entity_id_val = data["entity_id"]
 
-            if has_user_id:
+                if (
+                    user_id_val is not None
+                    and entity_id_val is not None
+                    and user_id_val != entity_id_val
+                ):
+                    raise ValueError(
+                        "Cannot specify both 'user_id' and 'entity_id'. "
+                        "Use 'entity_id' (user_id is deprecated)."
+                    )
+
+                # Same value or user_id is None: just drop user_id (roundtrip safe)
+                data.pop("user_id")
+
+            elif has_user_id:
                 warnings.warn(
                     "MemoryConflict(user_id=...) is deprecated, use entity_id instead.",
                     DeprecationWarning,
@@ -433,12 +455,23 @@ class MemoryQueryFilter(BaseModel):
             has_entity_id = "entity_id" in data
 
             if has_user_id and has_entity_id:
-                raise ValueError(
-                    "Cannot specify both 'user_id' and 'entity_id'. "
-                    "Use 'entity_id' (user_id is deprecated)."
-                )
+                user_id_val = data["user_id"]
+                entity_id_val = data["entity_id"]
 
-            if has_user_id:
+                if (
+                    user_id_val is not None
+                    and entity_id_val is not None
+                    and user_id_val != entity_id_val
+                ):
+                    raise ValueError(
+                        "Cannot specify both 'user_id' and 'entity_id'. "
+                        "Use 'entity_id' (user_id is deprecated)."
+                    )
+
+                # Same value or user_id is None: just drop user_id (roundtrip safe)
+                data.pop("user_id")
+
+            elif has_user_id:
                 warnings.warn(
                     "MemoryQueryFilter(user_id=...) is deprecated, use entity_id instead.",
                     DeprecationWarning,

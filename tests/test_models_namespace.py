@@ -305,11 +305,120 @@ class TestBackwardCompatibility:
         assert f.entity_id == "user_123"
 
     def test_memory_fact_model_dump_roundtrip(self):
-        """A MemoryFact dumped and reconstructed should preserve entity_id."""
+        """A MemoryFact dumped and reconstructed should preserve entity_id.
+
+        model_dump() includes both entity_id and user_id keys. The validator
+        should handle this gracefully when both have the same value.
+        """
         original = MemoryFact(text="test", type="fact", tags=[], importance=0.5, entity_id="user1")
         dumped = original.model_dump()
-        # Remove user_id from dump to avoid ambiguity when reconstructing
-        dumped.pop("user_id", None)
+        # Both keys present with same value -- should roundtrip cleanly
+        assert "user_id" in dumped
+        assert "entity_id" in dumped
         reconstructed = MemoryFact(**dumped)
         assert reconstructed.entity_id == "user1"
         assert reconstructed.namespace == "default"
+
+    def test_memory_conflict_model_dump_roundtrip(self):
+        """MemoryConflict model_dump roundtrip should work without errors."""
+        with warnings.catch_warnings(record=True):
+            warnings.simplefilter("always")
+            original = MemoryConflict(
+                entity_id="user1",
+                memory_a_id="mem-a",
+                memory_b_id="mem-b",
+                category="location",
+                similarity_score=0.9,
+                avg_importance=0.8,
+            )
+        dumped = original.model_dump()
+        reconstructed = MemoryConflict(**dumped)
+        assert reconstructed.entity_id == "user1"
+        assert reconstructed.namespace == "default"
+
+    def test_memory_query_filter_model_dump_roundtrip(self):
+        """MemoryQueryFilter model_dump roundtrip should work without errors."""
+        original = MemoryQueryFilter(entity_id="user1", namespace="work")
+        dumped = original.model_dump()
+        reconstructed = MemoryQueryFilter(**dumped)
+        assert reconstructed.entity_id == "user1"
+        assert reconstructed.namespace == "work"
+
+
+class TestEdgeCases:
+    """Edge case tests for the user_id/entity_id migration."""
+
+    def test_memory_fact_both_same_value_no_error(self):
+        """If both user_id and entity_id have the same value, no error should occur."""
+        fact = MemoryFact(
+            text="test", type="fact", tags=[], importance=0.5, entity_id="abc", user_id="abc"
+        )
+        assert fact.entity_id == "abc"
+
+    def test_memory_fact_both_none_no_error(self):
+        """If both user_id and entity_id are None, no error should occur."""
+        fact = MemoryFact(
+            text="test", type="fact", tags=[], importance=0.5, entity_id=None, user_id=None
+        )
+        assert fact.entity_id is None
+
+    def test_memory_fact_user_id_none_entity_id_set_no_error(self):
+        """user_id=None with entity_id set should resolve to entity_id."""
+        fact = MemoryFact(
+            text="test", type="fact", tags=[], importance=0.5, entity_id="abc", user_id=None
+        )
+        assert fact.entity_id == "abc"
+
+    def test_memory_fact_different_values_raises(self):
+        """Different non-None values for user_id and entity_id should raise."""
+        with pytest.raises(ValueError, match="Cannot specify both"):
+            MemoryFact(
+                text="test", type="fact", tags=[], importance=0.5, entity_id="abc", user_id="xyz"
+            )
+
+    def test_memory_conflict_both_same_value_no_error(self):
+        """MemoryConflict with same user_id and entity_id should not error."""
+        conflict = MemoryConflict(
+            entity_id="user1",
+            user_id="user1",
+            memory_a_id="a",
+            memory_b_id="b",
+            category="test",
+            similarity_score=0.9,
+            avg_importance=0.8,
+        )
+        assert conflict.entity_id == "user1"
+
+    def test_memory_query_filter_both_same_value_no_error(self):
+        """MemoryQueryFilter with same user_id and entity_id should not error."""
+        qf = MemoryQueryFilter(entity_id="user1", user_id="user1")
+        assert qf.entity_id == "user1"
+
+    def test_memory_fact_model_validate_with_user_id(self):
+        """model_validate() should handle user_id correctly."""
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            fact = MemoryFact.model_validate(
+                {"text": "test", "type": "fact", "tags": [], "importance": 0.5, "user_id": "abc123"}
+            )
+            dep_warnings = [x for x in w if issubclass(x.category, DeprecationWarning)]
+            assert len(dep_warnings) == 1
+        assert fact.entity_id == "abc123"
+
+    def test_memory_fact_user_id_none_emits_warning(self):
+        """Passing user_id=None explicitly should still emit deprecation warning."""
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            fact = MemoryFact(text="test", type="fact", tags=[], importance=0.5, user_id=None)
+            dep_warnings = [x for x in w if issubclass(x.category, DeprecationWarning)]
+            assert len(dep_warnings) == 1
+        assert fact.entity_id is None
+
+    def test_memory_fact_model_dump_none_roundtrip(self):
+        """Roundtrip when entity_id is None should work."""
+        original = MemoryFact(text="test", type="fact", tags=[], importance=0.5)
+        dumped = original.model_dump()
+        assert dumped["entity_id"] is None
+        assert dumped["user_id"] is None
+        reconstructed = MemoryFact(**dumped)
+        assert reconstructed.entity_id is None
