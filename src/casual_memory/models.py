@@ -221,8 +221,11 @@ class MemoryFact(BaseModel):
         Until those layers are updated, we include both keys.
         """
         data = super().model_dump(**kwargs)
-        # Include user_id as alias for entity_id in serialized output
-        data["user_id"] = data.get("entity_id")
+        # Include user_id as alias for entity_id in serialized output,
+        # but respect exclude_none semantics
+        user_id_val = data.get("entity_id")
+        if not (kwargs.get("exclude_none") and user_id_val is None):
+            data["user_id"] = user_id_val
         return data
 
     @property
@@ -369,7 +372,10 @@ class MemoryConflict(BaseModel):
     def model_dump(self, **kwargs: Any) -> dict[str, Any]:
         """Override model_dump to include 'user_id' key for backward compatibility."""
         data = super().model_dump(**kwargs)
-        data["user_id"] = data.get("entity_id")
+        # Include user_id as alias for entity_id, respecting exclude_none
+        user_id_val = data.get("entity_id")
+        if not (kwargs.get("exclude_none") and user_id_val is None):
+            data["user_id"] = user_id_val
         return data
 
     @property
@@ -489,8 +495,10 @@ class MemoryQueryFilter(BaseModel):
         keys so existing code continues to work.
         """
         data = super().model_dump(**kwargs)
-        # Include user_id as alias for entity_id in serialized output
-        data["user_id"] = data.get("entity_id")
+        # Include user_id as alias for entity_id, respecting exclude_none
+        user_id_val = data.get("entity_id")
+        if not (kwargs.get("exclude_none") and user_id_val is None):
+            data["user_id"] = user_id_val
         return data
 
     @property

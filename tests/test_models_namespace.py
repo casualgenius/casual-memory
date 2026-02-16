@@ -422,3 +422,50 @@ class TestEdgeCases:
         assert dumped["user_id"] is None
         reconstructed = MemoryFact(**dumped)
         assert reconstructed.entity_id is None
+
+
+class TestModelDumpExcludeNone:
+    """Tests that model_dump(exclude_none=True) respects exclude_none for user_id."""
+
+    def test_memory_fact_exclude_none_omits_user_id_when_none(self):
+        """model_dump(exclude_none=True) should not include user_id when entity_id is None."""
+        fact = MemoryFact(text="test", type="fact", tags=[], importance=0.5)
+        dumped = fact.model_dump(exclude_none=True)
+        assert "user_id" not in dumped
+        assert "entity_id" not in dumped
+
+    def test_memory_fact_exclude_none_includes_user_id_when_set(self):
+        """model_dump(exclude_none=True) should include user_id when entity_id is set."""
+        fact = MemoryFact(text="test", type="fact", tags=[], importance=0.5, entity_id="user1")
+        dumped = fact.model_dump(exclude_none=True)
+        assert dumped["user_id"] == "user1"
+        assert dumped["entity_id"] == "user1"
+
+    def test_memory_conflict_exclude_none_includes_user_id(self):
+        """MemoryConflict.model_dump(exclude_none=True) should include user_id when entity_id is set."""
+        conflict = MemoryConflict(
+            entity_id="user1",
+            memory_a_id="a",
+            memory_b_id="b",
+            category="test",
+            similarity_score=0.9,
+            avg_importance=0.8,
+        )
+        dumped = conflict.model_dump(exclude_none=True)
+        assert dumped["user_id"] == "user1"
+        assert dumped["entity_id"] == "user1"
+
+    def test_memory_query_filter_exclude_none_omits_user_id_when_none(self):
+        """MemoryQueryFilter.model_dump(exclude_none=True) should omit user_id when None."""
+        qf = MemoryQueryFilter()
+        dumped = qf.model_dump(exclude_none=True)
+        assert "user_id" not in dumped
+        assert "entity_id" not in dumped
+
+    def test_memory_query_filter_exclude_none_includes_user_id_when_set(self):
+        """MemoryQueryFilter.model_dump(exclude_none=True) should include user_id when set."""
+        qf = MemoryQueryFilter(entity_id="user1", namespace="work")
+        dumped = qf.model_dump(exclude_none=True)
+        assert dumped["user_id"] == "user1"
+        assert dumped["entity_id"] == "user1"
+        assert dumped["namespace"] == "work"
