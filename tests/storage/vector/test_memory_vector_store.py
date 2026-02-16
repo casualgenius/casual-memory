@@ -499,9 +499,7 @@ def test_filter_by_min_importance(vector_store, sample_vectors):
 # --- Namespace isolation tests ---
 
 
-def _make_payload(
-    text: str, entity_id: str, namespace: str = "default"
-) -> dict[str, Any]:
+def _make_payload(text: str, entity_id: str, namespace: str = "default") -> dict[str, Any]:
     """Helper to create a payload dict with namespace and entity_id."""
     return {
         "text": text,
@@ -689,6 +687,40 @@ def test_search_with_deprecated_user_id_filter(vector_store, sample_vectors):
             top_k=5,
             min_score=0.5,
             filters={"user_id": "user1"},
+        )
+
+    assert len(results) == 1
+    assert results[0].payload.entity_id == "user1"
+
+
+def test_search_filters_with_both_entity_id_and_user_id_no_warning(vector_store, sample_vectors):
+    """Filters from MemoryQueryFilter.model_dump() include both entity_id and user_id.
+
+    When both keys are present with the same value, only entity_id should be
+    used and NO deprecation warning should be emitted.
+    """
+    payload = _make_payload("Memory 1", "user1", "default")
+    vector_store.add(sample_vectors["vec1"], payload)
+
+    # Simulates MemoryQueryFilter(entity_id="user1").model_dump()
+    filters_from_model_dump = {
+        "type": None,
+        "min_importance": None,
+        "namespace": "default",
+        "entity_id": "user1",
+        "user_id": "user1",
+    }
+
+    import warnings
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", DeprecationWarning)
+        # Should NOT raise DeprecationWarning
+        results = vector_store.search(
+            query_embedding=sample_vectors["vec1"],
+            top_k=5,
+            min_score=0.5,
+            filters=filters_from_model_dump,
         )
 
     assert len(results) == 1

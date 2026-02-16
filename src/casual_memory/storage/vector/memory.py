@@ -94,6 +94,10 @@ class InMemoryVectorStore:
                 if self._resolve_entity_id(payload) != value:
                     return False
             elif key == "user_id":
+                # Skip user_id if entity_id is already present (e.g. from
+                # MemoryQueryFilter.model_dump() which emits both keys).
+                if "entity_id" in filters and filters["entity_id"] is not None:
+                    continue
                 # Deprecated: map user_id filter to entity_id lookup
                 warnings.warn(
                     "Filter key 'user_id' is deprecated, use 'entity_id' instead.",
