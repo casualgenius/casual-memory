@@ -21,6 +21,8 @@ from qdrant_client.models import (
     VectorParams,
 )
 
+from casual_memory.storage.vector.models import MemoryPoint, MemoryPointPayload
+
 # Union of all condition types accepted by Filter.must / must_not / should
 _Condition = (
     FieldCondition
@@ -31,8 +33,6 @@ _Condition = (
     | NestedCondition
     | Filter
 )
-
-from casual_memory.storage.vector.models import MemoryPoint, MemoryPointPayload
 
 logger = logging.getLogger(__name__)
 
@@ -140,9 +140,7 @@ class QdrantMemoryStore:
             point_ids = [point.id for point in points]
 
             if point_ids:
-                self.client.delete(
-                    collection_name=self.collection_name, points_selector=point_ids
-                )
+                self.client.delete(collection_name=self.collection_name, points_selector=point_ids)
                 total_deleted += len(point_ids)
 
             if next_offset is None or len(points) < page_size:
