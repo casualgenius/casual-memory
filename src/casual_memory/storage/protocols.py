@@ -279,38 +279,60 @@ class ShortTermStore(Protocol):
 
     Implementations should provide fast access to recent conversation messages.
     This is typically backed by Redis for production or in-memory for testing.
-    Stores the last N messages per user for immediate conversational context.
+    Stores the last N messages per entity within a namespace for immediate
+    conversational context.
     """
 
-    def add_messages(self, user_id: str, messages: list[ShortTermMemory]) -> int:
+    def add_messages(
+        self, entity_id: str, messages: list[ShortTermMemory], namespace: str = "default"
+    ) -> int:
         """
         Add messages to short-term storage.
 
         Args:
-            user_id: The user ID
+            entity_id: The entity ID (e.g., composed user_id:session_id from ContextService)
             messages: List of messages to add
+            namespace: Namespace for message isolation (default: "default")
 
         Returns:
             Number of messages added
         """
         ...
 
-    def get_recent_messages(self, user_id: str, limit: int = 20) -> list[ShortTermMemory]:
+    def get_recent_messages(
+        self, entity_id: str, limit: int = 20, namespace: str = "default"
+    ) -> list[ShortTermMemory]:
         """
-        Get recent messages for a user.
+        Get recent messages for an entity.
 
         Args:
-            user_id: The user ID
+            entity_id: The entity ID
             limit: Maximum number of messages to return (default: 20)
+            namespace: Namespace for message isolation (default: "default")
 
         Returns:
             List of recent messages, ordered by timestamp (oldest first)
         """
         ...
 
+    def clear_messages(self, entity_id: str, namespace: str = "default") -> int:
+        """
+        Clear all messages for an entity within a namespace.
+
+        Args:
+            entity_id: The entity ID
+            namespace: Namespace for message isolation (default: "default")
+
+        Returns:
+            Number of messages deleted
+        """
+        ...
+
     def clear_user_messages(self, user_id: str) -> int:
         """
-        Clear all messages for a user.
+        Deprecated: Use clear_messages() instead.
+
+        Clear all messages for a user across all namespaces.
 
         Args:
             user_id: The user ID
@@ -320,12 +342,13 @@ class ShortTermStore(Protocol):
         """
         ...
 
-    def get_message_count(self, user_id: str) -> int:
+    def get_message_count(self, entity_id: str, namespace: str = "default") -> int:
         """
-        Get the number of messages stored for a user.
+        Get the number of messages stored for an entity.
 
         Args:
-            user_id: The user ID
+            entity_id: The entity ID
+            namespace: Namespace for message isolation (default: "default")
 
         Returns:
             Number of messages
