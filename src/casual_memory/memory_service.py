@@ -114,8 +114,10 @@ class MemoryService:
                 importance=result.payload.importance,
                 source=result.payload.source,
                 valid_until=result.payload.valid_until,
+                # Namespace and entity identification
+                namespace=result.payload.namespace,
+                entity_id=result.payload.entity_id,
                 # Intelligence fields
-                entity_id=result.payload.user_id,
                 confidence=result.payload.confidence,
                 mention_count=result.payload.mention_count,
                 first_seen=result.payload.first_seen,
