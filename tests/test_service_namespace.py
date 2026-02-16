@@ -127,16 +127,12 @@ async def test_add_memory_default_namespace(memory_service, mock_vector_store, m
 
 
 @pytest.mark.asyncio
-async def test_query_memory_passes_namespace_through_filter(
-    memory_service, mock_vector_store
-):
+async def test_query_memory_passes_namespace_through_filter(memory_service, mock_vector_store):
     """query_memory passes namespace from filter to vector store search."""
     mock_vector_store.search.return_value = []
 
     query_filter = MemoryQueryFilter(entity_id="user_123", namespace="work")
-    await memory_service.query_memory(
-        query="test", filter=query_filter, top_k=5, min_score=0.5
-    )
+    await memory_service.query_memory(query="test", filter=query_filter, top_k=5, min_score=0.5)
 
     call_kwargs = mock_vector_store.search.call_args.kwargs
     filters = call_kwargs["filters"]
@@ -145,9 +141,7 @@ async def test_query_memory_passes_namespace_through_filter(
 
 
 @pytest.mark.asyncio
-async def test_query_memory_reconstructs_namespace_in_memoryfact(
-    memory_service, mock_vector_store
-):
+async def test_query_memory_reconstructs_namespace_in_memoryfact(memory_service, mock_vector_store):
     """query_memory includes namespace and entity_id when constructing MemoryFact."""
     result = Mock()
     result.payload = Mock(
@@ -170,9 +164,7 @@ async def test_query_memory_reconstructs_namespace_in_memoryfact(
     mock_vector_store.search.return_value = [result]
 
     query_filter = MemoryQueryFilter(entity_id="user_123", namespace="work")
-    memories = await memory_service.query_memory(
-        query="location", filter=query_filter
-    )
+    memories = await memory_service.query_memory(query="location", filter=query_filter)
 
     assert len(memories) == 1
     assert memories[0].namespace == "work"
@@ -192,9 +184,7 @@ def action_executor(mock_vector_store, mock_conflict_store):
 
 
 @pytest.mark.asyncio
-async def test_execute_add_includes_namespace_in_payload(
-    action_executor, mock_vector_store
-):
+async def test_execute_add_includes_namespace_in_payload(action_executor, mock_vector_store):
     """_execute_add includes namespace and entity_id in payload."""
     new_memory = MemoryFact(
         text="I live in Paris",
@@ -221,9 +211,7 @@ async def test_execute_add_includes_namespace_in_payload(
 
 
 @pytest.mark.asyncio
-async def test_execute_conflict_includes_namespace(
-    action_executor, mock_conflict_store
-):
+async def test_execute_conflict_includes_namespace(action_executor, mock_conflict_store):
     """_execute_conflict creates MemoryConflict with namespace and entity_id."""
     new_memory = MemoryFact(
         text="I live in Paris",
@@ -278,9 +266,7 @@ async def test_execute_conflict_includes_namespace(
 
 
 @pytest.mark.asyncio
-async def test_execute_conflict_no_default_user_fallback(
-    action_executor, mock_conflict_store
-):
+async def test_execute_conflict_no_default_user_fallback(action_executor, mock_conflict_store):
     """_execute_conflict does not use 'default_user' -- entity_id from MemoryFact is used as-is."""
     new_memory = MemoryFact(
         text="I live in Paris",
@@ -449,15 +435,11 @@ def test_context_backward_compatible_positional_args(context_service, short_term
 
 def test_context_namespace_isolation(context_service, short_term_store):
     """Messages in different namespaces are fully isolated."""
-    context_service.add(
-        "user1", "sess1", [UserMessage(content="work msg")], namespace="work"
-    )
+    context_service.add("user1", "sess1", [UserMessage(content="work msg")], namespace="work")
     context_service.add(
         "user1", "sess1", [UserMessage(content="personal msg")], namespace="personal"
     )
-    context_service.add(
-        "user1", "sess1", [UserMessage(content="default msg")]
-    )
+    context_service.add("user1", "sess1", [UserMessage(content="default msg")])
 
     work = context_service.get("user1", "sess1", namespace="work")
     personal = context_service.get("user1", "sess1", namespace="personal")
@@ -474,3 +456,58 @@ def test_context_namespace_isolation(context_service, short_term_store):
 def test_compose_key_uses_entity_id(context_service):
     """_compose_key creates entity_id:session_id format."""
     assert context_service._compose_key("alice", "chat1") == "alice:chat1"
+
+
+def test_context_add_keyword_user_id_without_entity_id(context_service, short_term_store):
+    """Old-style keyword call add(user_id='u', session_id='s', messages=...) works."""
+    messages = [UserMessage(content="keyword test")]
+
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        result = context_service.add(user_id="alice", session_id="sess1", messages=messages)
+
+        deprecation_warnings = [x for x in w if issubclass(x.category, DeprecationWarning)]
+        assert len(deprecation_warnings) >= 1
+
+    assert len(result) == 1
+    count = short_term_store.get_message_count("alice:sess1", namespace="default")
+    assert count == 1
+
+
+def test_context_get_keyword_user_id_without_entity_id(context_service, short_term_store):
+    """Old-style keyword call get(user_id='u', session_id='s') works."""
+    context_service.add("alice", "sess1", [UserMessage(content="hello")])
+
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        result = context_service.get(user_id="alice", session_id="sess1")
+
+        deprecation_warnings = [x for x in w if issubclass(x.category, DeprecationWarning)]
+        assert len(deprecation_warnings) >= 1
+
+    assert len(result) == 1
+    assert result[0].message.content == "hello"
+
+
+def test_context_clear_keyword_user_id_without_entity_id(context_service, short_term_store):
+    """Old-style keyword call clear(user_id='u', session_id='s') works."""
+    context_service.add("alice", "sess1", [UserMessage(content="hello")])
+
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        count = context_service.clear(user_id="alice", session_id="sess1")
+
+        deprecation_warnings = [x for x in w if issubclass(x.category, DeprecationWarning)]
+        assert len(deprecation_warnings) >= 1
+
+    assert count == 1
+    remaining = short_term_store.get_message_count("alice:sess1", namespace="default")
+    assert remaining == 0
+
+
+def test_context_missing_entity_id_and_user_id_raises(context_service):
+    """Calling add() without entity_id or user_id raises TypeError."""
+    import pytest as _pytest
+
+    with _pytest.raises(TypeError, match="entity_id"):
+        context_service.add(session_id="sess1", messages=[UserMessage(content="hi")])

@@ -32,9 +32,9 @@ class ContextService:
 
     def add(
         self,
-        entity_id: str,
-        session_id: str,
-        messages: list[ChatMessage],
+        entity_id: str | None = None,
+        session_id: str | None = None,
+        messages: list[ChatMessage] | None = None,
         namespace: str = "default",
         *,
         user_id: str | None = None,
@@ -45,7 +45,9 @@ class ContextService:
         ShortTermMemory with a timestamp before storage.
 
         Args:
-            entity_id: The entity ID (or user ID for backward compatibility)
+            entity_id: The entity ID (or user ID for backward compatibility).
+                Previously named ``user_id``; callers may still pass
+                ``user_id`` as a keyword argument.
             session_id: The session ID
             messages: List of ChatMessages to store
             namespace: Namespace for message isolation (default: "default")
@@ -55,6 +57,10 @@ class ContextService:
             List of ShortTermMemory objects that were stored.
         """
         entity_id = self._resolve_entity_id(entity_id, user_id)
+        if session_id is None:
+            raise TypeError("add() missing required argument: 'session_id'")
+        if messages is None:
+            raise TypeError("add() missing required argument: 'messages'")
 
         memories: list[ShortTermMemory] = []
         for message in messages:
@@ -73,8 +79,8 @@ class ContextService:
 
     def get(
         self,
-        entity_id: str,
-        session_id: str,
+        entity_id: str | None = None,
+        session_id: str | None = None,
         limit: int | None = None,
         namespace: str = "default",
         *,
@@ -87,7 +93,9 @@ class ContextService:
         split.
 
         Args:
-            entity_id: The entity ID (or user ID for backward compatibility)
+            entity_id: The entity ID (or user ID for backward compatibility).
+                Previously named ``user_id``; callers may still pass
+                ``user_id`` as a keyword argument.
             session_id: The session ID
             limit: Max messages to return (defaults to short_term_limit)
             namespace: Namespace for message isolation (default: "default")
@@ -99,6 +107,8 @@ class ContextService:
             list if no user message is found.
         """
         entity_id = self._resolve_entity_id(entity_id, user_id)
+        if session_id is None:
+            raise TypeError("get() missing required argument: 'session_id'")
 
         effective_limit = self.short_term_limit if limit is None else limit
         key = self._compose_key(entity_id, session_id)
@@ -110,8 +120,8 @@ class ContextService:
 
     def clear(
         self,
-        entity_id: str,
-        session_id: str,
+        entity_id: str | None = None,
+        session_id: str | None = None,
         namespace: str = "default",
         *,
         user_id: str | None = None,
@@ -119,7 +129,9 @@ class ContextService:
         """Clear all messages for a session.
 
         Args:
-            entity_id: The entity ID (or user ID for backward compatibility)
+            entity_id: The entity ID (or user ID for backward compatibility).
+                Previously named ``user_id``; callers may still pass
+                ``user_id`` as a keyword argument.
             session_id: The session ID
             namespace: Namespace for message isolation (default: "default")
             user_id: Deprecated. Use entity_id instead.
@@ -128,17 +140,25 @@ class ContextService:
             Number of messages deleted.
         """
         entity_id = self._resolve_entity_id(entity_id, user_id)
+        if session_id is None:
+            raise TypeError("clear() missing required argument: 'session_id'")
 
         key = self._compose_key(entity_id, session_id)
         return self.short_term_store.clear_messages(key, namespace=namespace)
 
     @staticmethod
-    def _resolve_entity_id(entity_id: str, user_id: str | None) -> str:
+    def _resolve_entity_id(entity_id: str | None, user_id: str | None) -> str:
         """Resolve entity_id from positional arg and deprecated user_id kwarg.
 
-        If user_id is provided as a keyword argument, it is used as entity_id
-        with a deprecation warning. If both are provided and differ, entity_id
-        takes precedence and user_id is ignored with a warning.
+        Supports three calling patterns:
+        1. ``service.add("eid", ...)`` -- new style, entity_id positional
+        2. ``service.add(user_id="uid", ...)`` -- old keyword style, mapped
+           to entity_id with deprecation warning
+        3. ``service.add("eid", ..., user_id="uid")`` -- both provided,
+           entity_id takes precedence, deprecation warning emitted
+
+        Raises:
+            TypeError: If neither entity_id nor user_id is provided.
         """
         if user_id is not None:
             warnings.warn(
@@ -146,7 +166,11 @@ class ContextService:
                 DeprecationWarning,
                 stacklevel=3,
             )
-            # If entity_id was also provided via the positional arg
-            # (always required), use it. The user_id kwarg is just ignored
-            # with the deprecation warning above.
+            if entity_id is None:
+                # Old-style keyword call: service.add(user_id="uid", ...)
+                return user_id
+            # Both provided: entity_id takes precedence, user_id is ignored
+            # (deprecation warning already emitted above)
+        if entity_id is None:
+            raise TypeError("Missing required argument: 'entity_id' (or deprecated 'user_id')")
         return entity_id
