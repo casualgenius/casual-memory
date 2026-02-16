@@ -291,23 +291,33 @@ class TestFindSimilarMemories:
     def test_archived_excluded_by_default(
         self, store: QdrantMemoryStore, mock_client: MagicMock
     ) -> None:
-        """Archived memories are excluded in post-processing by default."""
-        payload = _make_payload(archived=True)
-        point = _make_scored_point(payload=payload)
-        mock_client.query_points.return_value = SimpleNamespace(points=[point])
+        """Archived memories are excluded via query filter by default."""
+        mock_client.query_points.return_value = SimpleNamespace(points=[])
 
-        results = store.find_similar_memories(
+        store.find_similar_memories(
             embedding=[0.1, 0.2, 0.3],
             entity_id="user1",
             threshold=0.5,
         )
 
-        assert len(results) == 0
+        call_kwargs = mock_client.query_points.call_args
+        query_filter = call_kwargs.kwargs.get("query_filter") or call_kwargs[1].get("query_filter")
+        assert query_filter is not None
+        assert query_filter.must_not is not None
+        # Verify archived=True is in must_not
+        archived_conditions = [
+            c
+            for c in query_filter.must_not
+            if isinstance(c, FieldCondition)
+            and c.key == "archived"
+            and c.match == MatchValue(value=True)
+        ]
+        assert len(archived_conditions) == 1
 
     def test_archived_included_when_not_excluded(
         self, store: QdrantMemoryStore, mock_client: MagicMock
     ) -> None:
-        """Archived memories included when exclude_archived=False."""
+        """Archived memories included when exclude_archived=False (no must_not filter)."""
         payload = _make_payload(archived=True)
         point = _make_scored_point(payload=payload)
         mock_client.query_points.return_value = SimpleNamespace(points=[point])
@@ -320,6 +330,10 @@ class TestFindSimilarMemories:
         )
 
         assert len(results) == 1
+        # Verify no must_not filter was applied
+        call_kwargs = mock_client.query_points.call_args
+        query_filter = call_kwargs.kwargs.get("query_filter") or call_kwargs[1].get("query_filter")
+        assert query_filter.must_not is None
 
     def test_old_payload_with_user_id_only(
         self, store: QdrantMemoryStore, mock_client: MagicMock

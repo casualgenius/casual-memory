@@ -8,13 +8,28 @@ from qdrant_client.models import (
     Distance,
     FieldCondition,
     Filter,
+    HasIdCondition,
+    HasVectorCondition,
+    IsEmptyCondition,
     IsNullCondition,
     MatchAny,
     MatchValue,
+    NestedCondition,
     PayloadField,
     PointStruct,
     Range,
     VectorParams,
+)
+
+# Union of all condition types accepted by Filter.must / must_not / should
+_Condition = (
+    FieldCondition
+    | IsEmptyCondition
+    | IsNullCondition
+    | HasIdCondition
+    | HasVectorCondition
+    | NestedCondition
+    | Filter
 )
 
 from casual_memory.storage.vector.models import MemoryPoint, MemoryPointPayload
@@ -29,7 +44,7 @@ def _is_flat_vector(v: Any) -> TypeGuard[list[float]]:
     return isinstance(v, list) and len(v) > 0 and not isinstance(v[0], list)
 
 
-def _build_namespace_filter(namespace: str) -> Filter | None:
+def _build_namespace_filter(namespace: str) -> Filter:
     """Build a Qdrant filter condition for namespace.
 
     For the ``"default"`` namespace we use an OR filter that matches points
@@ -97,6 +112,45 @@ class QdrantMemoryStore:
             vectors_config=VectorParams(size=vector_dimension, distance=Distance.COSINE),
         )
 
+    def _scroll_and_delete(self, scroll_filter: Filter, label: str) -> int:
+        """Paginate through scroll results and delete all matching points.
+
+        Args:
+            scroll_filter: Qdrant filter to select points
+            label: Human-readable label for log messages
+
+        Returns:
+            Total number of points deleted
+        """
+        page_size = 10000
+        total_deleted = 0
+        offset = None  # Qdrant uses point ID as cursor
+
+        while True:
+            scroll_result = self.client.scroll(
+                collection_name=self.collection_name,
+                scroll_filter=scroll_filter,
+                limit=page_size,
+                offset=offset,
+                with_payload=False,
+                with_vectors=False,
+            )
+
+            points, next_offset = scroll_result
+            point_ids = [point.id for point in points]
+
+            if point_ids:
+                self.client.delete(
+                    collection_name=self.collection_name, points_selector=point_ids
+                )
+                total_deleted += len(point_ids)
+
+            if next_offset is None or len(points) < page_size:
+                break
+            offset = next_offset
+
+        return total_deleted
+
     def clear_memories(self, entity_id: str, namespace: str = "default") -> int:
         """Clear all memories for a specific entity within a namespace.
 
@@ -108,36 +162,19 @@ class QdrantMemoryStore:
             Number of memories deleted
         """
         try:
-            # Build combined filter for entity + namespace
-            must_filters: list[Filter | FieldCondition] = []
-            must_filters.append(_build_entity_id_filter(entity_id))
+            must_filters: list[_Condition] = [
+                _build_entity_id_filter(entity_id),
+                _build_namespace_filter(namespace),
+            ]
+            scroll_filter = Filter(must=must_filters)
+            label = f"entity_id={entity_id}, namespace={namespace}"
 
-            ns_filter = _build_namespace_filter(namespace)
-            if ns_filter is not None:
-                must_filters.append(ns_filter)
-
-            scroll_filter = Filter(must=must_filters)  # type: ignore[arg-type]
-
-            scroll_result = self.client.scroll(
-                collection_name=self.collection_name,
-                scroll_filter=scroll_filter,
-                limit=10000,
-                with_payload=False,
-                with_vectors=False,
-            )
-
-            points_to_delete = [point.id for point in scroll_result[0]]
-            count = len(points_to_delete)
+            count = self._scroll_and_delete(scroll_filter, label)
 
             if count > 0:
-                self.client.delete(
-                    collection_name=self.collection_name, points_selector=points_to_delete
-                )
-                logger.info(
-                    f"Cleared {count} memories for entity_id={entity_id}, namespace={namespace}"
-                )
+                logger.info(f"Cleared {count} memories for {label}")
             else:
-                logger.info(f"No memories found for entity_id={entity_id}, namespace={namespace}")
+                logger.info(f"No memories found for {label}")
 
             return count
         except Exception as e:
@@ -163,26 +200,13 @@ class QdrantMemoryStore:
             stacklevel=2,
         )
         try:
-            scroll_result = self.client.scroll(
-                collection_name=self.collection_name,
-                scroll_filter=Filter(
-                    must=[
-                        _build_entity_id_filter(user_id),
-                    ]
-                ),
-                limit=10000,
-                with_payload=False,
-                with_vectors=False,
-            )
+            scroll_filter = Filter(must=[_build_entity_id_filter(user_id)])
+            label = f"user_id={user_id} (deprecated)"
 
-            points_to_delete = [point.id for point in scroll_result[0]]
-            count = len(points_to_delete)
+            count = self._scroll_and_delete(scroll_filter, label)
 
             if count > 0:
-                self.client.delete(
-                    collection_name=self.collection_name, points_selector=points_to_delete
-                )
-                logger.info(f"Cleared {count} memories for user_id={user_id} (deprecated)")
+                logger.info(f"Cleared {count} memories for {label}")
             else:
                 logger.info(f"No memories found for user_id={user_id}")
 
@@ -234,7 +258,7 @@ class QdrantMemoryStore:
         """
         qdrant_filter = None
         if filters:
-            must_conditions: list[FieldCondition | Filter] = []
+            must_conditions: list[_Condition] = []
 
             # Resolve entity_id / user_id
             entity_id_value: str | None = filters.get("entity_id")
@@ -254,13 +278,17 @@ class QdrantMemoryStore:
             # Handle namespace filter
             namespace_value: str | None = filters.get("namespace")
             if namespace_value is not None:
-                ns_filter = _build_namespace_filter(namespace_value)
-                if ns_filter is not None:
-                    must_conditions.append(ns_filter)
+                must_conditions.append(_build_namespace_filter(namespace_value))
 
             # Handle type filter (list of types)
             type_value = filters.get("type")
             if type_value is not None:
+                if isinstance(type_value, str):
+                    type_value = [type_value]
+                elif not isinstance(type_value, list):
+                    raise TypeError(
+                        f"Filter 'type' must be a list of strings or a string, got {type(type_value).__name__}"
+                    )
                 must_conditions.append(FieldCondition(key="type", match=MatchAny(any=type_value)))
 
             # Handle min_importance filter
@@ -270,7 +298,7 @@ class QdrantMemoryStore:
                     FieldCondition(key="importance", range=Range(gte=min_importance_value))
                 )
 
-            qdrant_filter = Filter(must=must_conditions) if must_conditions else None  # type: ignore[arg-type]
+            qdrant_filter = Filter(must=must_conditions) if must_conditions else None
 
         response = self.client.query_points(
             collection_name=self.collection_name,
@@ -335,17 +363,23 @@ class QdrantMemoryStore:
             threshold = 0.85  # Default similarity threshold
 
         # Build filter conditions
-        must_conditions: list[FieldCondition | Filter] = []
+        must_conditions: list[_Condition] = []
+        must_not_conditions: list[_Condition] = []
 
         if entity_id:
             must_conditions.append(_build_entity_id_filter(entity_id))
 
         # Add namespace filter
-        ns_filter = _build_namespace_filter(namespace)
-        if ns_filter is not None:
-            must_conditions.append(ns_filter)
+        must_conditions.append(_build_namespace_filter(namespace))
 
-        qdrant_filter = Filter(must=must_conditions) if must_conditions else None  # type: ignore[arg-type]
+        # Exclude archived at query level so limit is respected
+        if exclude_archived:
+            must_not_conditions.append(FieldCondition(key="archived", match=MatchValue(value=True)))
+
+        qdrant_filter = Filter(
+            must=must_conditions or None,
+            must_not=must_not_conditions or None,
+        )
 
         # Perform similarity search
         response = self.client.query_points(
@@ -358,7 +392,6 @@ class QdrantMemoryStore:
             with_payload=True,
         )
 
-        # Convert results and filter archived in post-processing
         results = []
         for hit in response.points:
             if hit.payload is None or not _is_flat_vector(hit.vector):
@@ -366,11 +399,6 @@ class QdrantMemoryStore:
             memory_point = MemoryPoint(
                 id=str(hit.id), vector=hit.vector, payload=MemoryPointPayload(**hit.payload)
             )
-
-            # Skip archived memories if requested
-            if exclude_archived and memory_point.payload.archived:
-                logger.debug(f"Skipping archived memory: {memory_point.payload.text[:50]}")
-                continue
 
             results.append((memory_point, hit.score))
             logger.debug(
