@@ -99,7 +99,7 @@ class MemoryActionExecutor:
             "source": result.new_memory.source,
             "valid_until": result.new_memory.valid_until,
             "timestamp": now,
-            "user_id": result.new_memory.user_id,
+            "user_id": result.new_memory.entity_id,
             "confidence": result.new_memory.confidence,
             "mention_count": result.new_memory.mention_count or 1,
             "first_seen": result.new_memory.first_seen or now,
@@ -215,7 +215,7 @@ class MemoryActionExecutor:
 
                 # Create MemoryConflict object
                 conflict = MemoryConflict(
-                    user_id=result.new_memory.user_id or "default_user",
+                    entity_id=result.new_memory.entity_id or "default_user",
                     memory_a_id=similarity_result.similar_memory.memory_id,
                     memory_b_id=temp_memory_b_id,  # Temporary ID for new memory
                     category=category,

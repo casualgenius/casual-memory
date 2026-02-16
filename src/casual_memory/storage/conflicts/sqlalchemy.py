@@ -89,7 +89,7 @@ def create_conflict_model(
             """Convert database model to MemoryConflict."""
             return MemoryConflict(
                 id=self.id,  # type: ignore[arg-type]
-                user_id=self.user_id,  # type: ignore[arg-type]
+                entity_id=self.user_id,  # type: ignore[arg-type]
                 memory_a_id=self.memory_a_id,  # type: ignore[arg-type]
                 memory_b_id=self.memory_b_id,  # type: ignore[arg-type]
                 category=self.category,  # type: ignore[arg-type]
@@ -111,7 +111,7 @@ def create_conflict_model(
             """Create database model from MemoryConflict."""
             return cls(
                 id=conflict.id,
-                user_id=conflict.user_id,
+                user_id=conflict.entity_id,
                 memory_a_id=conflict.memory_a_id,
                 memory_b_id=conflict.memory_b_id,
                 category=conflict.category,
@@ -223,7 +223,7 @@ class SQLAlchemyConflictStore:
             session.add(db_conflict)
 
             logger.info(
-                f"Stored conflict {conflict.id} for user {conflict.user_id}: "
+                f"Stored conflict {conflict.id} for user {conflict.entity_id}: "
                 f"{conflict.category} ({conflict.status})"
             )
 

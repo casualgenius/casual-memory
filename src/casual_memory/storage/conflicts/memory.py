@@ -39,12 +39,12 @@ class InMemoryConflictStore:
         self._conflicts[conflict_id] = conflict
 
         # Add to user index
-        if conflict.user_id not in self._user_conflicts:
-            self._user_conflicts[conflict.user_id] = []
-        self._user_conflicts[conflict.user_id].append(conflict_id)
+        if conflict.entity_id not in self._user_conflicts:
+            self._user_conflicts[conflict.entity_id] = []
+        self._user_conflicts[conflict.entity_id].append(conflict_id)
 
         logger.info(
-            f"Stored conflict {conflict_id} for user {conflict.user_id}: "
+            f"Stored conflict {conflict_id} for user {conflict.entity_id}: "
             f"{conflict.category} ({conflict.status})"
         )
 
