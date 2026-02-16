@@ -1,10 +1,22 @@
 """Integration tests for SQLAlchemy conflict storage backend."""
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 
 from casual_memory.models import ConflictResolution, MemoryConflict
 from casual_memory.storage.conflicts.sqlalchemy import SQLAlchemyConflictStore
+
+
+def _fresh_store(host: str) -> SQLAlchemyConflictStore:
+    """Create a store with a fresh table (drops if exists)."""
+    engine = create_engine(f"postgresql://postgres:postgres@{host}:5432/test_conflicts")
+    # Drop existing table so schema changes are picked up
+    with engine.connect() as conn:
+        conn.execute(text("DROP TABLE IF EXISTS conflicts"))
+        conn.commit()
+    store = SQLAlchemyConflictStore(engine=engine)
+    store.create_tables()
+    return store
 
 
 @pytest.mark.integration
@@ -12,17 +24,12 @@ def test_sqlalchemy_add_and_get_conflict(skip_if_no_postgres):
     """Test adding and retrieving conflicts with SQLAlchemy."""
     pytest.importorskip("sqlalchemy")
 
-    host = skip_if_no_postgres  # Fixture returns the host
-
-    # Create engine and storage instance
-    engine = create_engine(f"postgresql://postgres:postgres@{host}:5432/test_conflicts")
-    storage = SQLAlchemyConflictStore(engine=engine)
-    storage.create_tables()
+    storage = _fresh_store(skip_if_no_postgres)
 
     try:
         # Create test conflict with all required fields
         conflict = MemoryConflict(
-            user_id="test_user",
+            entity_id="test_user",
             memory_a_id="memory_a",
             memory_b_id="memory_b",
             category="location",
@@ -44,9 +51,8 @@ def test_sqlalchemy_add_and_get_conflict(skip_if_no_postgres):
         assert retrieved.status == "pending"
 
     finally:
-        # Cleanup: clear user conflicts
         try:
-            storage.clear_user_conflicts("test_user")
+            storage.clear_conflicts("test_user")
         except Exception:
             pass
 
@@ -56,17 +62,13 @@ def test_sqlalchemy_list_pending_conflicts(skip_if_no_postgres):
     """Test listing pending conflicts."""
     pytest.importorskip("sqlalchemy")
 
-    host = skip_if_no_postgres
-
-    engine = create_engine(f"postgresql://postgres:postgres@{host}:5432/test_conflicts")
-    storage = SQLAlchemyConflictStore(engine=engine)
-    storage.create_tables()
+    storage = _fresh_store(skip_if_no_postgres)
 
     try:
         # Add multiple conflicts
         for i in range(3):
             conflict = MemoryConflict(
-                user_id="test_user",
+                entity_id="test_user",
                 memory_a_id=f"memory_a_{i}",
                 memory_b_id=f"memory_b_{i}",
                 category="test",
@@ -84,7 +86,7 @@ def test_sqlalchemy_list_pending_conflicts(skip_if_no_postgres):
 
     finally:
         try:
-            storage.clear_user_conflicts("test_user")
+            storage.clear_conflicts("test_user")
         except Exception:
             pass
 
@@ -94,16 +96,12 @@ def test_sqlalchemy_resolve_conflict(skip_if_no_postgres):
     """Test resolving conflicts."""
     pytest.importorskip("sqlalchemy")
 
-    host = skip_if_no_postgres
-
-    engine = create_engine(f"postgresql://postgres:postgres@{host}:5432/test_conflicts")
-    storage = SQLAlchemyConflictStore(engine=engine)
-    storage.create_tables()
+    storage = _fresh_store(skip_if_no_postgres)
 
     try:
         # Add conflict
         conflict = MemoryConflict(
-            user_id="test_user",
+            entity_id="test_user",
             memory_a_id="memory_a",
             memory_b_id="memory_b",
             category="job",
@@ -133,26 +131,22 @@ def test_sqlalchemy_resolve_conflict(skip_if_no_postgres):
 
     finally:
         try:
-            storage.clear_user_conflicts("test_user")
+            storage.clear_conflicts("test_user")
         except Exception:
             pass
 
 
 @pytest.mark.integration
 def test_sqlalchemy_user_isolation(skip_if_no_postgres):
-    """Test that conflicts are isolated by user_id."""
+    """Test that conflicts are isolated by entity_id."""
     pytest.importorskip("sqlalchemy")
 
-    host = skip_if_no_postgres
-
-    engine = create_engine(f"postgresql://postgres:postgres@{host}:5432/test_conflicts")
-    storage = SQLAlchemyConflictStore(engine=engine)
-    storage.create_tables()
+    storage = _fresh_store(skip_if_no_postgres)
 
     try:
         # Add conflict for user1
         conflict1 = MemoryConflict(
-            user_id="user_1",
+            entity_id="user_1",
             memory_a_id="user1_a",
             memory_b_id="user1_b",
             category="test",
@@ -164,7 +158,7 @@ def test_sqlalchemy_user_isolation(skip_if_no_postgres):
 
         # Add conflict for user2
         conflict2 = MemoryConflict(
-            user_id="user_2",
+            entity_id="user_2",
             memory_a_id="user2_a",
             memory_b_id="user2_b",
             category="test",
@@ -187,8 +181,8 @@ def test_sqlalchemy_user_isolation(skip_if_no_postgres):
 
     finally:
         try:
-            storage.clear_user_conflicts("user_1")
-            storage.clear_user_conflicts("user_2")
+            storage.clear_conflicts("user_1")
+            storage.clear_conflicts("user_2")
         except Exception:
             pass
 
@@ -198,17 +192,13 @@ def test_sqlalchemy_count_conflicts(skip_if_no_postgres):
     """Test counting conflicts by status."""
     pytest.importorskip("sqlalchemy")
 
-    host = skip_if_no_postgres
-
-    engine = create_engine(f"postgresql://postgres:postgres@{host}:5432/test_conflicts")
-    storage = SQLAlchemyConflictStore(engine=engine)
-    storage.create_tables()
+    storage = _fresh_store(skip_if_no_postgres)
 
     try:
         # Add pending conflicts
         for i in range(3):
             conflict = MemoryConflict(
-                user_id="test_user",
+                entity_id="test_user",
                 memory_a_id=f"memory_a_{i}",
                 memory_b_id=f"memory_b_{i}",
                 category="test",
@@ -224,6 +214,6 @@ def test_sqlalchemy_count_conflicts(skip_if_no_postgres):
 
     finally:
         try:
-            storage.clear_user_conflicts("test_user")
+            storage.clear_conflicts("test_user")
         except Exception:
             pass
