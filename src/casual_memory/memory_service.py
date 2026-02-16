@@ -32,7 +32,8 @@ class MemoryService:
             query_vector = await self.embedding.embed_document(new_memory.text)
             similar_results = self.vector_store.find_similar_memories(
                 embedding=query_vector,
-                user_id=new_memory.entity_id,
+                entity_id=new_memory.entity_id,
+                namespace=new_memory.namespace,
                 threshold=similarity_threshold,
                 limit=max_similar,
                 exclude_archived=True,

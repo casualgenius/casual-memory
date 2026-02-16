@@ -7,8 +7,9 @@ suitable for testing and development. For production, use Qdrant implementation.
 
 import logging
 import uuid
+import warnings
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from casual_memory.storage.vector.models import MemoryPoint, MemoryPointPayload
 
@@ -41,6 +42,19 @@ class InMemoryVectorStore:
         logger.debug(f"Inserted memory {memory_id}: '{payload.get('text', '')[:50]}...'")
         return memory_id
 
+    @staticmethod
+    def _resolve_entity_id(payload: dict[str, Any]) -> str | None:
+        """Resolve entity_id from a raw payload dict.
+
+        Checks 'entity_id' first, falls back to 'user_id' for backward
+        compatibility with payloads that have not been migrated.
+        """
+        entity_id: str | None = payload.get("entity_id")
+        if entity_id is not None:
+            return entity_id
+        result: str | None = payload.get("user_id")
+        return result
+
     def _cosine_similarity(self, vec1: list[float], vec2: list[float]) -> float:
         """Calculate cosine similarity between two vectors."""
         if len(vec1) != len(vec2):
@@ -55,8 +69,16 @@ class InMemoryVectorStore:
 
         return float(dot_product / (magnitude1 * magnitude2))
 
-    def _matches_filters(self, payload: dict[str, Any], filters: Optional[Any]) -> bool:
-        """Check if a payload matches the given filters."""
+    def _matches_filters(self, payload: dict[str, Any], filters: Any | None) -> bool:
+        """Check if a payload matches the given filters.
+
+        Supported filter keys:
+            - 'entity_id': Match by entity ID
+            - 'namespace': Match by namespace
+            - 'user_id': Deprecated, maps to entity_id
+            - 'type': Match by memory type (str or list[str])
+            - 'min_importance': Minimum importance threshold
+        """
         if filters is None:
             return True
 
@@ -68,8 +90,20 @@ class InMemoryVectorStore:
             if value is None:
                 continue
 
-            if key == "user_id":
-                if payload.get("user_id") != value:
+            if key == "entity_id":
+                if self._resolve_entity_id(payload) != value:
+                    return False
+            elif key == "user_id":
+                # Deprecated: map user_id filter to entity_id lookup
+                warnings.warn(
+                    "Filter key 'user_id' is deprecated, use 'entity_id' instead.",
+                    DeprecationWarning,
+                    stacklevel=3,
+                )
+                if self._resolve_entity_id(payload) != value:
+                    return False
+            elif key == "namespace":
+                if payload.get("namespace", "default") != value:
                     return False
             elif key == "type":
                 # Handle list of types
@@ -90,7 +124,7 @@ class InMemoryVectorStore:
         query_embedding: list[float],
         top_k: int = 5,
         min_score: float = 0.7,
-        filters: Optional[Any] = None,
+        filters: Any | None = None,
     ) -> list[MemoryPoint]:
         """Search for memories by vector similarity."""
         results = []
@@ -130,12 +164,34 @@ class InMemoryVectorStore:
     def find_similar_memories(
         self,
         embedding: list[float],
-        user_id: Optional[str] = None,
-        threshold: Optional[float] = None,
+        entity_id: str | None = None,
+        namespace: str = "default",
+        threshold: float | None = None,
         limit: int = 5,
         exclude_archived: bool = True,
+        **kwargs: Any,
     ) -> list[tuple[Any, float]]:
-        """Find similar memories based on vector similarity."""
+        """Find similar memories based on vector similarity.
+
+        Args:
+            embedding: The embedding vector to search for
+            entity_id: Filter by entity ID (for multi-entity isolation)
+            namespace: Namespace for memory isolation (default: "default")
+            threshold: Similarity threshold (0.0-1.0)
+            limit: Maximum number of results to return
+            exclude_archived: Whether to exclude archived memories
+            **kwargs: Accepts deprecated 'user_id' keyword (mapped to entity_id)
+        """
+        # Handle deprecated user_id keyword argument
+        if "user_id" in kwargs:
+            warnings.warn(
+                "find_similar_memories(user_id=...) is deprecated, use entity_id instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            if entity_id is None:
+                entity_id = kwargs["user_id"]
+
         if threshold is None:
             threshold = 0.85
 
@@ -145,8 +201,12 @@ class InMemoryVectorStore:
             vector = memory_data["vector"]
             payload = memory_data["payload"]
 
-            # Filter by user_id
-            if user_id and payload.get("user_id") != user_id:
+            # Filter by namespace
+            if payload.get("namespace", "default") != namespace:
+                continue
+
+            # Filter by entity_id (with backward compat for user_id in raw payload)
+            if entity_id and self._resolve_entity_id(payload) != entity_id:
                 continue
 
             # Skip archived memories if requested
@@ -169,7 +229,8 @@ class InMemoryVectorStore:
         results = results[:limit]
 
         logger.info(
-            f"Found {len(results)} similar memories " f"(threshold={threshold}, user_id={user_id})"
+            f"Found {len(results)} similar memories "
+            f"(threshold={threshold}, entity_id={entity_id}, namespace={namespace})"
         )
 
         return results
@@ -186,7 +247,7 @@ class InMemoryVectorStore:
         logger.debug(f"Updated memory {memory_id}: {payload_updates}")
         return True
 
-    def get_by_id(self, memory_id: str) -> Optional[MemoryPoint]:
+    def get_by_id(self, memory_id: str) -> MemoryPoint | None:
         """Retrieve a specific memory by its ID."""
         if memory_id not in self._memories:
             return None
@@ -199,14 +260,14 @@ class InMemoryVectorStore:
             payload=MemoryPointPayload(**memory_data["payload"]),
         )
 
-    def archive_memory(self, memory_id: str, superseded_by: Optional[str] = None) -> bool:
+    def archive_memory(self, memory_id: str, superseded_by: str | None = None) -> bool:
         """Archive a memory by marking it as archived."""
         if memory_id not in self._memories:
             logger.warning(f"Cannot archive memory {memory_id}: not found")
             return False
 
         # Update payload
-        updates = {
+        updates: dict[str, Any] = {
             "archived": True,
             "archived_at": datetime.now().isoformat(),
         }
@@ -224,12 +285,21 @@ class InMemoryVectorStore:
 
         return success
 
-    def clear_user_memories(self, user_id: str) -> int:
-        """Clear all memories for a specific user."""
+    def clear_memories(self, entity_id: str, namespace: str = "default") -> int:
+        """Clear all memories for a specific entity within a namespace.
+
+        Args:
+            entity_id: The ID of the entity whose memories to clear
+            namespace: Namespace to clear within (default: "default")
+
+        Returns:
+            Number of memories deleted
+        """
         memory_ids_to_delete = [
             memory_id
             for memory_id, memory_data in self._memories.items()
-            if memory_data["payload"].get("user_id") == user_id
+            if self._resolve_entity_id(memory_data["payload"]) == entity_id
+            and memory_data["payload"].get("namespace", "default") == namespace
         ]
 
         count = len(memory_ids_to_delete)
@@ -237,7 +307,38 @@ class InMemoryVectorStore:
         for memory_id in memory_ids_to_delete:
             del self._memories[memory_id]
 
-        logger.info(f"Cleared {count} memories for user_id={user_id}")
+        logger.info(f"Cleared {count} memories for entity_id={entity_id}, namespace={namespace}")
+
+        return count
+
+    def clear_user_memories(self, user_id: str) -> int:
+        """Deprecated: Use clear_memories() instead.
+
+        Clear all memories for a specific user across all namespaces.
+
+        Args:
+            user_id: The ID of the user whose memories to clear
+
+        Returns:
+            Number of memories deleted
+        """
+        warnings.warn(
+            "clear_user_memories() is deprecated, use clear_memories() instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        memory_ids_to_delete = [
+            memory_id
+            for memory_id, memory_data in self._memories.items()
+            if self._resolve_entity_id(memory_data["payload"]) == user_id
+        ]
+
+        count = len(memory_ids_to_delete)
+
+        for memory_id in memory_ids_to_delete:
+            del self._memories[memory_id]
+
+        logger.info(f"Cleared {count} memories for user_id={user_id} (deprecated)")
 
         return count
 

@@ -5,6 +5,7 @@ Tests vector search, similarity matching, filtering, archiving, and memory manag
 """
 
 from datetime import datetime
+from typing import Any
 
 import pytest
 
@@ -37,7 +38,7 @@ def sample_payload():
         "tags": ["location"],
         "importance": 0.8,
         "timestamp": datetime.now().isoformat(),
-        "user_id": "user123",
+        "entity_id": "user123",
         "confidence": 0.7,
         "mention_count": 1,
     }
@@ -87,15 +88,15 @@ def test_search_basic(vector_store, sample_vectors, sample_payload):
 
 
 def test_search_with_filtering(vector_store, sample_vectors):
-    """Test search with user_id filtering."""
-    # Add memories for different users
+    """Test search with entity_id filtering."""
+    # Add memories for different entities
     payload1 = {
         "text": "Memory 1",
         "type": "fact",
         "tags": [],
         "importance": 0.7,
         "timestamp": datetime.now().isoformat(),
-        "user_id": "user1",
+        "entity_id": "user1",
         "confidence": 0.5,
         "mention_count": 1,
     }
@@ -106,7 +107,7 @@ def test_search_with_filtering(vector_store, sample_vectors):
         "tags": [],
         "importance": 0.7,
         "timestamp": datetime.now().isoformat(),
-        "user_id": "user2",
+        "entity_id": "user2",
         "confidence": 0.5,
         "mention_count": 1,
     }
@@ -114,16 +115,16 @@ def test_search_with_filtering(vector_store, sample_vectors):
     vector_store.add(sample_vectors["vec1"], payload1)
     vector_store.add(sample_vectors["vec1"], payload2)
 
-    # Search with user_id filter
+    # Search with entity_id filter
     results = vector_store.search(
         query_embedding=sample_vectors["vec1"],
         top_k=5,
         min_score=0.5,
-        filters={"user_id": "user1"},
+        filters={"entity_id": "user1"},
     )
 
     assert len(results) == 1
-    assert results[0].payload.user_id == "user1"
+    assert results[0].payload.entity_id == "user1"
 
 
 def test_search_top_k_limit(vector_store, sample_vectors, sample_payload):
@@ -177,15 +178,15 @@ def test_find_similar_memories(vector_store, sample_vectors, sample_payload):
     assert score >= 0.8
 
 
-def test_find_similar_with_user_filter(vector_store, sample_vectors):
-    """Test finding similar memories with user_id filter."""
+def test_find_similar_with_entity_filter(vector_store, sample_vectors):
+    """Test finding similar memories with entity_id filter."""
     payload1 = {
         "text": "Memory 1",
         "type": "fact",
         "tags": [],
         "importance": 0.7,
         "timestamp": datetime.now().isoformat(),
-        "user_id": "user1",
+        "entity_id": "user1",
         "confidence": 0.5,
         "mention_count": 1,
     }
@@ -196,7 +197,7 @@ def test_find_similar_with_user_filter(vector_store, sample_vectors):
         "tags": [],
         "importance": 0.7,
         "timestamp": datetime.now().isoformat(),
-        "user_id": "user2",
+        "entity_id": "user2",
         "confidence": 0.5,
         "mention_count": 1,
     }
@@ -204,15 +205,15 @@ def test_find_similar_with_user_filter(vector_store, sample_vectors):
     vector_store.add(sample_vectors["vec1"], payload1)
     vector_store.add(sample_vectors["vec1"], payload2)
 
-    # Find similar with user_id filter
+    # Find similar with entity_id filter
     results = vector_store.find_similar_memories(
         embedding=sample_vectors["vec1"],
-        user_id="user1",
+        entity_id="user1",
         threshold=0.5,
     )
 
     assert len(results) == 1
-    assert results[0][0].payload.user_id == "user1"
+    assert results[0][0].payload.entity_id == "user1"
 
 
 def test_update_memory(vector_store, sample_vectors, sample_payload):
@@ -325,15 +326,15 @@ def test_archived_included_when_not_excluded(vector_store, sample_vectors, sampl
 
 
 def test_clear_user_memories(vector_store, sample_vectors):
-    """Test clearing all memories for a user."""
-    # Add memories for different users
+    """Test clearing all memories for a user (deprecated method)."""
+    # Add memories for different entities
     payload1 = {
         "text": "Memory 1",
         "type": "fact",
         "tags": [],
         "importance": 0.7,
         "timestamp": datetime.now().isoformat(),
-        "user_id": "user1",
+        "entity_id": "user1",
         "confidence": 0.5,
         "mention_count": 1,
     }
@@ -344,7 +345,7 @@ def test_clear_user_memories(vector_store, sample_vectors):
         "tags": [],
         "importance": 0.7,
         "timestamp": datetime.now().isoformat(),
-        "user_id": "user2",
+        "entity_id": "user2",
         "confidence": 0.5,
         "mention_count": 1,
     }
@@ -353,8 +354,9 @@ def test_clear_user_memories(vector_store, sample_vectors):
     vector_store.add(sample_vectors["vec1"], payload1)
     vector_store.add(sample_vectors["vec1"], payload2)
 
-    # Clear user1's memories
-    count = vector_store.clear_user_memories("user1")
+    # Clear user1's memories (deprecated method)
+    with pytest.warns(DeprecationWarning, match="clear_user_memories"):
+        count = vector_store.clear_user_memories("user1")
 
     assert count == 2
 
@@ -363,7 +365,7 @@ def test_clear_user_memories(vector_store, sample_vectors):
         query_embedding=sample_vectors["vec1"],
         top_k=10,
         min_score=0.5,
-        filters={"user_id": "user1"},
+        filters={"entity_id": "user1"},
     )
 
     assert len(results) == 0
@@ -373,7 +375,7 @@ def test_clear_user_memories(vector_store, sample_vectors):
         query_embedding=sample_vectors["vec1"],
         top_k=10,
         min_score=0.5,
-        filters={"user_id": "user2"},
+        filters={"entity_id": "user2"},
     )
 
     assert len(results) == 1
@@ -424,7 +426,7 @@ def test_filter_by_type(vector_store, sample_vectors):
         "tags": [],
         "importance": 0.7,
         "timestamp": datetime.now().isoformat(),
-        "user_id": "user1",
+        "entity_id": "user1",
         "confidence": 0.5,
         "mention_count": 1,
     }
@@ -435,7 +437,7 @@ def test_filter_by_type(vector_store, sample_vectors):
         "tags": [],
         "importance": 0.7,
         "timestamp": datetime.now().isoformat(),
-        "user_id": "user1",
+        "entity_id": "user1",
         "confidence": 0.5,
         "mention_count": 1,
     }
@@ -463,7 +465,7 @@ def test_filter_by_min_importance(vector_store, sample_vectors):
         "tags": [],
         "importance": 0.9,
         "timestamp": datetime.now().isoformat(),
-        "user_id": "user1",
+        "entity_id": "user1",
         "confidence": 0.5,
         "mention_count": 1,
     }
@@ -474,7 +476,7 @@ def test_filter_by_min_importance(vector_store, sample_vectors):
         "tags": [],
         "importance": 0.3,
         "timestamp": datetime.now().isoformat(),
-        "user_id": "user1",
+        "entity_id": "user1",
         "confidence": 0.5,
         "mention_count": 1,
     }
@@ -492,3 +494,229 @@ def test_filter_by_min_importance(vector_store, sample_vectors):
 
     assert len(results) == 1
     assert results[0].payload.importance >= 0.7
+
+
+# --- Namespace isolation tests ---
+
+
+def _make_payload(
+    text: str, entity_id: str, namespace: str = "default"
+) -> dict[str, Any]:
+    """Helper to create a payload dict with namespace and entity_id."""
+    return {
+        "text": text,
+        "type": "fact",
+        "tags": [],
+        "importance": 0.7,
+        "timestamp": datetime.now().isoformat(),
+        "entity_id": entity_id,
+        "namespace": namespace,
+        "confidence": 0.5,
+        "mention_count": 1,
+    }
+
+
+def test_find_similar_namespace_isolation(vector_store, sample_vectors):
+    """Same entity_id in different namespaces returns different results."""
+    payload_default = _make_payload("Memory in default", "user1", "default")
+    payload_work = _make_payload("Memory in work", "user1", "work")
+
+    vector_store.add(sample_vectors["vec1"], payload_default)
+    vector_store.add(sample_vectors["vec1"], payload_work)
+
+    # Search in default namespace
+    results_default = vector_store.find_similar_memories(
+        embedding=sample_vectors["vec1"],
+        entity_id="user1",
+        namespace="default",
+        threshold=0.5,
+    )
+
+    assert len(results_default) == 1
+    assert results_default[0][0].payload.text == "Memory in default"
+    assert results_default[0][0].payload.namespace == "default"
+
+    # Search in work namespace
+    results_work = vector_store.find_similar_memories(
+        embedding=sample_vectors["vec1"],
+        entity_id="user1",
+        namespace="work",
+        threshold=0.5,
+    )
+
+    assert len(results_work) == 1
+    assert results_work[0][0].payload.text == "Memory in work"
+    assert results_work[0][0].payload.namespace == "work"
+
+
+def test_find_similar_default_namespace_when_unspecified(vector_store, sample_vectors):
+    """Default namespace works when no namespace specified in payload."""
+    # Payload without explicit namespace (should default to "default")
+    payload_no_ns = {
+        "text": "Memory without explicit namespace",
+        "type": "fact",
+        "tags": [],
+        "importance": 0.7,
+        "timestamp": datetime.now().isoformat(),
+        "entity_id": "user1",
+        "confidence": 0.5,
+        "mention_count": 1,
+    }
+
+    payload_work = _make_payload("Memory in work", "user1", "work")
+
+    vector_store.add(sample_vectors["vec1"], payload_no_ns)
+    vector_store.add(sample_vectors["vec1"], payload_work)
+
+    # Search in default namespace (should find the one without explicit namespace)
+    results = vector_store.find_similar_memories(
+        embedding=sample_vectors["vec1"],
+        entity_id="user1",
+        threshold=0.5,
+    )
+
+    assert len(results) == 1
+    assert results[0][0].payload.text == "Memory without explicit namespace"
+
+
+def test_clear_memories_namespace_isolation(vector_store, sample_vectors):
+    """clear_memories only clears within the specified namespace."""
+    payload_default = _make_payload("Default memory", "user1", "default")
+    payload_work = _make_payload("Work memory", "user1", "work")
+
+    vector_store.add(sample_vectors["vec1"], payload_default)
+    vector_store.add(sample_vectors["vec1"], payload_default)
+    vector_store.add(sample_vectors["vec1"], payload_work)
+
+    # Clear only the default namespace for user1
+    count = vector_store.clear_memories("user1", namespace="default")
+
+    assert count == 2
+
+    # Work namespace memory should still exist
+    results_work = vector_store.find_similar_memories(
+        embedding=sample_vectors["vec1"],
+        entity_id="user1",
+        namespace="work",
+        threshold=0.5,
+    )
+
+    assert len(results_work) == 1
+    assert results_work[0][0].payload.text == "Work memory"
+
+    # Default namespace should be empty
+    results_default = vector_store.find_similar_memories(
+        embedding=sample_vectors["vec1"],
+        entity_id="user1",
+        namespace="default",
+        threshold=0.5,
+    )
+
+    assert len(results_default) == 0
+
+
+def test_clear_memories_does_not_affect_other_entities(vector_store, sample_vectors):
+    """clear_memories only clears the specified entity, not others in same namespace."""
+    payload_user1 = _make_payload("User1 memory", "user1", "default")
+    payload_user2 = _make_payload("User2 memory", "user2", "default")
+
+    vector_store.add(sample_vectors["vec1"], payload_user1)
+    vector_store.add(sample_vectors["vec1"], payload_user2)
+
+    # Clear user1's default namespace
+    count = vector_store.clear_memories("user1", namespace="default")
+
+    assert count == 1
+
+    # User2's memory should still exist
+    results = vector_store.find_similar_memories(
+        embedding=sample_vectors["vec1"],
+        entity_id="user2",
+        namespace="default",
+        threshold=0.5,
+    )
+
+    assert len(results) == 1
+    assert results[0][0].payload.entity_id == "user2"
+
+
+def test_search_with_namespace_filter(vector_store, sample_vectors):
+    """Test that search() respects namespace filter."""
+    payload_default = _make_payload("Default memory", "user1", "default")
+    payload_work = _make_payload("Work memory", "user1", "work")
+
+    vector_store.add(sample_vectors["vec1"], payload_default)
+    vector_store.add(sample_vectors["vec1"], payload_work)
+
+    # Search with namespace filter
+    results = vector_store.search(
+        query_embedding=sample_vectors["vec1"],
+        top_k=10,
+        min_score=0.5,
+        filters={"namespace": "work", "entity_id": "user1"},
+    )
+
+    assert len(results) == 1
+    assert results[0].payload.namespace == "work"
+
+
+def test_find_similar_deprecated_user_id_kwarg(vector_store, sample_vectors):
+    """Test that deprecated user_id keyword argument still works."""
+    payload = _make_payload("Memory 1", "user1", "default")
+    vector_store.add(sample_vectors["vec1"], payload)
+
+    # Use deprecated user_id keyword
+    with pytest.warns(DeprecationWarning, match="user_id.*deprecated"):
+        results = vector_store.find_similar_memories(
+            embedding=sample_vectors["vec1"],
+            user_id="user1",
+            threshold=0.5,
+        )
+
+    assert len(results) == 1
+    assert results[0][0].payload.entity_id == "user1"
+
+
+def test_search_with_deprecated_user_id_filter(vector_store, sample_vectors):
+    """Test that deprecated user_id filter key still works."""
+    payload = _make_payload("Memory 1", "user1", "default")
+    vector_store.add(sample_vectors["vec1"], payload)
+
+    # Use deprecated user_id filter
+    with pytest.warns(DeprecationWarning, match="user_id.*deprecated"):
+        results = vector_store.search(
+            query_embedding=sample_vectors["vec1"],
+            top_k=5,
+            min_score=0.5,
+            filters={"user_id": "user1"},
+        )
+
+    assert len(results) == 1
+    assert results[0].payload.entity_id == "user1"
+
+
+def test_backward_compat_payload_with_user_id_key(vector_store, sample_vectors):
+    """Test that old payloads with user_id key (not entity_id) still work."""
+    old_style_payload = {
+        "text": "Old style memory",
+        "type": "fact",
+        "tags": [],
+        "importance": 0.7,
+        "timestamp": datetime.now().isoformat(),
+        "user_id": "user1",
+        "confidence": 0.5,
+        "mention_count": 1,
+    }
+
+    vector_store.add(sample_vectors["vec1"], old_style_payload)
+
+    # Should find via entity_id filter (resolved from user_id in payload)
+    results = vector_store.find_similar_memories(
+        embedding=sample_vectors["vec1"],
+        entity_id="user1",
+        threshold=0.5,
+    )
+
+    assert len(results) == 1
+    # The MemoryPointPayload model_validator migrates user_id -> entity_id
+    assert results[0][0].payload.entity_id == "user1"
