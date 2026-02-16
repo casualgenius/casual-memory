@@ -8,6 +8,10 @@ Core components:
 - storage: Protocol abstractions for vector stores, conflict stores, etc.
 - models: Core data models (MemoryFact, MemoryConflict, etc.)
 - services: High-level service APIs (MemoryService, ContextService)
+
+All memory operations support namespace isolation via ``namespace`` (default
+``"default"``) and multi-entity scoping via ``entity_id``. The deprecated
+``user_id`` parameter/field is still accepted but emits a DeprecationWarning.
 """
 
 __version__ = "0.2.1"

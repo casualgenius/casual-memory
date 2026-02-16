@@ -12,6 +12,14 @@ logger = logging.getLogger(__name__)
 
 
 class MemoryService:
+    """Service for managing long-term semantic memories.
+
+    Orchestrates the full memory lifecycle: embedding, similarity search,
+    classification, and action execution. All operations are scoped by the
+    ``namespace`` and ``entity_id`` fields on the ``MemoryFact`` being added
+    or the ``MemoryQueryFilter`` being queried.
+    """
+
     def __init__(
         self,
         vector_store: VectorMemoryStore,
@@ -27,6 +35,26 @@ class MemoryService:
     async def add_memory(
         self, new_memory: MemoryFact, similarity_threshold: float = 0.85, max_similar: int = 5
     ) -> MemoryActionResult:
+        """Add a memory, classifying it against existing similar memories.
+
+        The operation is scoped by ``new_memory.namespace`` and
+        ``new_memory.entity_id``. Only memories in the same namespace and
+        belonging to the same entity are considered as potential duplicates
+        or conflicts.
+
+        Args:
+            new_memory: The memory to add. Must have ``namespace`` (default
+                ``"default"``) and optionally ``entity_id`` set for proper
+                isolation.
+            similarity_threshold: Minimum cosine similarity to consider a
+                memory as "similar" (default: 0.85).
+            max_similar: Maximum number of similar memories to retrieve for
+                classification (default: 5).
+
+        Returns:
+            MemoryActionResult describing the action taken (added, updated,
+            or conflict created).
+        """
         try:
             # Get similar memories
             query_vector = await self.embedding.embed_document(new_memory.text)
@@ -81,6 +109,22 @@ class MemoryService:
         top_k: int = 5,
         min_score: float = 0.75,
     ) -> list[MemoryFact]:
+        """Query memories by semantic similarity with optional filtering.
+
+        Results are scoped by the ``namespace`` and ``entity_id`` fields on
+        the provided ``MemoryQueryFilter``.
+
+        Args:
+            query: Natural language query string to search for.
+            filter: Filter criteria including ``namespace``, ``entity_id``,
+                ``type``, and ``min_importance``. Pass ``entity_id`` (not the
+                deprecated ``user_id``) for entity scoping.
+            top_k: Maximum number of results to return (default: 5).
+            min_score: Minimum similarity score threshold (default: 0.75).
+
+        Returns:
+            List of matching ``MemoryFact`` objects, excluding expired memories.
+        """
         query_vector = await self.embedding.embed_query(query)
 
         results = self.vector_store.search(
