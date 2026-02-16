@@ -69,16 +69,21 @@ class TestMemoryFactEntityId:
             assert "deprecated" in str(dep_warnings[0].message).lower()
         assert fact.entity_id == "user123"
 
-    def test_user_id_property_returns_entity_id_with_warning(self):
-        """Reading .user_id property should return entity_id with deprecation warning."""
+    def test_user_id_property_returns_entity_id(self):
+        """Reading .user_id property should return entity_id (no warning since it's a computed_field)."""
+        fact = MemoryFact(text="test", type="fact", tags=[], importance=0.5, entity_id="user123")
+        assert fact.user_id == "user123"
+
+    def test_user_id_setter_emits_warning(self):
+        """Setting .user_id should update entity_id with deprecation warning."""
         fact = MemoryFact(text="test", type="fact", tags=[], importance=0.5, entity_id="user123")
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            value = fact.user_id
+            fact.user_id = "user456"
             dep_warnings = [x for x in w if issubclass(x.category, DeprecationWarning)]
             assert len(dep_warnings) == 1
             assert "deprecated" in str(dep_warnings[0].message).lower()
-        assert value == "user123"
+        assert fact.entity_id == "user456"
 
     def test_both_entity_id_and_user_id_raises_error(self):
         """Providing both entity_id and user_id should raise an error."""
@@ -183,12 +188,16 @@ class TestMemoryConflictEntityId:
 
     def test_user_id_property_returns_entity_id(self):
         conflict = self._make_conflict(entity_id="user1")
+        assert conflict.user_id == "user1"
+
+    def test_user_id_setter_emits_warning(self):
+        conflict = self._make_conflict(entity_id="user1")
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            value = conflict.user_id
+            conflict.user_id = "user2"
             dep_warnings = [x for x in w if issubclass(x.category, DeprecationWarning)]
             assert len(dep_warnings) == 1
-        assert value == "user1"
+        assert conflict.entity_id == "user2"
 
     def test_both_raises_error(self):
         with pytest.raises(ValueError, match="Cannot specify both"):
@@ -240,12 +249,16 @@ class TestMemoryQueryFilterNamespace:
 
     def test_user_id_property_returns_entity_id(self):
         f = MemoryQueryFilter(entity_id="user123")
+        assert f.user_id == "user123"
+
+    def test_user_id_setter_emits_warning(self):
+        f = MemoryQueryFilter(entity_id="user123")
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            value = f.user_id
+            f.user_id = "user456"
             dep_warnings = [x for x in w if issubclass(x.category, DeprecationWarning)]
             assert len(dep_warnings) == 1
-        assert value == "user123"
+        assert f.entity_id == "user456"
 
     def test_both_raises_error(self):
         with pytest.raises(ValueError, match="Cannot specify both"):

@@ -9,7 +9,15 @@ from casual_llm.messages import (
     ToolResultMessage,
     UserMessage,
 )
-from pydantic import BaseModel, Discriminator, Field, Tag, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    Discriminator,
+    Field,
+    Tag,
+    computed_field,
+    field_validator,
+    model_validator,
+)
 
 
 class MemoryFactExtraction(BaseModel):
@@ -214,29 +222,25 @@ class MemoryFact(BaseModel):
 
         return validate_identifier(v, "entity_id")
 
-    def model_dump(self, **kwargs: Any) -> dict[str, Any]:
-        """Override model_dump to include 'user_id' key for backward compatibility.
-
-        The storage layer and action executor expect 'user_id' in serialized output.
-        Until those layers are updated, we include both keys.
-        """
-        data = super().model_dump(**kwargs)
-        # Include user_id as alias for entity_id in serialized output,
-        # but respect exclude_none semantics
-        user_id_val = data.get("entity_id")
-        if not (kwargs.get("exclude_none") and user_id_val is None):
-            data["user_id"] = user_id_val
-        return data
-
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def user_id(self) -> Optional[str]:
+        """Deprecated: Use entity_id instead.
+
+        Exposed as a computed_field so it appears in both model_dump()
+        and model_dump_json() (e.g., FastAPI responses).
+        """
+        return self.entity_id
+
+    @user_id.setter
+    def user_id(self, value: Optional[str]) -> None:
         """Deprecated: Use entity_id instead."""
         warnings.warn(
             "MemoryFact.user_id is deprecated, use entity_id instead.",
             DeprecationWarning,
             stacklevel=2,
         )
-        return self.entity_id
+        self.entity_id = value
 
 
 class MemoryBlock(BaseModel):
@@ -341,24 +345,21 @@ class MemoryConflict(BaseModel):
 
         return validate_identifier(v, "entity_id")
 
-    def model_dump(self, **kwargs: Any) -> dict[str, Any]:
-        """Override model_dump to include 'user_id' key for backward compatibility."""
-        data = super().model_dump(**kwargs)
-        # Include user_id as alias for entity_id, respecting exclude_none
-        user_id_val = data.get("entity_id")
-        if not (kwargs.get("exclude_none") and user_id_val is None):
-            data["user_id"] = user_id_val
-        return data
-
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def user_id(self) -> str:
+        """Deprecated: Use entity_id instead."""
+        return self.entity_id
+
+    @user_id.setter
+    def user_id(self, value: str) -> None:
         """Deprecated: Use entity_id instead."""
         warnings.warn(
             "MemoryConflict.user_id is deprecated, use entity_id instead.",
             DeprecationWarning,
             stacklevel=2,
         )
-        return self.entity_id
+        self.entity_id = value
 
 
 class ConflictResolution(BaseModel):
@@ -459,26 +460,18 @@ class MemoryQueryFilter(BaseModel):
 
         return data
 
-    def model_dump(self, **kwargs: Any) -> dict[str, Any]:
-        """Override model_dump to include 'user_id' key for backward compatibility.
-
-        The storage layer reads filters['user_id'] from the dumped dict.
-        Until the storage layer is updated to use 'entity_id', we include both
-        keys so existing code continues to work.
-        """
-        data = super().model_dump(**kwargs)
-        # Include user_id as alias for entity_id, respecting exclude_none
-        user_id_val = data.get("entity_id")
-        if not (kwargs.get("exclude_none") and user_id_val is None):
-            data["user_id"] = user_id_val
-        return data
-
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def user_id(self) -> Optional[str]:
+        """Deprecated: Use entity_id instead."""
+        return self.entity_id
+
+    @user_id.setter
+    def user_id(self, value: Optional[str]) -> None:
         """Deprecated: Use entity_id instead."""
         warnings.warn(
             "MemoryQueryFilter.user_id is deprecated, use entity_id instead.",
             DeprecationWarning,
             stacklevel=2,
         )
-        return self.entity_id
+        self.entity_id = value
