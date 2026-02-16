@@ -246,34 +246,6 @@ class MemoryBlock(BaseModel):
     content: list[MemoryFact]
 
 
-class MemoryPointPayload(BaseModel):
-    # Core fields
-    text: str = Field(..., min_length=1)
-    type: str = Field(..., min_length=1)  # Flexible string type for custom categories
-    tags: list[str]
-    importance: Optional[float] = 0.5  # Default if not included
-    session_id: str | None
-    source: str | None  # Flexible string source for custom origins
-    timestamp: str
-    valid_until: Optional[str | None] = None
-
-    # NEW fields for memory intelligence
-    user_id: Optional[str] = None
-    confidence: float = 0.5
-    mention_count: int = 1
-    first_seen: Optional[str] = None  # ISO format timestamp
-    last_seen: Optional[str] = None  # ISO format timestamp
-    archived: bool = False
-    archived_at: Optional[str] = None  # ISO format timestamp
-    superseded_by: Optional[str] = None
-
-
-class MemoryPoint(BaseModel):
-    id: str
-    vector: list[float]
-    payload: MemoryPointPayload
-
-
 class MemoryConflict(BaseModel):
     """Model for tracking conflicts between contradictory memories"""
 
