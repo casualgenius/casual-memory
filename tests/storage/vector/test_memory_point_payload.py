@@ -223,29 +223,29 @@ class TestMemoryPointPayloadConsolidation:
         """MemoryPointPayload should NOT be importable from casual_memory.models."""
         import casual_memory.models as models_module
 
-        assert not hasattr(models_module, "MemoryPointPayload"), (
-            "MemoryPointPayload should be removed from casual_memory.models"
-        )
+        assert not hasattr(
+            models_module, "MemoryPointPayload"
+        ), "MemoryPointPayload should be removed from casual_memory.models"
 
     def test_no_memory_point_in_models(self):
         """MemoryPoint should NOT be importable from casual_memory.models."""
         import casual_memory.models as models_module
 
-        assert not hasattr(models_module, "MemoryPoint"), (
-            "MemoryPoint should be removed from casual_memory.models"
-        )
+        assert not hasattr(
+            models_module, "MemoryPoint"
+        ), "MemoryPoint should be removed from casual_memory.models"
 
     def test_memory_point_payload_in_vector_models(self):
         """MemoryPointPayload should be importable from storage.vector.models."""
-        from casual_memory.storage.vector.models import MemoryPointPayload as MPP
+        from casual_memory.storage.vector.models import MemoryPointPayload
 
-        assert MPP is not None
+        assert MemoryPointPayload is not None
 
     def test_memory_point_in_vector_models(self):
         """MemoryPoint should be importable from storage.vector.models."""
-        from casual_memory.storage.vector.models import MemoryPoint as MP
+        from casual_memory.storage.vector.models import MemoryPoint
 
-        assert MP is not None
+        assert MemoryPoint is not None
 
 
 class TestMemoryPointPayloadLegacyUserIdPayloads:

@@ -10,7 +10,7 @@ import warnings
 from datetime import datetime
 
 import pytest
-from casual_llm.messages import AssistantMessage, UserMessage
+from casual_llm.messages import UserMessage
 
 from casual_memory.models import ShortTermMemory
 from casual_memory.storage.short_term.memory import InMemoryShortTermStore

@@ -24,6 +24,6 @@ Use modern type hint best practise:
 - Specific file: uv run pytest tests/classifiers/test_pipeline.py -v
 
 ### Code quality
-- Format: uv run black src/
-- Lint: uv run ruff check src/
+- Format: uv run black src/ tests/ examples/
+- Lint: uv run ruff check src/ tests/ examples/
 - Type Check: uv run mypy src/casual_memory/

@@ -75,12 +75,20 @@ class InMemoryVectorStore:
 
         return results
 
-    async def update(self, memory_id: str, memory: MemoryFact, entity_id: str, namespace: str = "default"):
+    async def update(
+        self, memory_id: str, memory: MemoryFact, entity_id: str, namespace: str = "default"
+    ):
         """Update existing memory."""
         if memory_id in self.memories:
             self.memories[memory_id] = memory
 
-    async def archive(self, memory_id: str, entity_id: str, namespace: str = "default", superseded_by: Optional[str] = None):
+    async def archive(
+        self,
+        memory_id: str,
+        entity_id: str,
+        namespace: str = "default",
+        superseded_by: Optional[str] = None,
+    ):
         """Soft-delete memory."""
         if memory_id in self.memories:
             self.memories[memory_id].archived = True
@@ -140,7 +148,11 @@ async def main():
         text="I work at Acme Corp", type="fact", tags=["job"], importance=0.9, source="user"
     )
     personal_memory = MemoryFact(
-        text="I work out at the gym every morning", type="fact", tags=["routine"], importance=0.6, source="user"
+        text="I work out at the gym every morning",
+        type="fact",
+        tags=["routine"],
+        importance=0.6,
+        source="user",
     )
 
     await storage.add(work_memory, entity_id="user-123", namespace="work")
@@ -159,7 +171,9 @@ async def main():
         print(f"  - {m.text}")
 
     # Neither namespace sees the other's memories
-    print(f"\nNamespaces are isolated: work sees {len(work_results)}, personal sees {len(personal_results)}")
+    print(
+        f"\nNamespaces are isolated: work sees {len(work_results)}, personal sees {len(personal_results)}"
+    )
 
     print("\n=== Example Complete ===")
 

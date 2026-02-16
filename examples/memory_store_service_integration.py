@@ -170,7 +170,9 @@ class ConflictDetector:
         """Store a detected conflict."""
         return self.conflict_store.add_conflict(conflict)
 
-    def get_pending_for_entity(self, entity_id: str, namespace: str = "default") -> list[MemoryConflict]:
+    def get_pending_for_entity(
+        self, entity_id: str, namespace: str = "default"
+    ) -> list[MemoryConflict]:
         """Get all pending conflicts for resolution."""
         return self.conflict_store.get_pending_conflicts(entity_id, namespace=namespace)
 

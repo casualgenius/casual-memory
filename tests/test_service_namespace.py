@@ -6,7 +6,7 @@ service layer to storage operations.
 """
 
 import warnings
-from unittest.mock import AsyncMock, Mock, call
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 from casual_llm.messages import AssistantMessage, UserMessage
@@ -21,7 +21,6 @@ from casual_memory.execution.action_executor import MemoryActionExecutor
 from casual_memory.memory_service import MemoryService
 from casual_memory.models import MemoryFact, MemoryQueryFilter
 from casual_memory.storage.short_term.memory import InMemoryShortTermStore
-
 
 # --- MemoryService namespace tests ---
 
