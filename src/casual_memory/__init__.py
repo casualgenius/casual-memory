@@ -14,7 +14,7 @@ All memory operations support namespace isolation via ``namespace`` (default
 ``user_id`` parameter/field is still accepted but emits a DeprecationWarning.
 """
 
-__version__ = "0.2.1"
+__version__ = "0.3.0"
 
 from casual_memory.context_service import ContextService
 from casual_memory.memory_service import MemoryService

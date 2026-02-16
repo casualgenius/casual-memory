@@ -1,4 +1,4 @@
-ok"""
+"""
 Storage protocol definitions for memory and conflict management.
 
 These protocols define the interface that storage implementations must provide.

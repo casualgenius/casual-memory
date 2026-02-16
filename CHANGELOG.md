@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.3.0] - 2026-02-16
+
+### Added
+
+- **Namespace support** - All memory operations now scoped by `namespace` and `entity_id`
+  - `namespace` field on `MemoryFact`, `MemoryConflict`, and `MemoryQueryFilter` (default: `"default"`)
+  - All storage backends filter by namespace: vector stores via payload fields, conflict stores via indexed columns, short-term stores via composite keys
+  - `ContextService` methods accept `namespace` parameter
+  - Qdrant store builds namespace-aware filters for all queries and deletions
+
+### Changed
+
+- `user_id` deprecated across all models and services in favor of `entity_id` (backward-compatible with `DeprecationWarning`)
+
+### Fixed
+
+- Qdrant `find_similar_memories` now filters archived memories at query level instead of post-processing, respecting `limit` correctly
+- Qdrant bulk delete operations use scroll pagination instead of a single 10k-point fetch
+- Qdrant type filter validates input and coerces string to list
+- Removed unnecessary `type: ignore` comments in Qdrant store with proper type alias
+
 ## [0.2.1] - 2026-02-09
 
 ### Added
@@ -85,6 +106,9 @@ Initial Release
 
 ## Version History
 
+- **0.3.0** (2026-02-16) - Namespace support, entity_id migration, Qdrant fixes
+- **0.2.1** (2026-02-09) - ContextService for short-term storage
+- **0.2.0** (2026-02-06) - Custom JSON schema for LLM Extractor
 - **0.1.0** (2026-02-03) - Initial release with classification pipeline, intelligence layer, storage abstraction
 
 ---
