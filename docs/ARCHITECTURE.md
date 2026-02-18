@@ -579,7 +579,7 @@ from casual_memory.extractors import LLMMemoryExtracter
 from casual_memory.extractors.prompts import USER_MEMORY_PROMPT
 
 extractor = LLMMemoryExtracter(
-    llm_provider=llm_provider,
+    model=model,
     prompt=USER_MEMORY_PROMPT,
 )
 
@@ -590,7 +590,7 @@ memories = await extractor.extract(messages)
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `llm_provider` | `LLMProvider` | (required) | casual-llm compatible provider |
+| `model` | `Model` | (required) | casual-llm Model instance |
 | `prompt` | `str` | (required) | System prompt with `{today_natural}` and `{isonow}` placeholders |
 | `extraction_model` | `type[BaseModel]` | `MemoryExtractionResponse` | Pydantic model defining the JSON schema for LLM output |
 
@@ -616,7 +616,7 @@ class AgentExtractionResponse(BaseModel):
 
 # 3. Pass to the extractor
 extractor = LLMMemoryExtracter(
-    llm_provider=provider,
+    model=model,
     prompt=AGENT_MEMORY_PROMPT,  # Your custom prompt
     extraction_model=AgentExtractionResponse,
 )
@@ -721,7 +721,7 @@ Automatic retry for transient failures:
 async def _call_llm_with_retry(self, prompt: str, max_retries: int = 2):
     for attempt in range(max_retries + 1):
         try:
-            return await self.llm_provider.chat(prompt)
+            return await self.model.chat(prompt)
         except Exception as e:
             if attempt < max_retries:
                 await asyncio.sleep(2 ** attempt)  # Exponential backoff

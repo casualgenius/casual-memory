@@ -40,7 +40,7 @@ load_dotenv()
 # Add src to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src/")))
 
-from casual_llm import ModelConfig, Provider, create_provider
+from casual_llm import ClientConfig, ModelConfig, Provider, create_client, create_model
 
 from casual_memory.intelligence.duplicate_detector import LLMDuplicateDetector
 from casual_memory.models import MemoryFact
@@ -132,27 +132,32 @@ def load_custom_prompt(prompt_path: str) -> str:
 
 
 async def run_benchmark(
-    test_cases: List[TestCase], model_config: ModelConfig, custom_prompt: Optional[str] = None
+    test_cases: List[TestCase],
+    client_config: ClientConfig,
+    model_config: ModelConfig,
+    custom_prompt: Optional[str] = None,
 ) -> List[BenchmarkResult]:
     """
     Run duplicate classifier benchmark on all test cases.
 
     Args:
         test_cases: List of test cases to run
-        model_config: Model configuration for LLM provider
+        client_config: Client configuration for LLM connection
+        model_config: Model configuration
         custom_prompt: Optional custom prompt template
 
     Returns:
         List of benchmark results
     """
-    logger.info(f"Initializing LLM provider: {model_config.provider}/{model_config.name}")
+    logger.info(f"Initializing LLM: {client_config.provider}/{model_config.name}")
 
-    # Create LLM provider
-    provider = create_provider(model_config)
+    # Create LLM client and model
+    client = create_client(client_config)
+    model = create_model(client, model_config)
 
     # Initialize duplicate detector
     detector = LLMDuplicateDetector(
-        llm_provider=provider, model_name=model_config.name, system_prompt=custom_prompt
+        model=model, model_name=model_config.name, system_prompt=custom_prompt
     )
 
     results = []
@@ -233,6 +238,7 @@ async def run_benchmark(
 
 def generate_report(
     results: List[BenchmarkResult],
+    client_config: ClientConfig,
     model_config: ModelConfig,
     custom_prompt_used: bool,
     output_path: str,
@@ -242,6 +248,7 @@ def generate_report(
 
     Args:
         results: List of benchmark results
+        client_config: Client configuration used
         model_config: Model configuration used
         custom_prompt_used: Whether a custom prompt was used
         output_path: Path to write report
@@ -253,7 +260,7 @@ def generate_report(
 
         # Configuration
         f.write("## Configuration\n\n")
-        f.write(f"- **Provider:** {model_config.provider}\n")
+        f.write(f"- **Provider:** {client_config.provider}\n")
         f.write(f"- **Model:** {model_config.name}\n")
         f.write(f"- **Custom Prompt:** {'Yes' if custom_prompt_used else 'No (default)'}\n")
         f.write(f"- **Total Test Cases:** {len(results)}\n\n")
@@ -468,26 +475,30 @@ Examples:
             return 1
     else:
         # Single model mode (backward compatible)
-        model_config = ModelConfig(
-            provider=Provider.OLLAMA, base_url=os.getenv("OLLAMA_ENDPOINT"), name=args.model
+        client_config = ClientConfig(
+            provider=Provider.OLLAMA, base_url=os.getenv("OLLAMA_ENDPOINT")
         )
-        model_configs = [model_config]
+        model_config = ModelConfig(name=args.model)
+        model_configs = [(client_config, model_config)]
 
     # Run benchmark for each model
     all_results = []
     try:
         logger.info("Starting duplicate classifier benchmark...")
-        for model_config in model_configs:
+        for client_config, model_config in model_configs:
             logger.info(f"\n{'='*60}")
-            logger.info(f"Testing model: {model_config.provider.value}/{model_config.name}")
+            logger.info(f"Testing model: {client_config.provider.value}/{model_config.name}")
             logger.info(f"{'='*60}\n")
 
             results = asyncio.run(
                 run_benchmark(
-                    test_cases=test_cases, model_config=model_config, custom_prompt=custom_prompt
+                    test_cases=test_cases,
+                    client_config=client_config,
+                    model_config=model_config,
+                    custom_prompt=custom_prompt,
                 )
             )
-            all_results.append((model_config, results))
+            all_results.append((client_config, model_config, results))
     except Exception as e:
         logger.error(f"Benchmark failed: {e}", exc_info=True)
         return 1
@@ -498,7 +509,7 @@ Examples:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
         # Generate individual reports for each model
-        for model_config, results in all_results:
+        for client_config, model_config, results in all_results:
             model_safe_name = model_config.name.replace("/", "_").replace(":", "_")
             output_path = os.path.join(
                 args.output_dir, f"duplicate_benchmark_{model_safe_name}_{timestamp}.md"
@@ -506,6 +517,7 @@ Examples:
 
             generate_report(
                 results=results,
+                client_config=client_config,
                 model_config=model_config,
                 custom_prompt_used=(custom_prompt is not None),
                 output_path=output_path,
@@ -517,7 +529,7 @@ Examples:
             pass_rate = (passed / total * 100) if total > 0 else 0
 
             logger.info(f"\n{'='*60}")
-            logger.info(f"Results for {model_config.provider.value}/{model_config.name}:")
+            logger.info(f"Results for {client_config.provider.value}/{model_config.name}:")
             logger.info(f"Total: {total}, Passed: {passed}, Failed: {total - passed}")
             logger.info(f"Pass Rate: {pass_rate:.1f}%")
             logger.info(f"Report: {output_path}")
@@ -539,7 +551,7 @@ Examples:
 
 
 def generate_comparison_report(
-    all_results: List[tuple[ModelConfig, List[BenchmarkResult]]],
+    all_results: List[tuple[ClientConfig, ModelConfig, List[BenchmarkResult]]],
     output_path: str,
     custom_prompt_used: bool,
 ):
@@ -554,7 +566,7 @@ def generate_comparison_report(
         f.write("| Model | Provider | Total | Passed | Failed | Pass Rate | Avg Time (ms) |\n")
         f.write("|-------|----------|-------|--------|--------|-----------|---------------|\n")
 
-        for model_config, results in all_results:
+        for client_config, model_config, results in all_results:
             total = len(results)
             passed = sum(1 for r in results if r.passed)
             failed = total - passed
@@ -563,7 +575,7 @@ def generate_comparison_report(
 
             f.write(
                 f"| {model_config.name} | "
-                f"{model_config.provider.value} | "
+                f"{client_config.provider.value} | "
                 f"{total} | {passed} | {failed} | "
                 f"{pass_rate:.1f}% | {avg_time:.1f} |\n"
             )
@@ -575,10 +587,10 @@ def generate_comparison_report(
 
         # Get all test case names from first model
         if all_results:
-            first_results = all_results[0][1]
+            first_results = all_results[0][2]
 
             f.write("| Test Case |")
-            for model_config, _ in all_results:
+            for _, model_config, _ in all_results:
                 f.write(f" {model_config.name} |")
             f.write("\n")
 
@@ -589,7 +601,7 @@ def generate_comparison_report(
 
             for test_idx, first_result in enumerate(first_results):
                 f.write(f"| {first_result.test_name} |")
-                for model_config, results in all_results:
+                for _, model_config, results in all_results:
                     result = results[test_idx]
                     status = "✓" if result.passed else "✗"
                     actual = "SAME" if result.actual_same else "DIST"

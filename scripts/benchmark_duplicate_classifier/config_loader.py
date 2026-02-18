@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field, ValidationError
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src/")))
 
-from casual_llm import ModelConfig, Provider
+from casual_llm import ClientConfig, ModelConfig, Provider
 
 # ============================================================================
 # Pydantic Models for Configuration Validation
@@ -50,7 +50,7 @@ class ConfigLoader:
     DEFAULT_CONFIG_DIR = Path(__file__).parent / "configs"
 
     @classmethod
-    def load_models(cls, path: Optional[str | Path] = None) -> List[ModelConfig]:
+    def load_models(cls, path: Optional[str | Path] = None) -> List[tuple[ClientConfig, ModelConfig]]:
         """
         Load model configurations from JSON file.
 
@@ -58,7 +58,7 @@ class ConfigLoader:
             path: Path to models.json file. If None, uses default location.
 
         Returns:
-            List of ModelConfig objects ready for use with casual-llm
+            List of (ClientConfig, ModelConfig) tuples ready for use with casual-llm
 
         Raises:
             FileNotFoundError: If config file doesn't exist
@@ -139,9 +139,10 @@ To fix this:
             if not provider:
                 raise ValueError(f"Unknown provider: {entry.provider}. Supported: openai, ollama")
 
-            model_configs.append(
-                ModelConfig(name=entry.name, provider=provider, base_url=base_url, api_key=api_key)
-            )
+            model_configs.append((
+                ClientConfig(provider=provider, base_url=base_url, api_key=api_key),
+                ModelConfig(name=entry.name),
+            ))
 
         if not model_configs:
             raise ValueError(

@@ -8,7 +8,7 @@ with graceful degradation to heuristic-based detection.
 import logging
 from typing import Any, Optional
 
-from casual_llm import AssistantMessage, LLMProvider, SystemMessage, UserMessage
+from casual_llm import AssistantMessage, Model, SystemMessage, UserMessage
 
 from casual_memory.intelligence.prompts import CONFLICT_DETECTION_SYSTEM_PROMPT
 from casual_memory.models import MemoryFact
@@ -30,7 +30,7 @@ class LLMConflictVerifier:
 
     def __init__(
         self,
-        llm_provider: LLMProvider,
+        model: Model,
         model_name: str,
         enable_fallback: bool = True,
         system_prompt: Optional[str] = None,
@@ -39,13 +39,13 @@ class LLMConflictVerifier:
         Initialize the LLM conflict verifier.
 
         Args:
-            llm_provider: LLM provider instance (OpenAI, Ollama, etc.)
+            model: casual-llm Model instance
             model_name: Name of the model (for logging)
             enable_fallback: Enable heuristic fallback when LLM fails
             system_prompt: Optional custom prompt template (default: uses CONFLICT_DETECTION_PROMPT)
                           Must include {statement_a} and {statement_b} placeholders
         """
-        self.llm_provider = llm_provider
+        self.model = model
         self.model_name = model_name
         self.enable_fallback = enable_fallback
         self.system_prompt = system_prompt or CONFLICT_DETECTION_SYSTEM_PROMPT
@@ -79,7 +79,7 @@ class LLMConflictVerifier:
                 SystemMessage(content=self.system_prompt),
                 UserMessage(content=prompt),
             ]
-            response: AssistantMessage = await self.llm_provider.chat(
+            response: AssistantMessage = await self.model.chat(
                 messages,  # type: ignore[arg-type]
                 response_format="text",
                 temperature=0.1,

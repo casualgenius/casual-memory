@@ -13,8 +13,8 @@ from casual_memory.extractors.models import MemoryExtractionResponse
 from casual_memory.extractors.prompts import USER_MEMORY_PROMPT
 
 
-class MockLLMProvider:
-    """Mock LLM provider for testing."""
+class MockModel:
+    """Mock Model for testing."""
 
     def __init__(self, response_content: str):
         self.response_content = response_content
@@ -44,7 +44,7 @@ async def test_extract_basic_memory():
         }
     )
 
-    provider = MockLLMProvider(response_json)
+    provider = MockModel(response_json)
     extractor = LLMMemoryExtracter(provider, USER_MEMORY_PROMPT)
 
     messages = [
@@ -93,7 +93,7 @@ async def test_extract_multiple_memories():
         }
     )
 
-    provider = MockLLMProvider(response_json)
+    provider = MockModel(response_json)
     extractor = LLMMemoryExtracter(provider, USER_MEMORY_PROMPT)
 
     messages = [
@@ -139,7 +139,7 @@ async def test_extract_filters_low_importance():
         }
     )
 
-    provider = MockLLMProvider(response_json)
+    provider = MockModel(response_json)
     extractor = LLMMemoryExtracter(provider, USER_MEMORY_PROMPT)
 
     messages = [UserMessage(content="Test message")]
@@ -172,7 +172,7 @@ async def test_extract_with_temporal_memory():
         }
     )
 
-    provider = MockLLMProvider(response_json)
+    provider = MockModel(response_json)
     extractor = LLMMemoryExtracter(provider, USER_MEMORY_PROMPT)
 
     messages = [UserMessage(content="I have a meeting tomorrow")]
@@ -187,7 +187,7 @@ async def test_extract_with_temporal_memory():
 @pytest.mark.asyncio
 async def test_extract_handles_invalid_json():
     """Test that invalid JSON responses raise ValueError."""
-    provider = MockLLMProvider("This is not valid JSON")
+    provider = MockModel("This is not valid JSON")
     extractor = LLMMemoryExtracter(provider, USER_MEMORY_PROMPT)
 
     messages = [UserMessage(content="Test message")]
@@ -216,7 +216,7 @@ async def test_extract_with_empty_conversation():
     """Test extraction with no messages."""
     response_json = json.dumps({"memories": []})
 
-    provider = MockLLMProvider(response_json)
+    provider = MockModel(response_json)
     extractor = LLMMemoryExtracter(provider, USER_MEMORY_PROMPT)
 
     memories = await extractor.extract([])
@@ -248,7 +248,7 @@ async def test_extract_different_sources():
         }
     )
 
-    provider = MockLLMProvider(response_json)
+    provider = MockModel(response_json)
     extractor = LLMMemoryExtracter(provider, USER_MEMORY_PROMPT)
 
     messages = [
@@ -282,7 +282,7 @@ async def test_extract_preserves_tags():
         }
     )
 
-    provider = MockLLMProvider(response_json)
+    provider = MockModel(response_json)
     extractor = LLMMemoryExtracter(provider, USER_MEMORY_PROMPT)
 
     messages = [UserMessage(content="I'm allergic to peanuts")]
@@ -330,7 +330,7 @@ async def test_extract_all_memory_types():
         }
     )
 
-    provider = MockLLMProvider(response_json)
+    provider = MockModel(response_json)
     extractor = LLMMemoryExtracter(provider, USER_MEMORY_PROMPT)
 
     messages = [UserMessage(content="Complex multi-type message")]
@@ -345,7 +345,7 @@ async def test_extract_all_memory_types():
 async def test_prompt_formatting():
     """Test that prompt is formatted with correct date information."""
     response_json = json.dumps({"memories": []})
-    provider = MockLLMProvider(response_json)
+    provider = MockModel(response_json)
     extractor = LLMMemoryExtracter(provider, USER_MEMORY_PROMPT)
 
     messages = [UserMessage(content="Test")]
@@ -382,7 +382,7 @@ async def test_extract_with_defaults():
         }
     )
 
-    provider = MockLLMProvider(response_json)
+    provider = MockModel(response_json)
     extractor = LLMMemoryExtracter(provider, USER_MEMORY_PROMPT)
 
     messages = [UserMessage(content="Test")]
@@ -441,11 +441,11 @@ async def test_extract_with_custom_extraction_model():
         }
     )
 
-    provider = MockLLMProvider(response_json)
+    provider = MockModel(response_json)
     custom_prompt = "Extract insights: {today_natural} (ISO: {isonow})"
 
     extractor = LLMMemoryExtracter(
-        llm_provider=provider,
+        model=provider,
         prompt=custom_prompt,
         extraction_model=CustomExtractionResponse,
     )
@@ -481,11 +481,11 @@ async def test_extract_with_default_extraction_model():
         }
     )
 
-    provider = MockLLMProvider(response_json)
+    provider = MockModel(response_json)
 
     # Create extractor without explicit extraction_model - should use default
     extractor = LLMMemoryExtracter(
-        llm_provider=provider,
+        model=provider,
         prompt=USER_MEMORY_PROMPT,
     )
 
@@ -524,10 +524,10 @@ async def test_extract_custom_model_filters_low_importance():
         }
     )
 
-    provider = MockLLMProvider(response_json)
+    provider = MockModel(response_json)
 
     extractor = LLMMemoryExtracter(
-        llm_provider=provider,
+        model=provider,
         prompt="Extract insights: {today_natural} (ISO: {isonow})",
         extraction_model=CustomExtractionResponse,
     )
@@ -564,10 +564,10 @@ async def test_extract_custom_model_with_custom_types():
         }
     )
 
-    provider = MockLLMProvider(response_json)
+    provider = MockModel(response_json)
 
     extractor = LLMMemoryExtracter(
-        llm_provider=provider,
+        model=provider,
         prompt="Extract reflections: {today_natural} (ISO: {isonow})",
         extraction_model=CustomExtractionResponse,
     )
@@ -583,18 +583,18 @@ async def test_extract_custom_model_with_custom_types():
 @pytest.mark.asyncio
 async def test_extraction_model_stored_on_instance():
     """Test that extraction_model is stored on the extractor instance."""
-    provider = MockLLMProvider(json.dumps({"memories": []}))
+    provider = MockModel(json.dumps({"memories": []}))
 
     # Default model
     extractor_default = LLMMemoryExtracter(
-        llm_provider=provider,
+        model=provider,
         prompt=USER_MEMORY_PROMPT,
     )
     assert extractor_default.extraction_model == MemoryExtractionResponse
 
     # Custom model
     extractor_custom = LLMMemoryExtracter(
-        llm_provider=provider,
+        model=provider,
         prompt="Custom prompt: {today_natural} (ISO: {isonow})",
         extraction_model=CustomExtractionResponse,
     )
@@ -618,10 +618,10 @@ async def test_custom_model_validation_error():
         }
     )
 
-    provider = MockLLMProvider(response_json)
+    provider = MockModel(response_json)
 
     extractor = LLMMemoryExtracter(
-        llm_provider=provider,
+        model=provider,
         prompt="Extract: {today_natural} (ISO: {isonow})",
         extraction_model=CustomExtractionResponse,
     )

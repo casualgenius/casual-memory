@@ -15,6 +15,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../s
 from casual_llm import (
     AssistantMessage,
     ChatMessage,
+    ClientConfig,
     ModelConfig,
     Provider,
     UserMessage,
@@ -81,7 +82,7 @@ class ConfigLoader:
     DEFAULT_CONFIG_DIR = Path(__file__).parent / "configs"
 
     @classmethod
-    def load_models(cls, path: Optional[str | Path] = None) -> List[ModelConfig]:
+    def load_models(cls, path: Optional[str | Path] = None) -> List[tuple[ClientConfig, ModelConfig]]:
         """
         Load model configurations from JSON file.
 
@@ -89,7 +90,7 @@ class ConfigLoader:
             path: Path to models.json file. If None, uses default location.
 
         Returns:
-            List of ModelConfig objects ready for use with casual-llm
+            List of (ClientConfig, ModelConfig) tuples ready for use with casual-llm
 
         Raises:
             FileNotFoundError: If config file doesn't exist
@@ -167,9 +168,10 @@ To fix this:
             }
             provider = provider_map[entry.provider]
 
-            model_configs.append(
-                ModelConfig(name=entry.name, provider=provider, base_url=base_url, api_key=api_key)
-            )
+            model_configs.append((
+                ClientConfig(provider=provider, base_url=base_url, api_key=api_key),
+                ModelConfig(name=entry.name),
+            ))
 
         if not model_configs:
             raise ValueError(

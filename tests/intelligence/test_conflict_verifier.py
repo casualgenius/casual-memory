@@ -8,8 +8,8 @@ from casual_memory.intelligence.conflict_verifier import LLMConflictVerifier
 from casual_memory.models import MemoryFact
 
 
-class MockLLMProvider:
-    """Mock LLM provider for testing."""
+class MockModel:
+    """Mock Model for testing."""
 
     def __init__(self, response_content: str):
         self.response_content = response_content
@@ -19,9 +19,9 @@ class MockLLMProvider:
 @pytest.mark.asyncio
 async def test_conflict_verifier_initialization():
     """Test conflict verifier initialization."""
-    provider = MockLLMProvider("NO")
+    provider = MockModel("NO")
     verifier = LLMConflictVerifier(
-        llm_provider=provider, model_name="test-model", enable_fallback=True
+        model=provider, model_name="test-model", enable_fallback=True
     )
 
     assert verifier.model_name == "test-model"
@@ -35,7 +35,7 @@ async def test_conflict_verifier_initialization():
 @pytest.mark.asyncio
 async def test_conflict_detection_yes():
     """Test detection of conflicting memories."""
-    provider = MockLLMProvider("YES")
+    provider = MockModel("YES")
     verifier = LLMConflictVerifier(provider, "test-model")
 
     memory_a = MemoryFact(text="I live in London", type="fact", tags=["location"], importance=0.9)
@@ -52,7 +52,7 @@ async def test_conflict_detection_yes():
 @pytest.mark.asyncio
 async def test_conflict_detection_no():
     """Test detection of non-conflicting memories."""
-    provider = MockLLMProvider("NO")
+    provider = MockModel("NO")
     verifier = LLMConflictVerifier(provider, "test-model")
 
     memory_a = MemoryFact(text="I work as an engineer", type="fact", tags=["job"], importance=0.8)
@@ -75,7 +75,7 @@ async def test_conflict_detection_no():
 async def test_conflict_detection_case_insensitive():
     """Test that response parsing is case-insensitive."""
     # Test with lowercase "yes"
-    provider = MockLLMProvider("yes, these conflict")
+    provider = MockModel("yes, these conflict")
     verifier = LLMConflictVerifier(provider, "test-model")
 
     memory_a = MemoryFact(text="I live in London", type="fact", tags=[], importance=0.8)
@@ -85,7 +85,7 @@ async def test_conflict_detection_case_insensitive():
     assert is_conflict is True
 
     # Test with lowercase "no"
-    provider2 = MockLLMProvider("no conflict here")
+    provider2 = MockModel("no conflict here")
     verifier2 = LLMConflictVerifier(provider2, "test-model")
 
     is_conflict2, method2 = await verifier2.verify_conflict(memory_a, memory_b, 0.85)
@@ -209,7 +209,7 @@ async def test_heuristic_no_conflict_low_similarity():
 @pytest.mark.asyncio
 async def test_conflict_metrics():
     """Test metrics tracking."""
-    provider = MockLLMProvider("YES")
+    provider = MockModel("YES")
     verifier = LLMConflictVerifier(provider, "test-model")
 
     # Initial metrics
@@ -234,7 +234,7 @@ async def test_conflict_metrics():
 async def test_conflict_custom_prompt():
     """Test using a custom system prompt."""
     custom_prompt = "Custom prompt for conflict detection"
-    provider = MockLLMProvider("YES")
+    provider = MockModel("YES")
     verifier = LLMConflictVerifier(provider, "test-model", system_prompt=custom_prompt)
 
     assert verifier.system_prompt == custom_prompt
@@ -252,7 +252,7 @@ async def test_conflict_custom_prompt():
 @pytest.mark.asyncio
 async def test_multiple_conflict_checks():
     """Test multiple conflict verifications."""
-    provider = MockLLMProvider("YES")
+    provider = MockModel("YES")
     verifier = LLMConflictVerifier(provider, "test-model")
 
     memory_pairs = [

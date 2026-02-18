@@ -7,7 +7,7 @@ LLM-based extraction.
 
 import asyncio
 
-from casual_llm import AssistantMessage, ModelConfig, Provider, UserMessage, create_provider
+from casual_llm import AssistantMessage, ClientConfig, ModelConfig, Provider, UserMessage, create_client, create_model
 
 from casual_memory.extractors import LLMMemoryExtracter
 from casual_memory.extractors.prompts import ASSISTANT_MEMORY_PROMPT, USER_MEMORY_PROMPT
@@ -16,21 +16,16 @@ from casual_memory.extractors.prompts import ASSISTANT_MEMORY_PROMPT, USER_MEMOR
 async def main():
     print("=== Memory Extraction Example ===\n")
 
-    # Initialize LLM provider
-    llm_provider = create_provider(
-        ModelConfig(
-            name="qwen2.5:7b-instruct",
-            provider=Provider.OLLAMA,
-            base_url="http://localhost:11434",
-            temperature=0.2,  # Low temperature for consistent extraction
-        )
-    )
+    # Initialize LLM client and model
+    client = create_client(ClientConfig(provider=Provider.OLLAMA, base_url="http://localhost:11434"))
+    model = create_model(client, ModelConfig(
+        name="qwen2.5:7b-instruct",
+        temperature=0.2,  # Low temperature for consistent extraction
+    ))
 
     # Create extractors for user and assistant memories
-    user_extractor = LLMMemoryExtracter(llm_provider=llm_provider, prompt=USER_MEMORY_PROMPT)
-    assistant_extractor = LLMMemoryExtracter(
-        llm_provider=llm_provider, prompt=ASSISTANT_MEMORY_PROMPT
-    )
+    user_extractor = LLMMemoryExtracter(model=model, prompt=USER_MEMORY_PROMPT)
+    assistant_extractor = LLMMemoryExtracter(model=model, prompt=ASSISTANT_MEMORY_PROMPT)
 
     # Sample conversation
     messages = [

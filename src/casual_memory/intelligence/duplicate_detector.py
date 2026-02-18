@@ -8,7 +8,7 @@ or distinct facts that should both be stored.
 import logging
 from typing import Any, Optional
 
-from casual_llm import AssistantMessage, LLMProvider, SystemMessage, UserMessage
+from casual_llm import AssistantMessage, Model, SystemMessage, UserMessage
 
 from casual_memory.intelligence.prompts import DUPLICATE_DETECTION_SYSTEM_PROMPT
 from casual_memory.models import MemoryFact
@@ -31,18 +31,18 @@ class LLMDuplicateDetector:
     """
 
     def __init__(
-        self, llm_provider: LLMProvider, model_name: str, system_prompt: Optional[str] = None
+        self, model: Model, model_name: str, system_prompt: Optional[str] = None
     ):
         """
         Initialize the duplicate detector.
 
         Args:
-            llm_provider: LLM provider instance
+            model: casual-llm Model instance
             model_name: Name of the model (for logging)
             system_prompt: Optional custom prompt template (default: uses DUPLICATE_DETECTION_PROMPT)
                           Must include {statement_a} and {statement_b} placeholders
         """
-        self.llm_provider = llm_provider
+        self.model = model
         self.model_name = model_name
         self.system_prompt = system_prompt or DUPLICATE_DETECTION_SYSTEM_PROMPT
         self.llm_call_count = 0
@@ -74,7 +74,7 @@ class LLMDuplicateDetector:
                 SystemMessage(content=self.system_prompt),
                 UserMessage(content=prompt),
             ]
-            response: AssistantMessage = await self.llm_provider.chat(
+            response: AssistantMessage = await self.model.chat(
                 messages,  # type: ignore[arg-type]
                 response_format="text",
                 temperature=0.1,
