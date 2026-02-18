@@ -103,8 +103,8 @@ client = create_client(ClientConfig(
 ))
 model = create_model(client, ModelConfig(name="qwen2.5:7b-instruct"))
 
-conflict_verifier = LLMConflictVerifier(model, "qwen2.5:7b-instruct")
-duplicate_detector = LLMDuplicateDetector(model, "qwen2.5:7b-instruct")
+conflict_verifier = LLMConflictVerifier(model)
+duplicate_detector = LLMDuplicateDetector(model)
 
 # Build pipeline
 pipeline = MemoryClassificationPipeline(

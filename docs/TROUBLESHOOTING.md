@@ -142,7 +142,7 @@ auto_resolver = AutoResolutionClassifier(
 2. Switch to smaller/faster LLM model:
    ```python
    # Instead of gpt-4
-   conflict_verifier = LLMConflictVerifier(model, "gpt-3.5-turbo")
+   conflict_verifier = LLMConflictVerifier(model)
    ```
 
 3. Use `strategy="single"` to check only highest-similarity memory

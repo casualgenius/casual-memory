@@ -11,7 +11,8 @@ from casual_memory.models import MemoryFact
 class MockModel:
     """Mock Model for testing."""
 
-    def __init__(self, response_content: str):
+    def __init__(self, response_content: str, name: str = "test-model"):
+        self.name = name
         self.response_content = response_content
         self.chat = AsyncMock(return_value=Mock(content=response_content))
 
@@ -19,8 +20,8 @@ class MockModel:
 @pytest.mark.asyncio
 async def test_duplicate_detector_initialization():
     """Test duplicate detector initialization."""
-    provider = MockModel("DISTINCT")
-    detector = LLMDuplicateDetector(model=provider, model_name="test-model")
+    mock_model = MockModel("DISTINCT")
+    detector = LLMDuplicateDetector(model=mock_model)
 
     assert detector.model_name == "test-model"
     assert detector.llm_call_count == 0
@@ -32,8 +33,8 @@ async def test_duplicate_detector_initialization():
 @pytest.mark.asyncio
 async def test_duplicate_detection_same():
     """Test detection of duplicate/refinement memories."""
-    provider = MockModel("SAME")
-    detector = LLMDuplicateDetector(provider, "test-model")
+    mock_model = MockModel("SAME")
+    detector = LLMDuplicateDetector(mock_model)
 
     # Exact duplicate
     memory_a = MemoryFact(text="I live in London", type="fact", tags=["location"], importance=0.9)
@@ -49,10 +50,10 @@ async def test_duplicate_detection_same():
 @pytest.mark.asyncio
 async def test_duplicate_detection_refinement():
     """Test detection of refinements as duplicates."""
-    provider = MockModel("SAME")
-    detector = LLMDuplicateDetector(provider, "test-model")
+    mock_model = MockModel("SAME")
+    detector = LLMDuplicateDetector(mock_model)
 
-    # Location refinement (general → specific)
+    # Location refinement (general -> specific)
     memory_a = MemoryFact(text="I live in London", type="fact", tags=["location"], importance=0.8)
     memory_b = MemoryFact(
         text="I live in Central London", type="fact", tags=["location"], importance=0.9
@@ -67,10 +68,10 @@ async def test_duplicate_detection_refinement():
 @pytest.mark.asyncio
 async def test_duplicate_detection_job_refinement():
     """Test job refinement detection."""
-    provider = MockModel("SAME")
-    detector = LLMDuplicateDetector(provider, "test-model")
+    mock_model = MockModel("SAME")
+    detector = LLMDuplicateDetector(mock_model)
 
-    # Job refinement (general → specific)
+    # Job refinement (general -> specific)
     memory_a = MemoryFact(text="I work as an engineer", type="fact", tags=["job"], importance=0.7)
     memory_b = MemoryFact(
         text="I work as a senior software engineer at Google",
@@ -87,8 +88,8 @@ async def test_duplicate_detection_job_refinement():
 @pytest.mark.asyncio
 async def test_duplicate_detection_distinct():
     """Test detection of distinct facts."""
-    provider = MockModel("DISTINCT")
-    detector = LLMDuplicateDetector(provider, "test-model")
+    mock_model = MockModel("DISTINCT")
+    detector = LLMDuplicateDetector(mock_model)
 
     # Different facts (residence vs work location)
     memory_a = MemoryFact(text="I live in Bangkok", type="fact", tags=["location"], importance=0.8)
@@ -107,8 +108,8 @@ async def test_duplicate_detection_distinct():
 async def test_duplicate_detection_case_insensitive():
     """Test that response parsing is case-insensitive."""
     # Test with lowercase "same"
-    provider = MockModel("same fact")
-    detector = LLMDuplicateDetector(provider, "test-model")
+    mock_model = MockModel("same fact")
+    detector = LLMDuplicateDetector(mock_model)
 
     memory_a = MemoryFact(text="I live in London", type="fact", tags=[], importance=0.8)
     memory_b = MemoryFact(text="I live in London", type="fact", tags=[], importance=0.8)
@@ -117,8 +118,8 @@ async def test_duplicate_detection_case_insensitive():
     assert is_duplicate is True
 
     # Test with lowercase "distinct"
-    provider2 = MockModel("distinct facts")
-    detector2 = LLMDuplicateDetector(provider2, "test-model")
+    mock_model2 = MockModel("distinct facts")
+    detector2 = LLMDuplicateDetector(mock_model2)
 
     is_duplicate2 = await detector2.is_duplicate_or_refinement(memory_a, memory_b, 0.99)
     assert is_duplicate2 is False
@@ -127,9 +128,10 @@ async def test_duplicate_detection_case_insensitive():
 @pytest.mark.asyncio
 async def test_duplicate_fallback_high_similarity():
     """Test heuristic fallback with high similarity."""
-    provider = Mock()
-    provider.chat = AsyncMock(side_effect=Exception("LLM failed"))
-    detector = LLMDuplicateDetector(provider, "test-model")
+    mock_model = Mock()
+    mock_model.name = "test-model"
+    mock_model.chat = AsyncMock(side_effect=Exception("LLM failed"))
+    detector = LLMDuplicateDetector(mock_model)
 
     memory_a = MemoryFact(text="I live in London", type="fact", tags=[], importance=0.8)
     memory_b = MemoryFact(text="I live in London", type="fact", tags=[], importance=0.8)
@@ -147,9 +149,10 @@ async def test_duplicate_fallback_high_similarity():
 @pytest.mark.asyncio
 async def test_duplicate_fallback_low_similarity():
     """Test heuristic fallback with low similarity."""
-    provider = Mock()
-    provider.chat = AsyncMock(side_effect=Exception("LLM failed"))
-    detector = LLMDuplicateDetector(provider, "test-model")
+    mock_model = Mock()
+    mock_model.name = "test-model"
+    mock_model.chat = AsyncMock(side_effect=Exception("LLM failed"))
+    detector = LLMDuplicateDetector(mock_model)
 
     memory_a = MemoryFact(text="I live in London", type="fact", tags=[], importance=0.8)
     memory_b = MemoryFact(text="I work in London", type="fact", tags=[], importance=0.8)
@@ -164,8 +167,8 @@ async def test_duplicate_fallback_low_similarity():
 @pytest.mark.asyncio
 async def test_duplicate_metrics():
     """Test metrics tracking."""
-    provider = MockModel("SAME")
-    detector = LLMDuplicateDetector(provider, "test-model")
+    mock_model = MockModel("SAME")
+    detector = LLMDuplicateDetector(mock_model)
 
     # Initial metrics
     metrics = detector.get_metrics()
@@ -189,8 +192,8 @@ async def test_duplicate_metrics():
 async def test_duplicate_metrics_with_failures():
     """Test metrics with both successes and failures."""
     # First call succeeds
-    provider1 = MockModel("SAME")
-    detector = LLMDuplicateDetector(provider1, "test-model")
+    mock_model = MockModel("SAME")
+    detector = LLMDuplicateDetector(mock_model)
 
     memory_a = MemoryFact(text="Test A", type="fact", tags=[], importance=0.8)
     memory_b = MemoryFact(text="Test B", type="fact", tags=[], importance=0.8)
@@ -212,8 +215,8 @@ async def test_duplicate_metrics_with_failures():
 async def test_duplicate_custom_prompt():
     """Test using a custom system prompt."""
     custom_prompt = "Custom prompt for duplicate detection"
-    provider = MockModel("SAME")
-    detector = LLMDuplicateDetector(provider, "test-model", system_prompt=custom_prompt)
+    mock_model = MockModel("SAME")
+    detector = LLMDuplicateDetector(mock_model, system_prompt=custom_prompt)
 
     assert detector.system_prompt == custom_prompt
 
@@ -222,7 +225,7 @@ async def test_duplicate_custom_prompt():
     await detector.is_duplicate_or_refinement(memory_a, memory_b, 0.92)
 
     # Verify custom prompt was used in system message
-    call_args = provider.chat.call_args
+    call_args = mock_model.chat.call_args
     messages = call_args[0][0]
     assert messages[0].content == custom_prompt
 
@@ -230,8 +233,8 @@ async def test_duplicate_custom_prompt():
 @pytest.mark.asyncio
 async def test_paraphrase_detection():
     """Test detection of paraphrases as duplicates."""
-    provider = MockModel("SAME")
-    detector = LLMDuplicateDetector(provider, "test-model")
+    mock_model = MockModel("SAME")
+    detector = LLMDuplicateDetector(mock_model)
 
     memory_a = MemoryFact(
         text="I work as a software engineer", type="fact", tags=["job"], importance=0.8
@@ -247,8 +250,8 @@ async def test_paraphrase_detection():
 @pytest.mark.asyncio
 async def test_intensity_variations():
     """Test that intensity variations are treated as duplicates."""
-    provider = MockModel("SAME")
-    detector = LLMDuplicateDetector(provider, "test-model")
+    mock_model = MockModel("SAME")
+    detector = LLMDuplicateDetector(mock_model)
 
     memory_a = MemoryFact(text="I like coffee", type="preference", tags=["drink"], importance=0.7)
     memory_b = MemoryFact(text="I love coffee", type="preference", tags=["drink"], importance=0.9)
@@ -260,8 +263,8 @@ async def test_intensity_variations():
 @pytest.mark.asyncio
 async def test_contradictions_are_distinct():
     """Test that contradictions are treated as distinct facts."""
-    provider = MockModel("DISTINCT")
-    detector = LLMDuplicateDetector(provider, "test-model")
+    mock_model = MockModel("DISTINCT")
+    detector = LLMDuplicateDetector(mock_model)
 
     memory_a = MemoryFact(text="I live in Paris", type="fact", tags=["location"], importance=0.9)
     memory_b = MemoryFact(text="I live in London", type="fact", tags=["location"], importance=0.9)
@@ -273,8 +276,8 @@ async def test_contradictions_are_distinct():
 @pytest.mark.asyncio
 async def test_temporal_changes_are_distinct():
     """Test that temporal changes are distinct facts."""
-    provider = MockModel("DISTINCT")
-    detector = LLMDuplicateDetector(provider, "test-model")
+    mock_model = MockModel("DISTINCT")
+    detector = LLMDuplicateDetector(mock_model)
 
     memory_a = MemoryFact(text="I lived in Paris", type="fact", tags=["location"], importance=0.8)
     memory_b = MemoryFact(
@@ -288,8 +291,8 @@ async def test_temporal_changes_are_distinct():
 @pytest.mark.asyncio
 async def test_multiple_duplicate_checks():
     """Test multiple duplicate detections."""
-    provider = MockModel("SAME")
-    detector = LLMDuplicateDetector(provider, "test-model")
+    mock_model = MockModel("SAME")
+    detector = LLMDuplicateDetector(mock_model)
 
     memory_pairs = [
         (

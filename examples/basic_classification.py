@@ -25,13 +25,15 @@ async def main():
     print("=== Basic Classification Example ===\n")
 
     # Initialize LLM client and model
-    client = create_client(ClientConfig(provider=Provider.OLLAMA, base_url="http://localhost:11434"))
+    client = create_client(
+        ClientConfig(provider=Provider.OLLAMA, base_url="http://localhost:11434")
+    )
     model = create_model(client, ModelConfig(name="qwen2.5:7b-instruct"))
 
     # Initialize intelligence components
     nli_filter = NLIPreFilter()
-    conflict_verifier = LLMConflictVerifier(model, "qwen2.5:7b-instruct")
-    duplicate_detector = LLMDuplicateDetector(model, "qwen2.5:7b-instruct")
+    conflict_verifier = LLMConflictVerifier(model)
+    duplicate_detector = LLMDuplicateDetector(model)
 
     # Build pipeline with memory-centric classifiers
     pipeline = MemoryClassificationPipeline(

@@ -156,9 +156,7 @@ async def run_benchmark(
     model = create_model(client, model_config)
 
     # Initialize duplicate detector
-    detector = LLMDuplicateDetector(
-        model=model, model_name=model_config.name, system_prompt=custom_prompt
-    )
+    detector = LLMDuplicateDetector(model=model, system_prompt=custom_prompt)
 
     results = []
 

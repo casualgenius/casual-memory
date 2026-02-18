@@ -158,7 +158,6 @@ async def run_benchmark(
     # Initialize conflict verifier
     verifier = LLMConflictVerifier(
         model=model,
-        model_name=model_config.name,
         enable_fallback=False,  # Disable fallback for pure LLM testing
         system_prompt=custom_prompt,
     )

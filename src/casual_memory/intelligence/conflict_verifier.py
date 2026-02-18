@@ -31,7 +31,6 @@ class LLMConflictVerifier:
     def __init__(
         self,
         model: Model,
-        model_name: str,
         enable_fallback: bool = True,
         system_prompt: Optional[str] = None,
     ):
@@ -40,13 +39,12 @@ class LLMConflictVerifier:
 
         Args:
             model: casual-llm Model instance
-            model_name: Name of the model (for logging)
             enable_fallback: Enable heuristic fallback when LLM fails
             system_prompt: Optional custom prompt template (default: uses CONFLICT_DETECTION_PROMPT)
                           Must include {statement_a} and {statement_b} placeholders
         """
         self.model = model
-        self.model_name = model_name
+        self.model_name = model.name
         self.enable_fallback = enable_fallback
         self.system_prompt = system_prompt or CONFLICT_DETECTION_SYSTEM_PROMPT
         self.llm_call_count = 0
@@ -55,7 +53,7 @@ class LLMConflictVerifier:
         self.fallback_count = 0
 
         logger.info(
-            f"LLMConflictVerifier initialized: model={model_name}, "
+            f"LLMConflictVerifier initialized: model={model.name}, "
             f"enable_fallback={enable_fallback}, "
             f"custom_prompt={system_prompt is not None}"
         )

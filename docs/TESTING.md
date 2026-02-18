@@ -81,7 +81,7 @@ class MockModel:
 
 def test_conflict_verifier():
     mock_model = MockModel()
-    verifier = LLMConflictVerifier(mock_model, "test-model")
+    verifier = LLMConflictVerifier(mock_model)
     # ... test logic
 ```
 

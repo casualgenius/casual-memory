@@ -11,7 +11,8 @@ from casual_memory.models import MemoryFact
 class MockModel:
     """Mock Model for testing."""
 
-    def __init__(self, response_content: str):
+    def __init__(self, response_content: str, name: str = "test-model"):
+        self.name = name
         self.response_content = response_content
         self.chat = AsyncMock(return_value=Mock(content=response_content))
 
@@ -19,10 +20,8 @@ class MockModel:
 @pytest.mark.asyncio
 async def test_conflict_verifier_initialization():
     """Test conflict verifier initialization."""
-    provider = MockModel("NO")
-    verifier = LLMConflictVerifier(
-        model=provider, model_name="test-model", enable_fallback=True
-    )
+    mock_model = MockModel("NO")
+    verifier = LLMConflictVerifier(model=mock_model, enable_fallback=True)
 
     assert verifier.model_name == "test-model"
     assert verifier.enable_fallback is True
@@ -35,8 +34,8 @@ async def test_conflict_verifier_initialization():
 @pytest.mark.asyncio
 async def test_conflict_detection_yes():
     """Test detection of conflicting memories."""
-    provider = MockModel("YES")
-    verifier = LLMConflictVerifier(provider, "test-model")
+    mock_model = MockModel("YES")
+    verifier = LLMConflictVerifier(mock_model)
 
     memory_a = MemoryFact(text="I live in London", type="fact", tags=["location"], importance=0.9)
     memory_b = MemoryFact(text="I live in Paris", type="fact", tags=["location"], importance=0.9)
@@ -52,8 +51,8 @@ async def test_conflict_detection_yes():
 @pytest.mark.asyncio
 async def test_conflict_detection_no():
     """Test detection of non-conflicting memories."""
-    provider = MockModel("NO")
-    verifier = LLMConflictVerifier(provider, "test-model")
+    mock_model = MockModel("NO")
+    verifier = LLMConflictVerifier(mock_model)
 
     memory_a = MemoryFact(text="I work as an engineer", type="fact", tags=["job"], importance=0.8)
     memory_b = MemoryFact(
@@ -75,8 +74,8 @@ async def test_conflict_detection_no():
 async def test_conflict_detection_case_insensitive():
     """Test that response parsing is case-insensitive."""
     # Test with lowercase "yes"
-    provider = MockModel("yes, these conflict")
-    verifier = LLMConflictVerifier(provider, "test-model")
+    mock_model = MockModel("yes, these conflict")
+    verifier = LLMConflictVerifier(mock_model)
 
     memory_a = MemoryFact(text="I live in London", type="fact", tags=[], importance=0.8)
     memory_b = MemoryFact(text="I live in Paris", type="fact", tags=[], importance=0.8)
@@ -85,8 +84,8 @@ async def test_conflict_detection_case_insensitive():
     assert is_conflict is True
 
     # Test with lowercase "no"
-    provider2 = MockModel("no conflict here")
-    verifier2 = LLMConflictVerifier(provider2, "test-model")
+    mock_model2 = MockModel("no conflict here")
+    verifier2 = LLMConflictVerifier(mock_model2)
 
     is_conflict2, method2 = await verifier2.verify_conflict(memory_a, memory_b, 0.85)
     assert is_conflict2 is False
@@ -95,9 +94,10 @@ async def test_conflict_detection_case_insensitive():
 @pytest.mark.asyncio
 async def test_conflict_fallback_when_llm_fails():
     """Test that fallback is used when LLM fails."""
-    provider = Mock()
-    provider.chat = AsyncMock(side_effect=Exception("LLM failed"))
-    verifier = LLMConflictVerifier(provider, "test-model", enable_fallback=True)
+    mock_model = Mock()
+    mock_model.name = "test-model"
+    mock_model.chat = AsyncMock(side_effect=Exception("LLM failed"))
+    verifier = LLMConflictVerifier(mock_model, enable_fallback=True)
 
     # High similarity + location keywords = conflict via heuristic
     memory_a = MemoryFact(text="I live in London", type="fact", tags=["location"], importance=0.9)
@@ -116,9 +116,10 @@ async def test_conflict_fallback_when_llm_fails():
 @pytest.mark.asyncio
 async def test_conflict_fallback_raises_when_disabled():
     """Test that exception is raised when fallback is disabled."""
-    provider = Mock()
-    provider.chat = AsyncMock(side_effect=Exception("LLM failed"))
-    verifier = LLMConflictVerifier(provider, "test-model", enable_fallback=False)
+    mock_model = Mock()
+    mock_model.name = "test-model"
+    mock_model.chat = AsyncMock(side_effect=Exception("LLM failed"))
+    verifier = LLMConflictVerifier(mock_model, enable_fallback=False)
 
     memory_a = MemoryFact(text="I live in London", type="fact", tags=[], importance=0.8)
     memory_b = MemoryFact(text="I live in Paris", type="fact", tags=[], importance=0.8)
@@ -130,9 +131,10 @@ async def test_conflict_fallback_raises_when_disabled():
 @pytest.mark.asyncio
 async def test_heuristic_negation_detection():
     """Test heuristic detection of negation patterns."""
-    provider = Mock()
-    provider.chat = AsyncMock(side_effect=Exception("LLM failed"))
-    verifier = LLMConflictVerifier(provider, "test-model", enable_fallback=True)
+    mock_model = Mock()
+    mock_model.name = "test-model"
+    mock_model.chat = AsyncMock(side_effect=Exception("LLM failed"))
+    verifier = LLMConflictVerifier(mock_model, enable_fallback=True)
 
     # Test "like" vs "don't like"
     memory_a = MemoryFact(text="I like coffee", type="preference", tags=[], importance=0.7)
@@ -153,9 +155,10 @@ async def test_heuristic_negation_detection():
 @pytest.mark.asyncio
 async def test_heuristic_location_conflict():
     """Test heuristic detection of location conflicts."""
-    provider = Mock()
-    provider.chat = AsyncMock(side_effect=Exception("LLM failed"))
-    verifier = LLMConflictVerifier(provider, "test-model", enable_fallback=True)
+    mock_model = Mock()
+    mock_model.name = "test-model"
+    mock_model.chat = AsyncMock(side_effect=Exception("LLM failed"))
+    verifier = LLMConflictVerifier(mock_model, enable_fallback=True)
 
     # High similarity + location indicators = conflict
     memory_a = MemoryFact(text="I live in Bangkok", type="fact", tags=[], importance=0.8)
@@ -173,9 +176,10 @@ async def test_heuristic_location_conflict():
 @pytest.mark.asyncio
 async def test_heuristic_job_conflict():
     """Test heuristic detection of job conflicts."""
-    provider = Mock()
-    provider.chat = AsyncMock(side_effect=Exception("LLM failed"))
-    verifier = LLMConflictVerifier(provider, "test-model", enable_fallback=True)
+    mock_model = Mock()
+    mock_model.name = "test-model"
+    mock_model.chat = AsyncMock(side_effect=Exception("LLM failed"))
+    verifier = LLMConflictVerifier(mock_model, enable_fallback=True)
 
     # High similarity + job indicators = conflict
     memory_a = MemoryFact(text="I work as a teacher", type="fact", tags=[], importance=0.8)
@@ -193,9 +197,10 @@ async def test_heuristic_job_conflict():
 @pytest.mark.asyncio
 async def test_heuristic_no_conflict_low_similarity():
     """Test that heuristic requires high similarity."""
-    provider = Mock()
-    provider.chat = AsyncMock(side_effect=Exception("LLM failed"))
-    verifier = LLMConflictVerifier(provider, "test-model", enable_fallback=True)
+    mock_model = Mock()
+    mock_model.name = "test-model"
+    mock_model.chat = AsyncMock(side_effect=Exception("LLM failed"))
+    verifier = LLMConflictVerifier(mock_model, enable_fallback=True)
 
     memory_a = MemoryFact(text="I live in London", type="fact", tags=[], importance=0.8)
     memory_b = MemoryFact(text="I live in Paris", type="fact", tags=[], importance=0.8)
@@ -209,8 +214,8 @@ async def test_heuristic_no_conflict_low_similarity():
 @pytest.mark.asyncio
 async def test_conflict_metrics():
     """Test metrics tracking."""
-    provider = MockModel("YES")
-    verifier = LLMConflictVerifier(provider, "test-model")
+    mock_model = MockModel("YES")
+    verifier = LLMConflictVerifier(mock_model)
 
     # Initial metrics
     metrics = verifier.get_metrics()
@@ -234,8 +239,8 @@ async def test_conflict_metrics():
 async def test_conflict_custom_prompt():
     """Test using a custom system prompt."""
     custom_prompt = "Custom prompt for conflict detection"
-    provider = MockModel("YES")
-    verifier = LLMConflictVerifier(provider, "test-model", system_prompt=custom_prompt)
+    mock_model = MockModel("YES")
+    verifier = LLMConflictVerifier(mock_model, system_prompt=custom_prompt)
 
     assert verifier.system_prompt == custom_prompt
 
@@ -244,7 +249,7 @@ async def test_conflict_custom_prompt():
     await verifier.verify_conflict(memory_a, memory_b, 0.85)
 
     # Verify custom prompt was used in system message
-    call_args = provider.chat.call_args
+    call_args = mock_model.chat.call_args
     messages = call_args[0][0]
     assert messages[0].content == custom_prompt
 
@@ -252,8 +257,8 @@ async def test_conflict_custom_prompt():
 @pytest.mark.asyncio
 async def test_multiple_conflict_checks():
     """Test multiple conflict verifications."""
-    provider = MockModel("YES")
-    verifier = LLMConflictVerifier(provider, "test-model")
+    mock_model = MockModel("YES")
+    verifier = LLMConflictVerifier(mock_model)
 
     memory_pairs = [
         (

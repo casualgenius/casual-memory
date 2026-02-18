@@ -1,6 +1,6 @@
 [project]
 name = "casual-memory"
-version = "0.3.0"
+version = "0.5.0"
 description = "Intelligent semantic memory with conflict detection, classification pipeline, and storage abstraction"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -22,7 +22,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "casual-llm[openai]>=0.5.0",
+    "casual-llm[openai]>=0.5.0,<0.6.0",
     "pydantic>=2.0.0",
     "typing-extensions>=4.0.0",
 ]

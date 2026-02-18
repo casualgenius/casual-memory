@@ -16,13 +16,13 @@ async def main():
     print("=== Conflict Detection Demo ===\n")
 
     # Initialize LLM client and model
-    client = create_client(ClientConfig(provider=Provider.OLLAMA, base_url="http://localhost:11434"))
+    client = create_client(
+        ClientConfig(provider=Provider.OLLAMA, base_url="http://localhost:11434")
+    )
     model = create_model(client, ModelConfig(name="qwen2.5:7b-instruct", temperature=0.1))
 
     # Create conflict verifier with fallback enabled
-    verifier = LLMConflictVerifier(
-        model=model, model_name="qwen2.5:7b-instruct", enable_fallback=True
-    )
+    verifier = LLMConflictVerifier(model=model, enable_fallback=True)
 
     # Test cases
     test_cases = [

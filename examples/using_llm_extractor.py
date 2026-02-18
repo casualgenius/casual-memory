@@ -10,7 +10,15 @@ returns properly structured memory data, providing better type safety and valida
 
 import asyncio
 
-from casual_llm import AssistantMessage, ClientConfig, ModelConfig, Provider, UserMessage, create_client, create_model
+from casual_llm import (
+    AssistantMessage,
+    ClientConfig,
+    ModelConfig,
+    Provider,
+    UserMessage,
+    create_client,
+    create_model,
+)
 
 from casual_memory.extractors import LLMMemoryExtracter
 from casual_memory.extractors.prompts import ASSISTANT_MEMORY_PROMPT, USER_MEMORY_PROMPT
@@ -56,9 +64,7 @@ async def main():
     print("=" * 80)
 
     # Create extractor with assistant memory prompt
-    assistant_extractor = LLMMemoryExtracter(
-        model=model, prompt=ASSISTANT_MEMORY_PROMPT
-    )
+    assistant_extractor = LLMMemoryExtracter(model=model, prompt=ASSISTANT_MEMORY_PROMPT)
 
     # Example conversation with assistant-provided information
     assistant_conversation = [

@@ -50,7 +50,9 @@ class ConfigLoader:
     DEFAULT_CONFIG_DIR = Path(__file__).parent / "configs"
 
     @classmethod
-    def load_models(cls, path: Optional[str | Path] = None) -> List[tuple[ClientConfig, ModelConfig]]:
+    def load_models(
+        cls, path: Optional[str | Path] = None
+    ) -> List[tuple[ClientConfig, ModelConfig]]:
         """
         Load model configurations from JSON file.
 
@@ -139,10 +141,12 @@ To fix this:
             if not provider:
                 raise ValueError(f"Unknown provider: {entry.provider}. Supported: openai, ollama")
 
-            model_configs.append((
-                ClientConfig(provider=provider, base_url=base_url, api_key=api_key),
-                ModelConfig(name=entry.name),
-            ))
+            model_configs.append(
+                (
+                    ClientConfig(provider=provider, base_url=base_url, api_key=api_key),
+                    ModelConfig(name=entry.name),
+                )
+            )
 
         if not model_configs:
             raise ValueError(

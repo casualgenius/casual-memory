@@ -30,20 +30,17 @@ class LLMDuplicateDetector:
     - DISTINCT: separate facts (should store both)
     """
 
-    def __init__(
-        self, model: Model, model_name: str, system_prompt: Optional[str] = None
-    ):
+    def __init__(self, model: Model, system_prompt: Optional[str] = None):
         """
         Initialize the duplicate detector.
 
         Args:
             model: casual-llm Model instance
-            model_name: Name of the model (for logging)
             system_prompt: Optional custom prompt template (default: uses DUPLICATE_DETECTION_PROMPT)
                           Must include {statement_a} and {statement_b} placeholders
         """
         self.model = model
-        self.model_name = model_name
+        self.model_name = model.name
         self.system_prompt = system_prompt or DUPLICATE_DETECTION_SYSTEM_PROMPT
         self.llm_call_count = 0
         self.llm_success_count = 0
@@ -51,7 +48,7 @@ class LLMDuplicateDetector:
         self.heuristic_fallback_count = 0
 
         logger.info(
-            f"LLMDuplicateDetector initialized: model={model_name}, "
+            f"LLMDuplicateDetector initialized: model={model.name}, "
             f"custom_prompt={system_prompt is not None}"
         )
 
