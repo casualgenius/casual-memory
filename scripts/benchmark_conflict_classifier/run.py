@@ -31,6 +31,7 @@ import sys
 import time
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 from typing import List, Optional
 
 from dotenv import load_dotenv
@@ -40,19 +41,22 @@ load_dotenv()
 # Add src to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src/")))
 
-from casual_llm import ClientConfig, ModelConfig, Provider, create_client, create_model
+from casual_llm import ClientConfig, ModelConfig, create_client, create_model
 
 from casual_memory.intelligence.conflict_verifier import LLMConflictVerifier
 from casual_memory.intelligence.prompts import CONFLICT_DETECTION_SYSTEM_PROMPT_DETAILED
 from casual_memory.models import MemoryFact
 
-# Try to import config loader, but don't fail if not available
+# Try to import shared config loader
 try:
-    from config_loader import ConfigLoader
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
+    from shared.config_loader import load_models
 
     HAS_CONFIG_LOADER = True
 except ImportError:
     HAS_CONFIG_LOADER = False
+
+DEFAULT_CONFIG_DIR = Path(__file__).parent / "configs"
 
 # Configure logging
 logger = logging.getLogger("conflict-benchmark")
@@ -485,7 +489,7 @@ Examples:
             return 1
         try:
             logger.info(f"Loading models from config: {args.models_config}")
-            model_configs = ConfigLoader.load_models(args.models_config)
+            model_configs = load_models(args.models_config, default_config_dir=DEFAULT_CONFIG_DIR)
             logger.info(f"Loaded {len(model_configs)} model(s) for comparison")
         except Exception as e:
             logger.error(f"Failed to load models config: {e}")
@@ -493,7 +497,7 @@ Examples:
     else:
         # Single model mode (backward compatible)
         client_config = ClientConfig(
-            provider=Provider.OLLAMA, base_url=os.getenv("OLLAMA_ENDPOINT")
+            provider=args.provider, base_url=os.getenv("OLLAMA_ENDPOINT")
         )
         model_config = ModelConfig(name=args.model)
         model_configs = [(client_config, model_config)]
