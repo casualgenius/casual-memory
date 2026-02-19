@@ -8,15 +8,15 @@ with graceful degradation to heuristic-based detection.
 import logging
 from typing import Any, Optional
 
-from casual_llm import AssistantMessage, LLMProvider, SystemMessage, UserMessage
+from casual_llm import AssistantMessage, ChatMessage, Model, SystemMessage, UserMessage
 
 from casual_memory.intelligence.prompts import CONFLICT_DETECTION_SYSTEM_PROMPT
 from casual_memory.models import MemoryFact
 
 logger = logging.getLogger(__name__)
 
-prompt = """Statement A: "{statement_a}"
-Statement B: "{statement_b}"
+prompt = """Statement A ({type_a}): "{statement_a}"
+Statement B ({type_b}): "{statement_b}"
 """
 
 
@@ -30,8 +30,7 @@ class LLMConflictVerifier:
 
     def __init__(
         self,
-        llm_provider: LLMProvider,
-        model_name: str,
+        model: Model,
         enable_fallback: bool = True,
         system_prompt: Optional[str] = None,
     ):
@@ -39,14 +38,13 @@ class LLMConflictVerifier:
         Initialize the LLM conflict verifier.
 
         Args:
-            llm_provider: LLM provider instance (OpenAI, Ollama, etc.)
-            model_name: Name of the model (for logging)
+            model: casual-llm Model instance
             enable_fallback: Enable heuristic fallback when LLM fails
             system_prompt: Optional custom prompt template (default: uses CONFLICT_DETECTION_PROMPT)
                           Must include {statement_a} and {statement_b} placeholders
         """
-        self.llm_provider = llm_provider
-        self.model_name = model_name
+        self.model = model
+        self.model_name = model.name
         self.enable_fallback = enable_fallback
         self.system_prompt = system_prompt or CONFLICT_DETECTION_SYSTEM_PROMPT
         self.llm_call_count = 0
@@ -55,7 +53,7 @@ class LLMConflictVerifier:
         self.fallback_count = 0
 
         logger.info(
-            f"LLMConflictVerifier initialized: model={model_name}, "
+            f"LLMConflictVerifier initialized: model={model.name}, "
             f"enable_fallback={enable_fallback}, "
             f"custom_prompt={system_prompt is not None}"
         )
@@ -75,12 +73,12 @@ class LLMConflictVerifier:
         """
         self.llm_call_count += 1
         try:
-            messages: list[SystemMessage | UserMessage] = [
+            messages: list[ChatMessage] = [
                 SystemMessage(content=self.system_prompt),
                 UserMessage(content=prompt),
             ]
-            response: AssistantMessage = await self.llm_provider.chat(
-                messages,  # type: ignore[arg-type]
+            response: AssistantMessage = await self.model.chat(
+                messages,
                 response_format="text",
                 temperature=0.1,
                 max_tokens=10,  # We only need YES or NO
@@ -107,7 +105,12 @@ class LLMConflictVerifier:
             - is_conflicting: True if memories conflict
             - detection_method: "llm" or "heuristic_fallback"
         """
-        user_prompt = prompt.format(statement_a=memory_a.text, statement_b=memory_b.text)
+        user_prompt = prompt.format(
+            statement_a=memory_a.text,
+            statement_b=memory_b.text,
+            type_a=memory_a.type,
+            type_b=memory_b.type,
+        )
 
         try:
             # Try LLM-based detection

@@ -37,12 +37,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Make sure the app directory is in the python path
 import sys
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src/")))
+from casual_llm import ChatMessage, ClientConfig, ModelConfig, create_client, create_model
 
-from casual_llm import ChatMessage, ModelConfig, create_provider
+# Import local config_loader (scripts/compare_memory_extraction/ must be on sys.path)
+sys.path.insert(0, os.path.dirname(__file__))
 from config_loader import ConfigLoader
 
 from casual_memory.extractors import LLMMemoryExtracter
@@ -182,7 +182,7 @@ def generate_report(
 
 
 async def run_extraction_comparison(
-    model_configs: List[ModelConfig],
+    model_configs: List[tuple[ClientConfig, ModelConfig]],
     system_prompt: str,
     conversations: List[List[ChatMessage]],
     output_dir: str,
@@ -191,7 +191,7 @@ async def run_extraction_comparison(
     Run memory extraction comparison for specified models and conversations.
 
     Args:
-        model_configs: List of model configurations to test
+        model_configs: List of (ClientConfig, ModelConfig) tuples to test
         system_prompt: System prompt for extraction
         conversations: List of test conversations
         output_dir: Directory to write results
@@ -200,12 +200,13 @@ async def run_extraction_comparison(
     timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M")
     results = []
 
-    for model in model_configs:
-        logger.info(f"Testing {model.name}")
-        logger.info("Creating Provider")
-        provider = create_provider(model)
+    for client_config, model_config in model_configs:
+        logger.info(f"Testing {model_config.name}")
+        logger.info("Creating Client and Model")
+        client = create_client(client_config)
+        model = create_model(client, model_config)
         logger.info("Creating Memory Extractor")
-        extractor = LLMMemoryExtracter(llm_provider=provider, prompt=system_prompt)
+        extractor = LLMMemoryExtracter(model=model, prompt=system_prompt)
 
         model_results = []
         count = 0
@@ -219,7 +220,7 @@ async def run_extraction_comparison(
             # Return all extracted memories
             model_results.append(
                 ExtractionResult(
-                    model_name=model.name,
+                    model_name=model_config.name,
                     memories=[m.model_dump() for m in memories],
                     duration=duration,
                 )
@@ -309,7 +310,7 @@ Configuration:
         logger.error(f"Configuration error: {e}")
         return 1
 
-    logger.info(f"Loaded {len(model_configs)} model(s): {[m.name for m in model_configs]}")
+    logger.info(f"Loaded {len(model_configs)} model(s): {[mc.name for _, mc in model_configs]}")
     logger.info(f"Loaded {len(conversations)} conversation(s)")
 
     try:

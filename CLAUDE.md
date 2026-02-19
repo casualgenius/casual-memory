@@ -197,7 +197,7 @@ uv sync --all-extras  # Install all
 ## Testing
 
 - pytest + pytest-asyncio (`asyncio_mode = "auto"`)
-- Mock LLM providers for classifier tests
+- Mock LLM models for classifier tests
 - In-memory storage for unit tests
 - SQLite `:memory:` for database tests
 
@@ -288,12 +288,12 @@ from casual_memory.extractors import LLMMemoryExtracter
 from casual_memory.extractors.prompts import USER_MEMORY_PROMPT
 
 # Default: uses MemoryExtractionResponse (strict Literal types)
-extractor = LLMMemoryExtracter(llm_provider=llm_provider, prompt=USER_MEMORY_PROMPT)
+extractor = LLMMemoryExtracter(model=model, prompt=USER_MEMORY_PROMPT)
 memories = await extractor.extract(messages)
 
 # Custom: pass your own Pydantic model for custom memory types
 extractor = LLMMemoryExtracter(
-    llm_provider=provider,
+    model=model,
     prompt=CUSTOM_PROMPT,
     extraction_model=CustomExtractionResponse,  # Must have 'memories' attribute
 )

@@ -7,7 +7,7 @@ a new memory against similar memories and determine the outcome.
 
 import asyncio
 
-from casual_llm import ModelConfig, Provider, create_provider
+from casual_llm import ClientConfig, ModelConfig, Provider, create_client, create_model
 
 from casual_memory.classifiers import (
     AutoResolutionClassifier,
@@ -24,17 +24,16 @@ from casual_memory.models import MemoryFact
 async def main():
     print("=== Basic Classification Example ===\n")
 
-    # Initialize LLM provider
-    llm_provider = create_provider(
-        ModelConfig(
-            name="qwen2.5:7b-instruct", provider=Provider.OLLAMA, base_url="http://localhost:11434"
-        )
+    # Initialize LLM client and model
+    client = create_client(
+        ClientConfig(provider=Provider.OLLAMA, base_url="http://localhost:11434")
     )
+    model = create_model(client, ModelConfig(name="qwen2.5:7b-instruct"))
 
     # Initialize intelligence components
     nli_filter = NLIPreFilter()
-    conflict_verifier = LLMConflictVerifier(llm_provider, "qwen2.5:7b-instruct")
-    duplicate_detector = LLMDuplicateDetector(llm_provider, "qwen2.5:7b-instruct")
+    conflict_verifier = LLMConflictVerifier(model)
+    duplicate_detector = LLMDuplicateDetector(model)
 
     # Build pipeline with memory-centric classifiers
     pipeline = MemoryClassificationPipeline(

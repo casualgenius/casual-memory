@@ -30,9 +30,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Optional
 
-# Add src to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src/")))
-
 from casual_memory.classifiers.models import SimilarMemory
 from casual_memory.classifiers.nli_classifier import NLIClassifier
 from casual_memory.models import MemoryFact
@@ -140,11 +137,15 @@ async def run_benchmark(
 
         # Create memory objects
         new_memory = MemoryFact(
-            text=test_case.new_memory, type="fact", tags=[], user_id="test_user"
+            text=test_case.new_memory, type="fact", tags=[], importance=0.5, entity_id="test_user"
         )
 
         existing_memory_fact = MemoryFact(
-            text=test_case.existing_memory, type="fact", tags=[], user_id="test_user"
+            text=test_case.existing_memory,
+            type="fact",
+            tags=[],
+            importance=0.5,
+            entity_id="test_user",
         )
 
         similar_memory = SimilarMemory(

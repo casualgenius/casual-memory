@@ -6,13 +6,10 @@ Tests the LLM Conflict Classifier with various models to evaluate prompt effecti
 and classifier performance on different conflict scenarios.
 
 Usage:
-    # Use defaults (requires OPENAI_API_KEY or ANTHROPIC_API_KEY)
+    # Run all enabled models from configs/models.json
     python run.py
 
-    # Specify model
-    python run.py --model gpt-4o-mini
-
-    # Use Ollama
+    # Override with a single model
     python run.py --provider ollama --model llama3.2
 
     # Custom prompt
@@ -31,28 +28,24 @@ import sys
 import time
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 from typing import List, Optional
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# Add src to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src/")))
-
-from casual_llm import ModelConfig, Provider, create_provider
+from casual_llm import ClientConfig, ModelConfig, create_client, create_model
 
 from casual_memory.intelligence.conflict_verifier import LLMConflictVerifier
 from casual_memory.intelligence.prompts import CONFLICT_DETECTION_SYSTEM_PROMPT_DETAILED
 from casual_memory.models import MemoryFact
 
-# Try to import config loader, but don't fail if not available
-try:
-    from config_loader import ConfigLoader
+# Import shared config loader (scripts/ must be on sys.path)
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from shared.config_loader import load_models
 
-    HAS_CONFIG_LOADER = True
-except ImportError:
-    HAS_CONFIG_LOADER = False
+DEFAULT_CONFIG_DIR = Path(__file__).parent / "configs"
 
 # Configure logging
 logger = logging.getLogger("conflict-benchmark")
@@ -71,6 +64,8 @@ class TestCase:
     expected_conflict: bool
     category: str
     description: str = ""
+    type_a: str = "fact"
+    type_b: str = "fact"
 
 
 @dataclass
@@ -116,6 +111,8 @@ def load_test_cases(config_path: Optional[str] = None) -> List[TestCase]:
             expected_conflict=tc["expected_conflict"],
             category=tc["category"],
             description=tc.get("description", ""),
+            type_a=tc.get("type_a", "fact"),
+            type_b=tc.get("type_b", "fact"),
         )
         for tc in data["test_cases"]
     ]
@@ -132,28 +129,32 @@ def load_custom_prompt(prompt_path: str) -> str:
 
 
 async def run_benchmark(
-    test_cases: List[TestCase], model_config: ModelConfig, custom_prompt: Optional[str] = None
+    test_cases: List[TestCase],
+    client_config: ClientConfig,
+    model_config: ModelConfig,
+    custom_prompt: Optional[str] = None,
 ) -> List[BenchmarkResult]:
     """
     Run conflict classifier benchmark on all test cases.
 
     Args:
         test_cases: List of test cases to run
-        model_config: Model configuration for LLM provider
+        client_config: Client configuration for LLM connection
+        model_config: Model configuration
         custom_prompt: Optional custom prompt template
 
     Returns:
         List of benchmark results
     """
-    logger.info(f"Initializing LLM provider: {model_config.provider}/{model_config.name}")
+    logger.info(f"Initializing LLM: {client_config.provider}/{model_config.name}")
 
-    # Create LLM provider
-    provider = create_provider(model_config)
+    # Create LLM client and model
+    client = create_client(client_config)
+    model = create_model(client, model_config)
 
     # Initialize conflict verifier
     verifier = LLMConflictVerifier(
-        llm_provider=provider,
-        model_name=model_config.name,
+        model=model,
         enable_fallback=False,  # Disable fallback for pure LLM testing
         system_prompt=custom_prompt,
     )
@@ -164,13 +165,24 @@ async def run_benchmark(
         logger.info(f"Running test {i}/{len(test_cases)}: {test_case.name}")
 
         # Create memory objects
-        memory_a = MemoryFact(text=test_case.memory_a, type="fact", tags=[], user_id="test_user")
+        memory_a = MemoryFact(
+            text=test_case.memory_a,
+            type=test_case.type_a,
+            tags=[],
+            importance=0.5,
+            entity_id="test_user",
+        )
 
-        memory_b = MemoryFact(text=test_case.memory_b, type="fact", tags=[], user_id="test_user")
+        memory_b = MemoryFact(
+            text=test_case.memory_b,
+            type=test_case.type_b,
+            tags=[],
+            importance=0.5,
+            entity_id="test_user",
+        )
 
         # Run classification with timing
         start_time = time.time()
-        llm_response = ""
 
         try:
             is_conflict, detection_method = await verifier.verify_conflict(
@@ -183,6 +195,9 @@ async def run_benchmark(
 
             # Check if result matches expectation
             passed = is_conflict == test_case.expected_conflict
+
+            # Derive response summary from result
+            llm_response = "YES" if is_conflict else "NO"
 
             results.append(
                 BenchmarkResult(
@@ -234,6 +249,7 @@ async def run_benchmark(
 
 def generate_report(
     results: List[BenchmarkResult],
+    client_config: ClientConfig,
     model_config: ModelConfig,
     custom_prompt_used: bool,
     output_path: str,
@@ -243,6 +259,7 @@ def generate_report(
 
     Args:
         results: List of benchmark results
+        client_config: Client configuration used
         model_config: Model configuration used
         custom_prompt_used: Whether a custom prompt was used
         output_path: Path to write report
@@ -254,7 +271,7 @@ def generate_report(
 
         # Configuration
         f.write("## Configuration\n\n")
-        f.write(f"- **Provider:** {model_config.provider}\n")
+        f.write(f"- **Provider:** {client_config.provider}\n")
         f.write(f"- **Model:** {model_config.name}\n")
         f.write(f"- **Custom Prompt:** {'Yes' if custom_prompt_used else 'No (default)'}\n")
         f.write(f"- **Total Test Cases:** {len(results)}\n\n")
@@ -380,13 +397,13 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Use defaults (OpenAI GPT-4o-mini)
+  # Run all enabled models from configs/models.json (default)
   python run.py
 
-  # Specify model
-  python run.py --model gpt-4o
+  # Use a custom models config
+  python run.py --models-config configs/examples/models_ollama_only.json
 
-  # Use Ollama
+  # Override with a single model
   python run.py --provider ollama --model llama3.2
 
   # Custom prompt
@@ -408,19 +425,22 @@ Examples:
         "--models-config",
         type=str,
         default=None,
-        help="Path to models config JSON for multi-model comparison (overrides --provider and --model)",
+        help="Path to models config JSON (default: configs/models.json)",
     )
 
     parser.add_argument(
         "--provider",
         type=str,
-        default="openai",
+        default=None,
         choices=["openai", "anthropic", "ollama"],
-        help="LLM provider (default: openai) - ignored if --models-config is provided",
+        help="LLM provider for single-model mode (overrides --models-config)",
     )
 
     parser.add_argument(
-        "--model", type=str, default="gpt-4o-mini", help="Model name (default: gpt-4o-mini)"
+        "--model",
+        type=str,
+        default=None,
+        help="Model name for single-model mode (overrides --models-config)",
     )
 
     parser.add_argument(
@@ -471,41 +491,45 @@ Examples:
         custom_prompt = CONFLICT_DETECTION_SYSTEM_PROMPT_DETAILED
         logger.info("Using detailed prompt variant")
 
-    # Determine if we're running in multi-model mode
+    # Determine model configs: single-model override or config file
     model_configs = []
-    if args.models_config:
-        if not HAS_CONFIG_LOADER:
-            logger.error("Config loader not available. Cannot use --models-config")
-            return 1
+    if args.provider or args.model:
+        # Single model mode (explicit override)
+        provider = args.provider or "openai"
+        model_name = args.model or "gpt-4o-mini"
+        base_url = os.getenv("OLLAMA_ENDPOINT") if provider == "ollama" else None
+        client_config = ClientConfig(name=provider, provider=provider, base_url=base_url)
+        model_config = ModelConfig(name=model_name)
+        model_configs = [(client_config, model_config)]
+    else:
+        # Multi-model mode from config file (default)
+        config_path = args.models_config or str(DEFAULT_CONFIG_DIR / "models.json")
         try:
-            logger.info(f"Loading models from config: {args.models_config}")
-            model_configs = ConfigLoader.load_models(args.models_config)
+            logger.info(f"Loading models from config: {config_path}")
+            model_configs = load_models(config_path, default_config_dir=DEFAULT_CONFIG_DIR)
             logger.info(f"Loaded {len(model_configs)} model(s) for comparison")
         except Exception as e:
             logger.error(f"Failed to load models config: {e}")
             return 1
-    else:
-        # Single model mode (backward compatible)
-        model_config = ModelConfig(
-            provider=Provider.OLLAMA, base_url=os.getenv("OLLAMA_ENDPOINT"), name=args.model
-        )
-        model_configs = [model_config]
 
     # Run benchmark for each model
     all_results = []
     try:
         logger.info("Starting conflict classifier benchmark...")
-        for model_config in model_configs:
+        for client_config, model_config in model_configs:
             logger.info(f"\n{'='*60}")
-            logger.info(f"Testing model: {model_config.provider.value}/{model_config.name}")
+            logger.info(f"Testing model: {client_config.provider.value}/{model_config.name}")
             logger.info(f"{'='*60}\n")
 
             results = asyncio.run(
                 run_benchmark(
-                    test_cases=test_cases, model_config=model_config, custom_prompt=custom_prompt
+                    test_cases=test_cases,
+                    client_config=client_config,
+                    model_config=model_config,
+                    custom_prompt=custom_prompt,
                 )
             )
-            all_results.append((model_config, results))
+            all_results.append((client_config, model_config, results))
     except Exception as e:
         logger.error(f"Benchmark failed: {e}", exc_info=True)
         return 1
@@ -516,7 +540,7 @@ Examples:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
         # Generate individual reports for each model
-        for model_config, results in all_results:
+        for client_config, model_config, results in all_results:
             model_safe_name = model_config.name.replace("/", "_").replace(":", "_")
             output_path = os.path.join(
                 args.output_dir, f"conflict_benchmark_{model_safe_name}_{timestamp}.md"
@@ -524,6 +548,7 @@ Examples:
 
             generate_report(
                 results=results,
+                client_config=client_config,
                 model_config=model_config,
                 custom_prompt_used=(custom_prompt is not None),
                 output_path=output_path,
@@ -535,7 +560,7 @@ Examples:
             pass_rate = (passed / total * 100) if total > 0 else 0
 
             logger.info(f"\n{'='*60}")
-            logger.info(f"Results for {model_config.provider.value}/{model_config.name}:")
+            logger.info(f"Results for {client_config.provider.value}/{model_config.name}:")
             logger.info(f"Total: {total}, Passed: {passed}, Failed: {total - passed}")
             logger.info(f"Pass Rate: {pass_rate:.1f}%")
             logger.info(f"Report: {output_path}")
@@ -557,7 +582,7 @@ Examples:
 
 
 def generate_comparison_report(
-    all_results: List[tuple[ModelConfig, List[BenchmarkResult]]],
+    all_results: List[tuple[ClientConfig, ModelConfig, List[BenchmarkResult]]],
     output_path: str,
     custom_prompt_used: bool,
 ):
@@ -572,7 +597,7 @@ def generate_comparison_report(
         f.write("| Model | Provider | Total | Passed | Failed | Pass Rate | Avg Time (ms) |\n")
         f.write("|-------|----------|-------|--------|--------|-----------|---------------|\n")
 
-        for model_config, results in all_results:
+        for client_config, model_config, results in all_results:
             total = len(results)
             passed = sum(1 for r in results if r.passed)
             failed = total - passed
@@ -581,7 +606,7 @@ def generate_comparison_report(
 
             f.write(
                 f"| {model_config.name} | "
-                f"{model_config.provider.value} | "
+                f"{client_config.provider.value} | "
                 f"{total} | {passed} | {failed} | "
                 f"{pass_rate:.1f}% | {avg_time:.1f} |\n"
             )
@@ -593,10 +618,10 @@ def generate_comparison_report(
 
         # Get all test case names from first model
         if all_results:
-            first_results = all_results[0][1]
+            first_results = all_results[0][2]
 
             f.write("| Test Case |")
-            for model_config, _ in all_results:
+            for _, model_config, _ in all_results:
                 f.write(f" {model_config.name} |")
             f.write("\n")
 
@@ -607,7 +632,7 @@ def generate_comparison_report(
 
             for test_idx, first_result in enumerate(first_results):
                 f.write(f"| {first_result.test_name} |")
-                for model_config, results in all_results:
+                for _, model_config, results in all_results:
                     result = results[test_idx]
                     status = "✓" if result.passed else "✗"
                     actual = "CONF" if result.actual_conflict else "NO"

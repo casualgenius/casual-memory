@@ -74,14 +74,14 @@ async def test_my_async_function():
 Mock LLM providers for classifier tests to avoid external dependencies:
 
 ```python
-class MockLLMProvider:
+class MockModel:
     async def chat(self, messages, **kwargs):
         # Return predictable responses for testing
         return AssistantMessage(content="YES")
 
 def test_conflict_verifier():
-    mock_provider = MockLLMProvider()
-    verifier = LLMConflictVerifier(mock_provider, "test-model")
+    mock_model = MockModel()
+    verifier = LLMConflictVerifier(mock_model)
     # ... test logic
 ```
 
@@ -130,8 +130,8 @@ def memory_fact():
     )
 
 @pytest.fixture
-def mock_llm_provider():
-    return MockLLMProvider()
+def mock_model():
+    return MockModel()
 ```
 
 ## Test Coverage

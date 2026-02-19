@@ -106,7 +106,7 @@ confidence = min(
 ## Dependencies
 
 ### Core Dependencies
-- **casual-llm**: LLM provider abstraction (supports OpenAI, Anthropic, Ollama, etc.)
+- **casual-llm**: LLM client/model abstraction (supports OpenAI, Anthropic, Ollama, etc.)
 - **pydantic**: Data validation and serialization
 
 ### Optional Dependencies

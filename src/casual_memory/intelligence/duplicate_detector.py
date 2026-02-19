@@ -8,13 +8,12 @@ or distinct facts that should both be stored.
 import logging
 from typing import Any, Optional
 
-from casual_llm import AssistantMessage, LLMProvider, SystemMessage, UserMessage
+from casual_llm import AssistantMessage, ChatMessage, Model, SystemMessage, UserMessage
 
 from casual_memory.intelligence.prompts import DUPLICATE_DETECTION_SYSTEM_PROMPT
 from casual_memory.models import MemoryFact
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 prompt = """Statement A: "{statement_a}"
 Statement B: "{statement_b}"
@@ -30,20 +29,17 @@ class LLMDuplicateDetector:
     - DISTINCT: separate facts (should store both)
     """
 
-    def __init__(
-        self, llm_provider: LLMProvider, model_name: str, system_prompt: Optional[str] = None
-    ):
+    def __init__(self, model: Model, system_prompt: Optional[str] = None):
         """
         Initialize the duplicate detector.
 
         Args:
-            llm_provider: LLM provider instance
-            model_name: Name of the model (for logging)
+            model: casual-llm Model instance
             system_prompt: Optional custom prompt template (default: uses DUPLICATE_DETECTION_PROMPT)
                           Must include {statement_a} and {statement_b} placeholders
         """
-        self.llm_provider = llm_provider
-        self.model_name = model_name
+        self.model = model
+        self.model_name = model.name
         self.system_prompt = system_prompt or DUPLICATE_DETECTION_SYSTEM_PROMPT
         self.llm_call_count = 0
         self.llm_success_count = 0
@@ -51,7 +47,7 @@ class LLMDuplicateDetector:
         self.heuristic_fallback_count = 0
 
         logger.info(
-            f"LLMDuplicateDetector initialized: model={model_name}, "
+            f"LLMDuplicateDetector initialized: model={model.name}, "
             f"custom_prompt={system_prompt is not None}"
         )
 
@@ -70,12 +66,12 @@ class LLMDuplicateDetector:
         """
         self.llm_call_count += 1
         try:
-            messages: list[SystemMessage | UserMessage] = [
+            messages: list[ChatMessage] = [
                 SystemMessage(content=self.system_prompt),
                 UserMessage(content=prompt),
             ]
-            response: AssistantMessage = await self.llm_provider.chat(
-                messages,  # type: ignore[arg-type]
+            response: AssistantMessage = await self.model.chat(
+                messages,
                 response_format="text",
                 temperature=0.1,
                 max_tokens=10,  # We only need SAME or DISTINCT

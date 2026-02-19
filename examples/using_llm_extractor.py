@@ -10,26 +10,31 @@ returns properly structured memory data, providing better type safety and valida
 
 import asyncio
 
-from casual_llm import AssistantMessage, ModelConfig, Provider, UserMessage, create_provider
+from casual_llm import (
+    AssistantMessage,
+    ClientConfig,
+    ModelConfig,
+    Provider,
+    UserMessage,
+    create_client,
+    create_model,
+)
 
 from casual_memory.extractors import LLMMemoryExtracter
 from casual_memory.extractors.prompts import ASSISTANT_MEMORY_PROMPT, USER_MEMORY_PROMPT
 
 
 async def main():
-    # Setup LLM provider (using Ollama for this example)
-    model = ModelConfig(
-        name="qwen2.5:7b-instruct",
-        provider=Provider.OLLAMA,
-    )
-    llm_provider = create_provider(model)
+    # Setup LLM client and model (using Ollama for this example)
+    client = create_client(ClientConfig(provider=Provider.OLLAMA))
+    model = create_model(client, ModelConfig(name="qwen2.5:7b-instruct"))
 
     print("=" * 80)
     print("Example 1: Extracting User Memories")
     print("=" * 80)
 
     # Create extractor with user memory prompt
-    user_extractor = LLMMemoryExtracter(llm_provider=llm_provider, prompt=USER_MEMORY_PROMPT)
+    user_extractor = LLMMemoryExtracter(model=model, prompt=USER_MEMORY_PROMPT)
 
     # Example conversation with user memories
     user_conversation = [
@@ -59,9 +64,7 @@ async def main():
     print("=" * 80)
 
     # Create extractor with assistant memory prompt
-    assistant_extractor = LLMMemoryExtracter(
-        llm_provider=llm_provider, prompt=ASSISTANT_MEMORY_PROMPT
-    )
+    assistant_extractor = LLMMemoryExtracter(model=model, prompt=ASSISTANT_MEMORY_PROMPT)
 
     # Example conversation with assistant-provided information
     assistant_conversation = [
@@ -108,7 +111,7 @@ Today is {today_natural} (ISO: {isonow}).
 Only extract location information. Return {{"memories": []}} if none found.
 """
 
-    location_extractor = LLMMemoryExtracter(llm_provider=llm_provider, prompt=custom_prompt)
+    location_extractor = LLMMemoryExtracter(model=model, prompt=custom_prompt)
 
     location_conversation = [
         UserMessage(content="I'm traveling to Paris next week and then to Tokyo in December."),

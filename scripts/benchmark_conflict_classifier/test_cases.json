@@ -6,6 +6,8 @@
       "memory_b": "I live in London",
       "expected_conflict": true,
       "category": "location",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Direct location contradiction - same topic, incompatible values"
     },
     {
@@ -14,6 +16,8 @@
       "memory_b": "I work as a doctor",
       "expected_conflict": true,
       "category": "job",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Direct job contradiction - mutually exclusive roles"
     },
     {
@@ -22,6 +26,8 @@
       "memory_b": "I hate coffee",
       "expected_conflict": true,
       "category": "preference",
+      "type_a": "preference",
+      "type_b": "preference",
       "description": "Preference contradiction - opposite sentiments"
     },
     {
@@ -30,6 +36,8 @@
       "memory_b": "I am not vegetarian",
       "expected_conflict": true,
       "category": "preference",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Direct negation of a statement"
     },
     {
@@ -38,6 +46,8 @@
       "memory_b": "I eat meat daily",
       "expected_conflict": true,
       "category": "preference",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Logically incompatible lifestyle choices"
     },
     {
@@ -46,6 +56,8 @@
       "memory_b": "I live in Paris",
       "expected_conflict": false,
       "category": "duplicate",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Exact duplicate - not a contradiction"
     },
     {
@@ -54,6 +66,8 @@
       "memory_b": "I'm employed as a software developer",
       "expected_conflict": false,
       "category": "paraphrase",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Synonyms/paraphrase - not a contradiction"
     },
     {
@@ -62,6 +76,8 @@
       "memory_b": "I work as a senior software engineer at Google",
       "expected_conflict": false,
       "category": "refinement",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Refinement with added detail - not a contradiction"
     },
     {
@@ -70,6 +86,8 @@
       "memory_b": "I live in Paris, France",
       "expected_conflict": false,
       "category": "refinement",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Location refinement with added specificity - not a contradiction"
     },
     {
@@ -78,6 +96,8 @@
       "memory_b": "I now live in London",
       "expected_conflict": false,
       "category": "temporal",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Temporal progression - both can be true at different times"
     },
     {
@@ -86,6 +106,8 @@
       "memory_b": "I quit smoking 5 years ago",
       "expected_conflict": false,
       "category": "temporal",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Temporal state change - both statements consistent"
     },
     {
@@ -94,6 +116,8 @@
       "memory_b": "I work in London",
       "expected_conflict": false,
       "category": "distinct",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Different topics - not contradictory"
     },
     {
@@ -102,6 +126,8 @@
       "memory_b": "I enjoy playing tennis",
       "expected_conflict": false,
       "category": "distinct",
+      "type_a": "preference",
+      "type_b": "preference",
       "description": "Unrelated preferences - not contradictory"
     },
     {
@@ -110,6 +136,8 @@
       "memory_b": "I have a cat",
       "expected_conflict": false,
       "category": "compatible",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Compatible facts - can have both pets"
     },
     {
@@ -118,6 +146,8 @@
       "memory_b": "I love chocolate",
       "expected_conflict": false,
       "category": "intensity",
+      "type_a": "preference",
+      "type_b": "preference",
       "description": "Intensity difference - not contradictory"
     },
     {
@@ -126,6 +156,8 @@
       "memory_b": "I work as a backend developer",
       "expected_conflict": true,
       "category": "job",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Different job roles - likely contradictory unless person has two jobs"
     },
     {
@@ -134,6 +166,8 @@
       "memory_b": "I enjoy swimming",
       "expected_conflict": false,
       "category": "compatible",
+      "type_a": "preference",
+      "type_b": "preference",
       "description": "Multiple hobbies are compatible"
     },
     {
@@ -142,6 +176,8 @@
       "memory_b": "I'm learning French",
       "expected_conflict": true,
       "category": "skill",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Contradictory skill levels - can't be both fluent and learning"
     },
     {
@@ -150,6 +186,8 @@
       "memory_b": "I am married",
       "expected_conflict": true,
       "category": "status",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Mutually exclusive relationship status"
     },
     {
@@ -158,6 +196,8 @@
       "memory_b": "I am 30 years old",
       "expected_conflict": true,
       "category": "fact",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Contradictory factual information"
     },
     {
@@ -166,6 +206,8 @@
       "memory_b": "The sky is blue",
       "expected_conflict": false,
       "category": "unrelated",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Completely unrelated statements"
     },
     {
@@ -174,6 +216,8 @@
       "memory_b": "I have a PhD in computer science from MIT",
       "expected_conflict": false,
       "category": "refinement",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Educational background refinement"
     },
     {
@@ -182,6 +226,8 @@
       "memory_b": "I am allergic to shellfish",
       "expected_conflict": false,
       "category": "compatible",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Multiple allergies are compatible"
     },
     {
@@ -190,6 +236,8 @@
       "memory_b": "I am not allergic to peanuts",
       "expected_conflict": true,
       "category": "fact",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Direct contradiction of medical fact"
     },
     {
@@ -198,6 +246,8 @@
       "memory_b": "I am 38 years old",
       "expected_conflict": true,
       "category": "fact",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Different numeric ages are contradictory"
     },
     {
@@ -206,6 +256,8 @@
       "memory_b": "I rent my house",
       "expected_conflict": true,
       "category": "fact",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Owning vs renting the same property contradicts"
     },
     {
@@ -214,6 +266,8 @@
       "memory_b": "I have 2 children",
       "expected_conflict": true,
       "category": "fact",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Different number of children contradicts"
     },
     {
@@ -222,6 +276,8 @@
       "memory_b": "I don't have a driver's license",
       "expected_conflict": true,
       "category": "fact",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Direct boolean negation"
     },
     {
@@ -230,6 +286,8 @@
       "memory_b": "I have 3 roommates",
       "expected_conflict": true,
       "category": "fact",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Living alone vs with roommates contradicts"
     },
     {
@@ -238,6 +296,8 @@
       "memory_b": "I've been a consultant for 3 years",
       "expected_conflict": true,
       "category": "fact",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Different durations for same role contradict"
     },
     {
@@ -246,6 +306,8 @@
       "memory_b": "I am 5 feet 8 inches tall",
       "expected_conflict": true,
       "category": "fact",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Different physical measurements contradict"
     },
     {
@@ -254,6 +316,8 @@
       "memory_b": "I have a golden retriever named Max",
       "expected_conflict": false,
       "category": "refinement",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Adding breed and name to pet is refinement"
     },
     {
@@ -262,6 +326,8 @@
       "memory_b": "I'm engaged to Alex",
       "expected_conflict": false,
       "category": "refinement",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Engagement is a refinement of being in relationship"
     },
     {
@@ -270,6 +336,8 @@
       "memory_b": "I am AWS certified solutions architect",
       "expected_conflict": false,
       "category": "refinement",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Specific certification refines general statement"
     },
     {
@@ -278,6 +346,8 @@
       "memory_b": "I speak Mandarin",
       "expected_conflict": false,
       "category": "compatible",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Specific language compatible with language count"
     },
     {
@@ -286,6 +356,8 @@
       "memory_b": "I have a bachelor's degree",
       "expected_conflict": false,
       "category": "compatible",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Higher education includes lower levels - compatible"
     },
     {
@@ -294,6 +366,8 @@
       "memory_b": "I'm a professional drummer",
       "expected_conflict": true,
       "category": "skill",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Learning vs professional level contradicts"
     },
     {
@@ -302,6 +376,8 @@
       "memory_b": "I sometimes exercise in the morning",
       "expected_conflict": true,
       "category": "preference",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Always vs sometimes is a contradiction"
     },
     {
@@ -310,6 +386,8 @@
       "memory_b": "I drive a truck",
       "expected_conflict": true,
       "category": "fact",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Different vehicle types contradict (assuming single vehicle)"
     },
     {
@@ -318,6 +396,8 @@
       "memory_b": "I am a Canadian citizen",
       "expected_conflict": false,
       "category": "compatible",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Dual citizenship is possible - compatible"
     },
     {
@@ -326,6 +406,8 @@
       "memory_b": "I am unemployed",
       "expected_conflict": true,
       "category": "status",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Employed vs unemployed contradicts"
     },
     {
@@ -334,6 +416,8 @@
       "memory_b": "I am 34 years old",
       "expected_conflict": false,
       "category": "compatible",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Birth year and age are consistent (as of 2024)"
     },
     {
@@ -342,6 +426,8 @@
       "memory_b": "I am vegan",
       "expected_conflict": false,
       "category": "refinement",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Vegan is a refinement of not eating meat"
     },
     {
@@ -350,7 +436,240 @@
       "memory_b": "I'm bad at math",
       "expected_conflict": true,
       "category": "skill",
+      "type_a": "fact",
+      "type_b": "fact",
       "description": "Opposite skill assessments contradict"
+    },
+    {
+      "name": "flight_date_correction",
+      "memory_a": "My flight is on March 15th",
+      "memory_b": "My flight is on March 17th",
+      "expected_conflict": true,
+      "category": "event_correction",
+      "type_a": "event",
+      "type_b": "event",
+      "description": "Same flight with different dates - one is a correction"
+    },
+    {
+      "name": "meeting_time_correction",
+      "memory_a": "The meeting is at 2pm",
+      "memory_b": "The meeting is at 3pm",
+      "expected_conflict": true,
+      "category": "event_correction",
+      "type_a": "event",
+      "type_b": "event",
+      "description": "Same meeting with conflicting times"
+    },
+    {
+      "name": "trip_different_stops_edinburgh_bristol",
+      "memory_a": "I will spend 2 days in Edinburgh",
+      "memory_b": "I will spend 2 days in Bristol",
+      "expected_conflict": false,
+      "category": "coexistence",
+      "type_a": "event",
+      "type_b": "event",
+      "description": "Different destinations on same trip - coexist as itinerary stops"
+    },
+    {
+      "name": "trip_different_stops_edinburgh_tetbury",
+      "memory_a": "I will spend 2 days in Edinburgh",
+      "memory_b": "I will spend 2 days in Tetbury",
+      "expected_conflict": false,
+      "category": "coexistence",
+      "type_a": "event",
+      "type_b": "event",
+      "description": "Different itinerary stops - not corrections of each other"
+    },
+    {
+      "name": "london_different_dates",
+      "memory_a": "I will stay in Central London until the morning of April 7th",
+      "memory_b": "I will spend one more night in London on April 13th",
+      "expected_conflict": false,
+      "category": "coexistence",
+      "type_a": "event",
+      "type_b": "event",
+      "description": "Same city but different dates - April 7th vs April 13th"
+    },
+    {
+      "name": "hotels_different_locations",
+      "memory_a": "I will stay at a hotel near Kings Cross on the 13th",
+      "memory_b": "I am staying at the Priory Inn hotel in Tetbury",
+      "expected_conflict": false,
+      "category": "coexistence",
+      "type_a": "event",
+      "type_b": "fact",
+      "description": "Different hotels at different locations on different dates"
+    },
+    {
+      "name": "food_preferences_coexist",
+      "memory_a": "I like Thai food",
+      "memory_b": "I like Italian food",
+      "expected_conflict": false,
+      "category": "compatible",
+      "type_a": "preference",
+      "type_b": "preference",
+      "description": "Food preferences coexist - can like multiple cuisines"
+    },
+    {
+      "name": "different_meetings_different_days",
+      "memory_a": "Meeting with John on Monday",
+      "memory_b": "Meeting with Sarah on Tuesday",
+      "expected_conflict": false,
+      "category": "coexistence",
+      "type_a": "event",
+      "type_b": "event",
+      "description": "Different meetings with different people on different days"
+    },
+
+    {
+      "name": "gen_trip_tokyo_osaka",
+      "memory_a": "I'm visiting Tokyo for 3 days",
+      "memory_b": "I'm visiting Osaka for 2 days",
+      "expected_conflict": false,
+      "category": "coexistence_generalization",
+      "type_a": "event",
+      "type_b": "event",
+      "description": "GENERALIZATION: Different trip destinations coexist (novel cities)"
+    },
+    {
+      "name": "gen_trip_hiking_beach",
+      "memory_a": "We're going hiking in the Alps next week",
+      "memory_b": "We're spending a few days at the beach in Nice after",
+      "expected_conflict": false,
+      "category": "coexistence_generalization",
+      "type_a": "event",
+      "type_b": "event",
+      "description": "GENERALIZATION: Different trip activities at different locations"
+    },
+    {
+      "name": "gen_restaurants_different_nights",
+      "memory_a": "I have a reservation at the Italian place on Friday",
+      "memory_b": "I'm going to the sushi restaurant on Saturday",
+      "expected_conflict": false,
+      "category": "coexistence_generalization",
+      "type_a": "event",
+      "type_b": "event",
+      "description": "GENERALIZATION: Different restaurant reservations on different days"
+    },
+    {
+      "name": "gen_classes_different_subjects",
+      "memory_a": "I'm taking a photography class on Wednesdays",
+      "memory_b": "I'm taking a cooking class on Thursdays",
+      "expected_conflict": false,
+      "category": "coexistence_generalization",
+      "type_a": "event",
+      "type_b": "event",
+      "description": "GENERALIZATION: Different classes on different days coexist"
+    },
+    {
+      "name": "gen_doctor_dentist_appointments",
+      "memory_a": "I have a doctor appointment on March 5th",
+      "memory_b": "I have a dentist appointment on March 12th",
+      "expected_conflict": false,
+      "category": "coexistence_generalization",
+      "type_a": "event",
+      "type_b": "event",
+      "description": "GENERALIZATION: Different appointments on different dates"
+    },
+    {
+      "name": "gen_concerts_different_bands",
+      "memory_a": "I'm going to see Radiohead in June",
+      "memory_b": "I have tickets to see Coldplay in August",
+      "expected_conflict": false,
+      "category": "coexistence_generalization",
+      "type_a": "event",
+      "type_b": "event",
+      "description": "GENERALIZATION: Different concerts at different times"
+    },
+    {
+      "name": "gen_same_restaurant_different_times",
+      "memory_a": "Dinner reservation at Nobu is at 7pm",
+      "memory_b": "Dinner reservation at Nobu is at 8:30pm",
+      "expected_conflict": true,
+      "category": "event_correction_generalization",
+      "type_a": "event",
+      "type_b": "event",
+      "description": "GENERALIZATION: Same restaurant, conflicting reservation times"
+    },
+    {
+      "name": "gen_deadline_date_change",
+      "memory_a": "The project deadline is April 1st",
+      "memory_b": "The project deadline is April 15th",
+      "expected_conflict": true,
+      "category": "event_correction_generalization",
+      "type_a": "event",
+      "type_b": "event",
+      "description": "GENERALIZATION: Same deadline with conflicting dates"
+    },
+    {
+      "name": "gen_appointment_reschedule",
+      "memory_a": "My dentist appointment is on Tuesday",
+      "memory_b": "My dentist appointment is on Thursday",
+      "expected_conflict": true,
+      "category": "event_correction_generalization",
+      "type_a": "event",
+      "type_b": "event",
+      "description": "GENERALIZATION: Same appointment rescheduled to different day"
+    },
+    {
+      "name": "gen_salary_contradiction",
+      "memory_a": "My salary is $80,000",
+      "memory_b": "My salary is $120,000",
+      "expected_conflict": true,
+      "category": "fact_generalization",
+      "type_a": "fact",
+      "type_b": "fact",
+      "description": "GENERALIZATION: Same fact attribute with incompatible values"
+    },
+    {
+      "name": "gen_music_preferences_coexist",
+      "memory_a": "I love jazz music",
+      "memory_b": "I love classical music",
+      "expected_conflict": false,
+      "category": "compatible_generalization",
+      "type_a": "preference",
+      "type_b": "preference",
+      "description": "GENERALIZATION: Multiple music preferences coexist"
+    },
+    {
+      "name": "gen_sport_preferences_coexist",
+      "memory_a": "I'm a big football fan",
+      "memory_b": "I love watching basketball",
+      "expected_conflict": false,
+      "category": "compatible_generalization",
+      "type_a": "preference",
+      "type_b": "preference",
+      "description": "GENERALIZATION: Multiple sport preferences coexist"
+    },
+    {
+      "name": "gen_work_conference_different_months",
+      "memory_a": "I'm attending a conference in Berlin in March",
+      "memory_b": "I'm attending a conference in San Francisco in September",
+      "expected_conflict": false,
+      "category": "coexistence_generalization",
+      "type_a": "event",
+      "type_b": "event",
+      "description": "GENERALIZATION: Different conferences in different cities/months"
+    },
+    {
+      "name": "gen_interview_time_change",
+      "memory_a": "The job interview is at 10am",
+      "memory_b": "The job interview is at 2pm",
+      "expected_conflict": true,
+      "category": "event_correction_generalization",
+      "type_a": "event",
+      "type_b": "event",
+      "description": "GENERALIZATION: Same interview rescheduled to different time"
+    },
+    {
+      "name": "gen_gym_different_activities",
+      "memory_a": "I do yoga on Monday mornings",
+      "memory_b": "I do weightlifting on Wednesday evenings",
+      "expected_conflict": false,
+      "category": "coexistence_generalization",
+      "type_a": "event",
+      "type_b": "event",
+      "description": "GENERALIZATION: Different workout activities on different days"
     }
   ]
 }

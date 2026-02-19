@@ -53,28 +53,35 @@ uv run python run.py --models-config configs/examples/models_ollama_only.json
 
 ### Model Configuration Format
 
-Create a `models.json` file to define which models to test:
+Create a `models.json` file with a `clients` dict and a `models` list. Each model references a client by key. The client key is used for automatic API key resolution from `{KEY.upper()}_API_KEY` environment variables (via casual-llm's `ClientConfig.name`).
 
 ```json
 {
+  "clients": {
+    "openai": {
+      "provider": "openai"
+    },
+    "ollama": {
+      "provider": "ollama",
+      "base_url_env": "OLLAMA_ENDPOINT"
+    }
+  },
   "models": [
     {
       "name": "gpt-4o-mini",
-      "provider": "openai",
-      "api_key_env": "OPENAI_API_KEY",
+      "client": "openai",
       "enabled": true,
       "description": "OpenAI GPT-4o-mini"
     },
     {
       "name": "qwen2.5:7b-instruct",
-      "provider": "ollama",
-      "base_url_env": "OLLAMA_ENDPOINT",
+      "client": "ollama",
       "enabled": true,
       "description": "Qwen 2.5 7B local model"
     }
   ],
   "metadata": {
-    "version": "1.0",
+    "version": "2.0",
     "description": "Model configurations for benchmarking"
   }
 }
@@ -82,13 +89,17 @@ Create a `models.json` file to define which models to test:
 
 ### Configuration Fields
 
-- **name** (required): Model identifier (e.g., "gpt-4o-mini", "qwen2.5:7b-instruct")
-- **provider** (required): LLM provider - "openai" or "ollama"
-- **enabled** (required): Whether to include this model in tests
-- **api_key** (optional): Static API key (NOT recommended)
-- **api_key_env** (optional): Environment variable containing API key
+**Client fields** (in `clients` dict):
+- **provider** (required): LLM provider - "openai", "ollama", or "anthropic"
 - **base_url** (optional): Static base URL
 - **base_url_env** (optional): Environment variable containing base URL
+- **api_key** (optional): Static API key (NOT recommended)
+- **api_key_env** (optional): Explicit env var for API key (overrides name-based auto-resolution)
+
+**Model fields** (in `models` list):
+- **name** (required): Model identifier (e.g., "gpt-4o-mini", "qwen2.5:7b-instruct")
+- **client** (required): Key into the `clients` dict
+- **enabled** (required): Whether to include this model in tests
 - **description** (optional): Human-readable description
 
 ### Example Configurations
@@ -348,9 +359,9 @@ Answer: SAME or DISTINCT
 
 ### "Config loader not available"
 
-The config_loader.py file is missing. Ensure you have:
+The shared config loader module is missing. Ensure you have:
 ```
-scripts/benchmark_{classifier}/config_loader.py
+scripts/shared/config_loader.py
 ```
 
 ### "No enabled models found"

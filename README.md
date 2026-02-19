@@ -93,18 +93,18 @@ from casual_memory.classifiers import (
 )
 from casual_memory.intelligence import NLIPreFilter, LLMConflictVerifier, LLMDuplicateDetector
 from casual_memory import MemoryFact
-from casual_llm import create_provider, ModelConfig, Provider
+from casual_llm import create_client, create_model, ClientConfig, ModelConfig, Provider
 
 # Initialize components
 nli_filter = NLIPreFilter()
-llm_provider = create_provider(ModelConfig(
-    name="qwen2.5:7b-instruct",
+client = create_client(ClientConfig(
     provider=Provider.OLLAMA,
     base_url="http://localhost:11434"
 ))
+model = create_model(client, ModelConfig(name="qwen2.5:7b-instruct"))
 
-conflict_verifier = LLMConflictVerifier(llm_provider, "qwen2.5:7b-instruct")
-duplicate_detector = LLMDuplicateDetector(llm_provider, "qwen2.5:7b-instruct")
+conflict_verifier = LLMConflictVerifier(model)
+duplicate_detector = LLMDuplicateDetector(model)
 
 # Build pipeline
 pipeline = MemoryClassificationPipeline(
@@ -164,8 +164,8 @@ from casual_memory.extractors import LLMMemoryExtracter
 from casual_llm import UserMessage, AssistantMessage
 
 # Create extractors for user and assistant memories
-user_extractor = LLMMemoryExtracter(llm_provider=llm_provider, source="user")
-assistant_extractor = LLMMemoryExtracter(llm_provider=llm_provider, source="assistant")
+user_extractor = LLMMemoryExtracter(model=model, source="user")
+assistant_extractor = LLMMemoryExtracter(model=model, source="assistant")
 
 messages = [
     UserMessage(content="My name is Alex and I live in Bangkok"),

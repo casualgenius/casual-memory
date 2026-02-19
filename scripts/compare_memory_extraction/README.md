@@ -29,27 +29,32 @@ All configuration is externalized in JSON/Markdown files for easy modification.
 
 ### models.json
 
-Defines which LLM models to test.
+Defines clients (API connections) and which models to test. Each model references a client by key. The client key is used for automatic API key resolution from `{KEY.upper()}_API_KEY` env vars.
 
 **Location**: `configs/models.json`
 
 **Schema**:
 ```json
 {
+  "clients": {
+    "client-key": {                    // Key becomes ClientConfig.name for API key auto-resolution
+      "provider": "openai|ollama|anthropic",  // Provider type
+      "base_url": "https://...",       // Optional: static base URL
+      "base_url_env": "ENV_VAR",       // Optional: env var for base URL
+      "api_key": "sk-...",             // Optional: static API key (not recommended)
+      "api_key_env": "ENV_VAR"         // Optional: explicit env var for API key
+    }
+  },
   "models": [
     {
-      "name": "model-name",           // Model identifier
-      "provider": "openai|ollama|anthropic",  // Provider type
-      "base_url": "https://...",      // Optional: static base URL
-      "base_url_env": "ENV_VAR",      // Optional: env var for base URL
-      "api_key": "sk-...",            // Optional: static API key (not recommended)
-      "api_key_env": "OPENAI_API_KEY",// Optional: env var for API key
-      "enabled": true,                // Whether to include in tests
-      "description": "..."            // Human-readable description
+      "name": "model-name",            // Model identifier
+      "client": "client-key",          // References a key in 'clients'
+      "enabled": true,                 // Whether to include in tests
+      "description": "..."             // Human-readable description
     }
   ],
   "metadata": {
-    "version": "1.0",
+    "version": "2.0",
     "description": "..."
   }
 }
@@ -58,11 +63,16 @@ Defines which LLM models to test.
 **Example**:
 ```json
 {
+  "clients": {
+    "ollama": {
+      "provider": "ollama",
+      "base_url_env": "OLLAMA_ENDPOINT"
+    }
+  },
   "models": [
     {
       "name": "qwen2.5:7b-instruct",
-      "provider": "ollama",
-      "base_url_env": "OLLAMA_ENDPOINT",
+      "client": "ollama",
       "enabled": true,
       "description": "Qwen 2.5 7B via Ollama"
     }
@@ -190,8 +200,11 @@ python run.py \
 API keys and endpoints should be configured via environment variables:
 
 ```bash
-# OpenAI / OpenRouter API key
+# API keys are auto-resolved from {CLIENT_NAME.upper()}_API_KEY env vars
+# e.g., client named "openai" checks OPENAI_API_KEY
+#        client named "openrouter" checks OPENROUTER_API_KEY
 export OPENAI_API_KEY="sk-..."
+export OPENROUTER_API_KEY="sk-or-..."
 
 # Ollama endpoint (if not default)
 export OLLAMA_ENDPOINT="http://localhost:11434"
@@ -273,7 +286,8 @@ Enable/disable models in the JSON config instead of commenting them out:
 ```json
 {
   "name": "expensive-model",
-  "enabled": false  // Skip this one for now
+  "client": "openrouter",
+  "enabled": false
 }
 ```
 

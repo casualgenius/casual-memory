@@ -37,13 +37,11 @@ for conflict in conflicts:
 
 ```python
 from casual_memory.extractors import LLMMemoryExtracter
-from casual_llm import create_provider, ModelConfig, Provider
+from casual_llm import create_client, create_model, ClientConfig, ModelConfig, Provider
 
-llm_provider = create_provider(ModelConfig(
-    name="gpt-4",
-    provider=Provider.OPENAI,
-))
-extracter = LLMMemoryExtracter(llm_provider=llm_provider, source="user")
+client = create_client(ClientConfig(provider=Provider.OPENAI))
+model = create_model(client, ModelConfig(name="gpt-4"))
+extracter = LLMMemoryExtracter(model=model, source="user")
 
 # Extract from user message
 user_message = "I love pizza and I work at Google in San Francisco"
@@ -144,7 +142,7 @@ auto_resolver = AutoResolutionClassifier(
 2. Switch to smaller/faster LLM model:
    ```python
    # Instead of gpt-4
-   conflict_verifier = LLMConflictVerifier(llm_provider, "gpt-3.5-turbo")
+   conflict_verifier = LLMConflictVerifier(model)
    ```
 
 3. Use `strategy="single"` to check only highest-similarity memory
@@ -190,14 +188,14 @@ auto_resolver = AutoResolutionClassifier(
 **Symptoms:** LLM calls fail or timeout.
 
 **Solutions:**
-1. Check LLM provider configuration:
+1. Check LLM client and model configuration:
    ```python
    # For Ollama
-   llm_provider = create_provider(ModelConfig(
-       name="qwen2.5:7b-instruct",
+   client = create_client(ClientConfig(
        provider=Provider.OLLAMA,
        base_url="http://localhost:11434",  # Verify this is correct
    ))
+   model = create_model(client, ModelConfig(name="qwen2.5:7b-instruct"))
    ```
 
 2. Verify model is available:

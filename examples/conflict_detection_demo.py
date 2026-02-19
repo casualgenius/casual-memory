@@ -6,7 +6,7 @@ Demonstrates conflict detection with LLM verifier and heuristic fallback.
 
 import asyncio
 
-from casual_llm import ModelConfig, Provider, create_provider
+from casual_llm import ClientConfig, ModelConfig, Provider, create_client, create_model
 
 from casual_memory.intelligence import LLMConflictVerifier
 from casual_memory.models import MemoryFact
@@ -15,20 +15,14 @@ from casual_memory.models import MemoryFact
 async def main():
     print("=== Conflict Detection Demo ===\n")
 
-    # Initialize LLM provider
-    llm_provider = create_provider(
-        ModelConfig(
-            name="qwen2.5:7b-instruct",
-            provider=Provider.OLLAMA,
-            base_url="http://localhost:11434",
-            temperature=0.1,
-        )
+    # Initialize LLM client and model
+    client = create_client(
+        ClientConfig(provider=Provider.OLLAMA, base_url="http://localhost:11434")
     )
+    model = create_model(client, ModelConfig(name="qwen2.5:7b-instruct", temperature=0.1))
 
     # Create conflict verifier with fallback enabled
-    verifier = LLMConflictVerifier(
-        llm_provider=llm_provider, model_name="qwen2.5:7b-instruct", enable_fallback=True
-    )
+    verifier = LLMConflictVerifier(model=model, enable_fallback=True)
 
     # Test cases
     test_cases = [
