@@ -14,6 +14,18 @@
   },
   "models": [
     {
+      "name": "gpt-4.1-small",
+      "client": "openai",
+      "enabled": true,
+      "description": "OpenAI GPT 4.1 Small"
+    },
+    {
+      "name": "gpt-4.1-nano",
+      "client": "openai",
+      "enabled": true,
+      "description": "OpenAI GPT 4.1 Nano"
+    },
+    {
       "name": "gpt-4o-mini",
       "client": "openai",
       "enabled": true,
@@ -24,6 +36,12 @@
       "client": "openrouter",
       "enabled": true,
       "description": "Qwen3 Next 80B via OpenRouter"
+    },
+    {
+      "name": "qwen/qwen3-coder-next",
+      "client": "openrouter",
+      "enabled": true,
+      "description": "Qwen3 Coder Next via OpenRouter"
     },
     {
       "name": "qwen2.5:7b-instruct",
