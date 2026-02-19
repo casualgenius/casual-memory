@@ -72,6 +72,8 @@ class TestCase:
     expected_conflict: bool
     category: str
     description: str = ""
+    type_a: str = "fact"
+    type_b: str = "fact"
 
 
 @dataclass
@@ -117,6 +119,8 @@ def load_test_cases(config_path: Optional[str] = None) -> List[TestCase]:
             expected_conflict=tc["expected_conflict"],
             category=tc["category"],
             description=tc.get("description", ""),
+            type_a=tc.get("type_a", "fact"),
+            type_b=tc.get("type_b", "fact"),
         )
         for tc in data["test_cases"]
     ]
@@ -169,9 +173,9 @@ async def run_benchmark(
         logger.info(f"Running test {i}/{len(test_cases)}: {test_case.name}")
 
         # Create memory objects
-        memory_a = MemoryFact(text=test_case.memory_a, type="fact", tags=[], importance=0.5, entity_id="test_user")
+        memory_a = MemoryFact(text=test_case.memory_a, type=test_case.type_a, tags=[], importance=0.5, entity_id="test_user")
 
-        memory_b = MemoryFact(text=test_case.memory_b, type="fact", tags=[], importance=0.5, entity_id="test_user")
+        memory_b = MemoryFact(text=test_case.memory_b, type=test_case.type_b, tags=[], importance=0.5, entity_id="test_user")
 
         # Run classification with timing
         start_time = time.time()

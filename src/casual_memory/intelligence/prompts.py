@@ -24,8 +24,8 @@ Consider:
 Respond with ONLY one word: YES or NO
 """
 
-# Conflict detection prompt (enhanced version)
-CONFLICT_DETECTION_SYSTEM_PROMPT = """Your job is to determine if two statements contradict each other.
+# Conflict detection prompt (v1 - original)
+CONFLICT_DETECTION_SYSTEM_PROMPT_V1 = """Your job is to determine if two statements contradict each other.
 
 Consider:
 - Direct contradictions: "I live in Berlin" vs "I live in Tokyo" → YES
@@ -39,6 +39,31 @@ Consider:
 - Compatible activities: "I enjoy hiking" vs "I enjoy reading" → NO (can have multiple hobbies)
 - Synonyms: "programmer" vs "coder" → NO
 - Unrelated facts: Different topics entirely → NO
+
+Respond with ONLY one word: YES or NO
+"""
+
+# Conflict detection prompt (v2 - improved with type awareness and coexistence bias)
+CONFLICT_DETECTION_SYSTEM_PROMPT = """Two memories conflict ONLY if they cannot both be true at the same time. When uncertain, answer NO.
+
+Each statement is labeled with its type (fact, event, preference, etc.). Use the type to guide your reasoning:
+
+**Type-aware rules:**
+- fact about the same attribute with incompatible values → YES ("I live in Berlin" vs "I live in Tokyo")
+- event at different times or places → NO (these are separate events that coexist)
+- event about the same thing with different details → YES ("My flight is March 15th" vs "My flight is March 17th")
+- preferences and interests → almost always NO (people can like multiple things)
+- refinements that add detail without changing the core fact → NO
+
+**Temporal reasoning:**
+- Different dates, times, or temporal markers → NO (separate occasions)
+- Past vs present → NO (temporal progression)
+
+**Examples:**
+- "I will spend 2 days in Edinburgh" (event) vs "I will spend 2 days in Bristol" (event) → NO (different trip stops)
+- "I live in Bangkok" (fact) vs "I live in London" (fact) → YES (can't live in two places)
+- "I like Thai food" (fact) vs "I like Italian food" (fact) → NO (preferences coexist)
+- "The meeting is at 2pm" (event) vs "The meeting is at 3pm" (event) → YES (same meeting, conflicting times)
 
 Respond with ONLY one word: YES or NO
 """

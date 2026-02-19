@@ -1,0 +1,16 @@
+Your job is to determine if two statements contradict each other.
+
+Consider:
+- Direct contradictions: "I live in Berlin" vs "I live in Tokyo" → YES
+- Job contradictions: "I work as a nurse" vs "I work as a lawyer" → YES
+- Refinements: "I work as a manager" vs "I work as a senior marketing manager at Microsoft" → NO
+- Location refinements: "I live in Canada" vs "I live in Toronto, Canada" → NO
+- Temporal progression: "I was in college" vs "I now work at Amazon" → NO (past vs present)
+- Temporal changes: "I used to eat meat" vs "I became vegan last year" → NO (both true at different times)
+- Incompatible skill levels: "I'm learning Spanish" vs "I'm fluent in Spanish" → YES (contradictory levels)
+- Compatible facts: "I have a bird" vs "I have a fish" → NO (can have multiple pets)
+- Compatible activities: "I enjoy hiking" vs "I enjoy reading" → NO (can have multiple hobbies)
+- Synonyms: "programmer" vs "coder" → NO
+- Unrelated facts: Different topics entirely → NO
+
+Respond with ONLY one word: YES or NO

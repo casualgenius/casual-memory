@@ -15,8 +15,8 @@ from casual_memory.models import MemoryFact
 
 logger = logging.getLogger(__name__)
 
-prompt = """Statement A: "{statement_a}"
-Statement B: "{statement_b}"
+prompt = """Statement A ({type_a}): "{statement_a}"
+Statement B ({type_b}): "{statement_b}"
 """
 
 
@@ -105,7 +105,12 @@ class LLMConflictVerifier:
             - is_conflicting: True if memories conflict
             - detection_method: "llm" or "heuristic_fallback"
         """
-        user_prompt = prompt.format(statement_a=memory_a.text, statement_b=memory_b.text)
+        user_prompt = prompt.format(
+            statement_a=memory_a.text,
+            statement_b=memory_b.text,
+            type_a=memory_a.type,
+            type_b=memory_b.type,
+        )
 
         try:
             # Try LLM-based detection

@@ -14,10 +14,10 @@
   },
   "models": [
     {
-      "name": "gpt-4.1-small",
+      "name": "gpt-4.1-mini",
       "client": "openai",
       "enabled": true,
-      "description": "OpenAI GPT 4.1 Small"
+      "description": "OpenAI GPT 4.1 Mini"
     },
     {
       "name": "gpt-4.1-nano",
@@ -40,7 +40,7 @@
     {
       "name": "qwen/qwen3-coder-next",
       "client": "openrouter",
-      "enabled": true,
+      "enabled": false,
       "description": "Qwen3 Coder Next via OpenRouter"
     },
     {
