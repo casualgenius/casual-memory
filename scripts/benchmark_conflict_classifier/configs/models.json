@@ -4,7 +4,8 @@
       "provider": "openai"
     },
     "openrouter": {
-      "provider": "openai"
+      "provider": "openai",
+      "base_url": "https://openrouter.ai/api/v1"
     },
     "ollama": {
       "provider": "ollama",
