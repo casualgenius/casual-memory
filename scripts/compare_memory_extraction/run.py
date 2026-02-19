@@ -37,12 +37,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Make sure the app directory is in the python path
 import sys
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src/")))
-
 from casual_llm import ChatMessage, ClientConfig, ModelConfig, create_client, create_model
+
+# Import local config_loader (scripts/compare_memory_extraction/ must be on sys.path)
+sys.path.insert(0, os.path.dirname(__file__))
 from config_loader import ConfigLoader
 
 from casual_memory.extractors import LLMMemoryExtracter

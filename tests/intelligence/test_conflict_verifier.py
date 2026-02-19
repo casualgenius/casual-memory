@@ -6,15 +6,7 @@ import pytest
 
 from casual_memory.intelligence.conflict_verifier import LLMConflictVerifier
 from casual_memory.models import MemoryFact
-
-
-class MockModel:
-    """Mock Model for testing."""
-
-    def __init__(self, response_content: str, name: str = "test-model"):
-        self.name = name
-        self.response_content = response_content
-        self.chat = AsyncMock(return_value=Mock(content=response_content))
+from tests.mock_helpers import MockModel
 
 
 @pytest.mark.asyncio

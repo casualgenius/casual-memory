@@ -11,14 +11,7 @@ from pydantic import BaseModel, Field
 from casual_memory.extractors.llm_extractor import LLMMemoryExtracter
 from casual_memory.extractors.models import MemoryExtractionResponse
 from casual_memory.extractors.prompts import USER_MEMORY_PROMPT
-
-
-class MockModel:
-    """Mock Model for testing."""
-
-    def __init__(self, response_content: str):
-        self.response_content = response_content
-        self.chat = AsyncMock(return_value=Mock(content=response_content))
+from tests.mock_helpers import MockModel
 
 
 @pytest.fixture

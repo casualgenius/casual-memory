@@ -8,8 +8,8 @@ from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field, ValidationError
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src/")))
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
+# Import shared config loader (scripts/ must be on sys.path)
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from casual_llm import (
     AssistantMessage,

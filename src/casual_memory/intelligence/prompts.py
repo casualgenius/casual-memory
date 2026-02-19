@@ -100,7 +100,7 @@ CONFLICT_DETECTION_PROMPT = CONFLICT_DETECTION_SYSTEM_PROMPT
 CONFLICT_DETECTION_PROMPT_DETAILED = CONFLICT_DETECTION_SYSTEM_PROMPT_DETAILED
 
 # Duplicate detection prompt for same/refinement detection
-DUPLICATE_DETECTION_SYSTEM_PROMPT = """Your job is to determine if two statements describing the same fact (one being a refinement or duplicate of the other) or are they distinct pieces of information?Are these two statements describing the same fact (one being a refinement or duplicate of the other) or are they distinct pieces of information?
+DUPLICATE_DETECTION_SYSTEM_PROMPT = """Your job is to determine if two statements describe the same fact (one being a refinement or duplicate of the other) or are they distinct pieces of information.
 
 Consider:
 

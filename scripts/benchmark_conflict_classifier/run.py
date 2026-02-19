@@ -35,23 +35,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Add src to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src/")))
-
 from casual_llm import ClientConfig, ModelConfig, create_client, create_model
 
 from casual_memory.intelligence.conflict_verifier import LLMConflictVerifier
 from casual_memory.intelligence.prompts import CONFLICT_DETECTION_SYSTEM_PROMPT_DETAILED
 from casual_memory.models import MemoryFact
 
-# Try to import shared config loader
-try:
-    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
-    from shared.config_loader import load_models
-
-    HAS_CONFIG_LOADER = True
-except ImportError:
-    HAS_CONFIG_LOADER = False
+# Import shared config loader (scripts/ must be on sys.path)
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from shared.config_loader import load_models
 
 DEFAULT_CONFIG_DIR = Path(__file__).parent / "configs"
 
@@ -173,13 +165,24 @@ async def run_benchmark(
         logger.info(f"Running test {i}/{len(test_cases)}: {test_case.name}")
 
         # Create memory objects
-        memory_a = MemoryFact(text=test_case.memory_a, type=test_case.type_a, tags=[], importance=0.5, entity_id="test_user")
+        memory_a = MemoryFact(
+            text=test_case.memory_a,
+            type=test_case.type_a,
+            tags=[],
+            importance=0.5,
+            entity_id="test_user",
+        )
 
-        memory_b = MemoryFact(text=test_case.memory_b, type=test_case.type_b, tags=[], importance=0.5, entity_id="test_user")
+        memory_b = MemoryFact(
+            text=test_case.memory_b,
+            type=test_case.type_b,
+            tags=[],
+            importance=0.5,
+            entity_id="test_user",
+        )
 
         # Run classification with timing
         start_time = time.time()
-        llm_response = ""
 
         try:
             is_conflict, detection_method = await verifier.verify_conflict(
@@ -192,6 +195,9 @@ async def run_benchmark(
 
             # Check if result matches expectation
             passed = is_conflict == test_case.expected_conflict
+
+            # Derive response summary from result
+            llm_response = "YES" if is_conflict else "NO"
 
             results.append(
                 BenchmarkResult(
@@ -497,9 +503,6 @@ Examples:
         model_configs = [(client_config, model_config)]
     else:
         # Multi-model mode from config file (default)
-        if not HAS_CONFIG_LOADER:
-            logger.error("Config loader not available. Cannot load models config")
-            return 1
         config_path = args.models_config or str(DEFAULT_CONFIG_DIR / "models.json")
         try:
             logger.info(f"Loading models from config: {config_path}")

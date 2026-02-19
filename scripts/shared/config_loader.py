@@ -2,13 +2,10 @@
 
 import json
 import os
-import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field, ValidationError
-
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src/")))
 
 from casual_llm import ClientConfig, ModelConfig
 
@@ -26,9 +23,7 @@ class ClientConfigEntry(BaseModel):
 
     provider: str = Field(..., description="LLM provider: 'openai', 'ollama', or 'anthropic'")
     base_url: Optional[str] = Field(None, description="Static base URL")
-    base_url_env: Optional[str] = Field(
-        None, description="Environment variable for base URL"
-    )
+    base_url_env: Optional[str] = Field(None, description="Environment variable for base URL")
     api_key: Optional[str] = Field(None, description="Static API key (NOT recommended)")
     api_key_env: Optional[str] = Field(
         None,

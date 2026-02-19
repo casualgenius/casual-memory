@@ -1,6 +1,5 @@
 import logging
 from datetime import datetime
-from typing import Sequence
 
 from casual_llm import ChatMessage, Model, SystemMessage, UserMessage
 from pydantic import BaseModel, ValidationError
@@ -69,7 +68,7 @@ class LLMMemoryExtracter:
         prompt = "\n".join([message.model_dump_json() for message in messages])
 
         # Build LLM messages using casual-llm format
-        llm_messages: Sequence[SystemMessage | UserMessage] = [
+        llm_messages: list[ChatMessage] = [
             SystemMessage(content=system_prompt),
             UserMessage(content=prompt),
         ]
@@ -77,7 +76,7 @@ class LLMMemoryExtracter:
         try:
             logger.debug("Extracting memories with JSON schema")
             response = await self.model.chat(
-                messages=llm_messages,  # type: ignore[arg-type]
+                messages=llm_messages,
                 response_format=self.extraction_model,  # Pass configurable Pydantic model
                 temperature=0.2,
             )
@@ -86,9 +85,6 @@ class LLMMemoryExtracter:
             content = response.content
             if content is None:
                 raise ValueError("LLM response content is None")
-
-            # DEBUG: Log raw LLM response to check if importance field is included
-            logger.debug(f"Raw LLM response: {content[:500]}...")  # First 500 chars
 
             extraction_response = self.extraction_model.model_validate_json(content)
 
