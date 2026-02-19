@@ -3,6 +3,9 @@
     "openai": {
       "provider": "openai"
     },
+    "openrouter": {
+      "provider": "openai"
+    },
     "ollama": {
       "provider": "ollama",
       "base_url_env": "OLLAMA_ENDPOINT"
@@ -16,9 +19,15 @@
       "description": "OpenAI GPT-4o-mini - Fast and cost-effective"
     },
     {
+      "name": "qwen/qwen3-next-80b-a3b-instruct",
+      "client": "openrouter",
+      "enabled": true,
+      "description": "Qwen3 Next 80B via OpenRouter"
+    },
+    {
       "name": "qwen2.5:7b-instruct",
       "client": "ollama",
-      "enabled": true,
+      "enabled": false,
       "description": "Qwen 2.5 7B via Ollama - Local model"
     }
   ],

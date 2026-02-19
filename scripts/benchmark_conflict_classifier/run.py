@@ -172,9 +172,9 @@ async def run_benchmark(
         logger.info(f"Running test {i}/{len(test_cases)}: {test_case.name}")
 
         # Create memory objects
-        memory_a = MemoryFact(text=test_case.memory_a, type="fact", tags=[], user_id="test_user")
+        memory_a = MemoryFact(text=test_case.memory_a, type="fact", tags=[], importance=0.5, entity_id="test_user")
 
-        memory_b = MemoryFact(text=test_case.memory_b, type="fact", tags=[], user_id="test_user")
+        memory_b = MemoryFact(text=test_case.memory_b, type="fact", tags=[], importance=0.5, entity_id="test_user")
 
         # Run classification with timing
         start_time = time.time()
@@ -496,8 +496,9 @@ Examples:
             return 1
     else:
         # Single model mode (backward compatible)
+        base_url = os.getenv("OLLAMA_ENDPOINT") if args.provider == "ollama" else None
         client_config = ClientConfig(
-            provider=args.provider, base_url=os.getenv("OLLAMA_ENDPOINT")
+            name=args.provider, provider=args.provider, base_url=base_url
         )
         model_config = ModelConfig(name=args.model)
         model_configs = [(client_config, model_config)]
