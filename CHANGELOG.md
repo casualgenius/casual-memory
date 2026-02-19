@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.5.0] - 2026-02-19
+
+### Breaking Changes
+
+- **Migrated to casual-llm v0.6.0+** - All LLM-consuming components now accept a `Model` instance instead of `LLMProvider` + `model_name`
+  - `LLMConflictVerifier(llm_provider, model_name)` → `LLMConflictVerifier(model)`
+  - `LLMDuplicateDetector(llm_provider, model_name)` → `LLMDuplicateDetector(model)`
+  - `LLMMemoryExtracter(llm_provider, prompt)` → `LLMMemoryExtracter(model, prompt)`
+- Core dependency updated: `casual-llm[openai]>=0.6.0` (was `>=0.4.3,<0.5.0`)
+
+### Improved
+
+- **Conflict detection prompt** - New v2 system prompt with type-aware reasoning and coexistence bias
+  - Includes memory type labels (fact, event, preference) in the prompt for better discrimination
+  - Temporal reasoning rules to avoid false positives on separate events
+  - Previous prompt preserved as `CONFLICT_DETECTION_SYSTEM_PROMPT_V1`
+- **Duplicate detection prompt** - Fixed grammatical issue in system prompt preamble
+
+### Changed
+
+- Benchmarking scripts refactored to use shared `config_loader` module and casual-llm `create_client`/`create_model` factories
+- Removed per-benchmark `config_loader.py` duplicates in favor of `scripts/shared/config_loader.py`
+- Added additional conflict verification test cases
+
 ## [0.3.0] - 2026-02-16
 
 ### Added
@@ -106,6 +130,7 @@ Initial Release
 
 ## Version History
 
+- **0.5.0** (2026-02-19) - Migrate to casual-llm v0.6.0 (Model API), improved conflict detection prompt
 - **0.3.0** (2026-02-16) - Namespace support, entity_id migration, Qdrant fixes
 - **0.2.1** (2026-02-09) - ContextService for short-term storage
 - **0.2.0** (2026-02-06) - Custom JSON schema for LLM Extractor
