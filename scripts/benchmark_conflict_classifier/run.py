@@ -6,13 +6,10 @@ Tests the LLM Conflict Classifier with various models to evaluate prompt effecti
 and classifier performance on different conflict scenarios.
 
 Usage:
-    # Use defaults (requires OPENAI_API_KEY or ANTHROPIC_API_KEY)
+    # Run all enabled models from configs/models.json
     python run.py
 
-    # Specify model
-    python run.py --model gpt-4o-mini
-
-    # Use Ollama
+    # Override with a single model
     python run.py --provider ollama --model llama3.2
 
     # Custom prompt
@@ -390,13 +387,13 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Use defaults (OpenAI GPT-4o-mini)
+  # Run all enabled models from configs/models.json (default)
   python run.py
 
-  # Specify model
-  python run.py --model gpt-4o
+  # Use a custom models config
+  python run.py --models-config configs/examples/models_ollama_only.json
 
-  # Use Ollama
+  # Override with a single model
   python run.py --provider ollama --model llama3.2
 
   # Custom prompt
@@ -418,19 +415,22 @@ Examples:
         "--models-config",
         type=str,
         default=None,
-        help="Path to models config JSON for multi-model comparison (overrides --provider and --model)",
+        help="Path to models config JSON (default: configs/models.json)",
     )
 
     parser.add_argument(
         "--provider",
         type=str,
-        default="openai",
+        default=None,
         choices=["openai", "anthropic", "ollama"],
-        help="LLM provider (default: openai) - ignored if --models-config is provided",
+        help="LLM provider for single-model mode (overrides --models-config)",
     )
 
     parser.add_argument(
-        "--model", type=str, default="gpt-4o-mini", help="Model name (default: gpt-4o-mini)"
+        "--model",
+        type=str,
+        default=None,
+        help="Model name for single-model mode (overrides --models-config)",
     )
 
     parser.add_argument(
@@ -481,27 +481,29 @@ Examples:
         custom_prompt = CONFLICT_DETECTION_SYSTEM_PROMPT_DETAILED
         logger.info("Using detailed prompt variant")
 
-    # Determine if we're running in multi-model mode
+    # Determine model configs: single-model override or config file
     model_configs = []
-    if args.models_config:
+    if args.provider or args.model:
+        # Single model mode (explicit override)
+        provider = args.provider or "openai"
+        model_name = args.model or "gpt-4o-mini"
+        base_url = os.getenv("OLLAMA_ENDPOINT") if provider == "ollama" else None
+        client_config = ClientConfig(name=provider, provider=provider, base_url=base_url)
+        model_config = ModelConfig(name=model_name)
+        model_configs = [(client_config, model_config)]
+    else:
+        # Multi-model mode from config file (default)
         if not HAS_CONFIG_LOADER:
-            logger.error("Config loader not available. Cannot use --models-config")
+            logger.error("Config loader not available. Cannot load models config")
             return 1
+        config_path = args.models_config or str(DEFAULT_CONFIG_DIR / "models.json")
         try:
-            logger.info(f"Loading models from config: {args.models_config}")
-            model_configs = load_models(args.models_config, default_config_dir=DEFAULT_CONFIG_DIR)
+            logger.info(f"Loading models from config: {config_path}")
+            model_configs = load_models(config_path, default_config_dir=DEFAULT_CONFIG_DIR)
             logger.info(f"Loaded {len(model_configs)} model(s) for comparison")
         except Exception as e:
             logger.error(f"Failed to load models config: {e}")
             return 1
-    else:
-        # Single model mode (backward compatible)
-        base_url = os.getenv("OLLAMA_ENDPOINT") if args.provider == "ollama" else None
-        client_config = ClientConfig(
-            name=args.provider, provider=args.provider, base_url=base_url
-        )
-        model_config = ModelConfig(name=args.model)
-        model_configs = [(client_config, model_config)]
 
     # Run benchmark for each model
     all_results = []

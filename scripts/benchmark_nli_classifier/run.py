@@ -140,11 +140,11 @@ async def run_benchmark(
 
         # Create memory objects
         new_memory = MemoryFact(
-            text=test_case.new_memory, type="fact", tags=[], user_id="test_user"
+            text=test_case.new_memory, type="fact", tags=[], importance=0.5, entity_id="test_user"
         )
 
         existing_memory_fact = MemoryFact(
-            text=test_case.existing_memory, type="fact", tags=[], user_id="test_user"
+            text=test_case.existing_memory, type="fact", tags=[], importance=0.5, entity_id="test_user"
         )
 
         similar_memory = SimilarMemory(
